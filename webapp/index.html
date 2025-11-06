@@ -8,7 +8,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Стили остаются без изменений */
         :root {
             --max-primary: #4361ee;
             --max-secondary: #3a0ca3;
@@ -43,7 +42,155 @@
             box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
         }
 
-        /* ... остальные стили без изменений ... */
+        .max-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--max-primary);
+        }
+
+        .max-btn-primary {
+            background: var(--max-primary);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .max-btn-primary:hover {
+            background: var(--max-secondary);
+            transform: translateY(-2px);
+        }
+
+        .nav-tabs-max .nav-link {
+            border: none;
+            color: #666;
+            font-weight: 500;
+            padding: 0.75rem 1rem;
+        }
+
+        .nav-tabs-max .nav-link.active {
+            color: var(--max-primary);
+            border-bottom: 3px solid var(--max-primary);
+            background: none;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.25rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            border-top: 4px solid var(--max-primary);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .project-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .task-item:hover {
+            background: #e9ecef;
+        }
+
+        .task-todo { border-color: var(--max-warning); }
+        .task-in-progress { border-color: var(--max-info); }
+        .task-done { border-color: var(--max-success); }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--max-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 0.75rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .stats-card {
+            text-align: center;
+            padding: 1.25rem;
+        }
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            z-index: 1000;
+        }
+
+        .status-online {
+            background: var(--max-success);
+            color: white;
+        }
+
+        .status-offline {
+            background: var(--max-danger);
+            color: white;
+        }
+
+        /* Адаптивность для мобильных устройств */
+        @media (max-width: 768px) {
+            .max-container {
+                padding: 15px;
+            }
+
+            .max-header {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .stats-number {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -138,7 +285,7 @@
                     </div>
                     <div class="col-md-6">
                         <div class="max-card">
-                            <h6><i class="fas fa-bell"></i> Информация</h6>
+                            <h6><i class="fas fa-info-circle"></i> Информация</h6>
                             <div id="user-info-panel">
                                 <div class="loading">
                                     <i class="fas fa-spinner fa-spin"></i> Загрузка...
@@ -192,23 +339,27 @@
         // Инициализация приложения
         async function initApp() {
             try {
-                // Инициализация MAX Web App
-                if (window.WebApp) {
-                    WebApp.ready();
-                    console.log('MAX Web App initialized');
+                console.log('Initializing MAX Web App...');
 
-                    // Показываем информацию о пользователе
-                    showUserInfo();
-
-                    // Инициализация клиента к боту
-                    await initBotClient();
-
-                    updateConnectionStatus(true);
-                } else {
-                    console.error('MAX Web App not available');
+                // Проверяем доступность MAX Web App
+                if (typeof WebApp === 'undefined') {
+                    console.warn('MAX Web App not available, running in standalone mode');
                     updateConnectionStatus(false);
-                    showError('MAX Web App недоступен');
+                    showStandaloneMode();
+                    return;
                 }
+
+                // Инициализация MAX Web App - только ready(), expand() не существует
+                WebApp.ready();
+                console.log('MAX Web App ready');
+
+                // Показываем информацию о пользователе
+                showUserInfo();
+
+                // Инициализация клиента к боту
+                await initBotClient();
+
+                updateConnectionStatus(true);
 
             } catch (error) {
                 console.error('Error initializing app:', error);
@@ -217,11 +368,28 @@
             }
         }
 
+        // Режим standalone (если MAX Web App недоступен)
+        function showStandaloneMode() {
+            const container = document.getElementById('user-info-panel');
+            container.innerHTML = `
+                <div class="task-item task-todo">
+                    <strong>🌐 Режим браузера</strong>
+                    <div class="small">Приложение запущено вне MAX</div>
+                    <div class="small">Для полной функциональности откройте через MAX</div>
+                </div>
+            `;
+
+            // Показываем демо-данные
+            showDemoData();
+        }
+
         // Инициализация клиента бота
         async function initBotClient() {
             try {
-                // URL вашего бота (замените на реальный)
-                const BOT_BASE_URL = 'https://dully-valued-yak.cloudpub.ru';
+                // URL вашего бота (ЗАМЕНИТЕ НА РЕАЛЬНЫЙ URL)
+                const BOT_BASE_URL = 'https://dully-valued-yak.cloudpub.ru/'; // ← ЗАМЕНИТЕ ЭТО!
+
+                console.log('Initializing bot client with URL:', BOT_BASE_URL);
 
                 botClient = new BotDirectClient(BOT_BASE_URL);
                 const initialized = await botClient.init();
@@ -231,7 +399,7 @@
                     await loadDashboardData();
 
                     // Тактильный отклик при успешной инициализации
-                    if (WebApp.HapticFeedback) {
+                    if (WebApp && WebApp.HapticFeedback) {
                         WebApp.HapticFeedback.impactOccurred('light');
                     }
                 } else {
@@ -245,29 +413,58 @@
 
         // Показ информации о пользователе
         function showUserInfo() {
-            if (window.WebApp && WebApp.initDataUnsafe && WebApp.initDataUnsafe.user) {
+            if (WebApp && WebApp.initDataUnsafe && WebApp.initDataUnsafe.user) {
                 const user = WebApp.initDataUnsafe.user;
                 const container = document.getElementById('user-info-panel');
 
-                container.innerHTML = `
+                let userInfo = `
                     <div class="task-item task-todo">
                         <strong>👤 Информация о пользователе</strong>
                         <div class="small">ID: ${user.id}</div>
                         <div class="small">Имя: ${user.first_name || 'Не указано'}</div>
-                        <div class="small">Фамилия: ${user.last_name || 'Не указана'}</div>
-                        <div class="small">Username: ${user.username || 'Не указан'}</div>
-                        <div class="small">Язык: ${user.language_code || 'Не указан'}</div>
-                    </div>
-                    <div class="task-item task-in-progress mt-2">
-                        <strong>🌐 Информация о платформе</strong>
-                        <div class="small">Платформа: ${WebApp.platform || 'Неизвестно'}</div>
-                        <div class="small">Версия: ${WebApp.version || 'Неизвестно'}</div>
-                    </div>
                 `;
+
+                if (user.last_name) {
+                    userInfo += `<div class="small">Фамилия: ${user.last_name}</div>`;
+                }
+                if (user.username) {
+                    userInfo += `<div class="small">Username: @${user.username}</div>`;
+                }
+                if (user.language_code) {
+                    userInfo += `<div class="small">Язык: ${user.language_code}</div>`;
+                }
+
+                userInfo += `</div>`;
+
+                // Информация о платформе
+                if (WebApp.platform || WebApp.version) {
+                    userInfo += `
+                        <div class="task-item task-in-progress mt-2">
+                            <strong>🌐 Платформа</strong>
+                    `;
+                    if (WebApp.platform) {
+                        userInfo += `<div class="small">Платформа: ${WebApp.platform}</div>`;
+                    }
+                    if (WebApp.version) {
+                        userInfo += `<div class="small">Версия: ${WebApp.version}</div>`;
+                    }
+                    userInfo += `</div>`;
+                }
+
+                container.innerHTML = userInfo;
 
                 // Обновляем аватар
                 const avatar = document.getElementById('user-avatar');
                 avatar.textContent = user.first_name?.[0] || user.username?.[0] || 'U';
+            } else {
+                // Если данных пользователя нет
+                const container = document.getElementById('user-info-panel');
+                container.innerHTML = `
+                    <div class="task-item task-todo">
+                        <strong>👤 Гость</strong>
+                        <div class="small">Данные пользователя недоступны</div>
+                    </div>
+                `;
             }
         }
 
@@ -317,15 +514,61 @@
 
         // Демо-данные при ошибке загрузки
         function showDemoData() {
-            document.getElementById('projects-count').textContent = '0';
-            document.getElementById('tasks-todo-count').textContent = '0';
-            document.getElementById('tasks-progress-count').textContent = '0';
-            document.getElementById('tasks-done-count').textContent = '0';
+            document.getElementById('projects-count').textContent = '3';
+            document.getElementById('tasks-todo-count').textContent = '5';
+            document.getElementById('tasks-progress-count').textContent = '3';
+            document.getElementById('tasks-done-count').textContent = '12';
+
+            // Показываем демо-проекты
+            if (currentSection === 'projects') {
+                loadDemoProjects();
+            }
+        }
+
+        // Демо-проекты
+        function loadDemoProjects() {
+            const container = document.getElementById('projects-list');
+            container.innerHTML = `
+                <div class="project-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-1">Пример проекта 1</h6>
+                        <span class="badge bg-secondary">🔒 Приватный</span>
+                    </div>
+                    <p class="small text-muted mb-2">Описание демо-проекта</p>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-primary">8 задач</span>
+                        <span class="badge bg-secondary">3 участников</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar" style="width: 65%"></div>
+                    </div>
+                    <small class="text-muted">65% завершено</small>
+                </div>
+                <div class="project-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-1">Пример проекта 2</h6>
+                        <span class="badge bg-success">🌐 Публичный</span>
+                    </div>
+                    <p class="small text-muted mb-2">Еще один демо-проект</p>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-primary">12 задач</span>
+                        <span class="badge bg-secondary">5 участников</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar" style="width: 35%"></div>
+                    </div>
+                    <small class="text-muted">35% завершено</small>
+                </div>
+            `;
         }
 
         // Показ ошибки
         function showError(message) {
             console.error('App error:', message);
+            // Можно добавить уведомление для пользователя
+            if (WebApp && WebApp.HapticFeedback) {
+                WebApp.HapticFeedback.notificationOccurred('error');
+            }
         }
 
         // Переключение секций
@@ -354,7 +597,7 @@
             }
 
             // Тактильный отклик при переключении
-            if (WebApp.HapticFeedback) {
+            if (WebApp && WebApp.HapticFeedback) {
                 WebApp.HapticFeedback.impactOccurred('light');
             }
         }
@@ -399,15 +642,12 @@
                             <small class="text-muted">${calculateProgress(project.stats)}% завершено</small>
                         </div>
                     `).join('');
+                } else {
+                    loadDemoProjects();
                 }
             } catch (error) {
                 console.error('Error loading projects:', error);
-                document.getElementById('projects-list').innerHTML = `
-                    <div class="max-card text-center text-danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>Ошибка загрузки проектов</p>
-                    </div>
-                `;
+                loadDemoProjects();
             }
         }
 
@@ -434,7 +674,7 @@
                 if (botClient) {
                     const result = await botClient.createProject(title, '', true);
 
-                    if (WebApp.HapticFeedback) {
+                    if (WebApp && WebApp.HapticFeedback) {
                         WebApp.HapticFeedback.notificationOccurred('success');
                     }
 
@@ -444,10 +684,12 @@
                         await loadProjects();
                     }
                     await loadDashboardData();
+                } else {
+                    alert('Бот недоступен. Проект не создан.');
                 }
             } catch (error) {
                 console.error('Error creating project:', error);
-                if (WebApp.HapticFeedback) {
+                if (WebApp && WebApp.HapticFeedback) {
                     WebApp.HapticFeedback.notificationOccurred('error');
                 }
                 alert('Ошибка при создании проекта');
@@ -467,10 +709,10 @@
 
         // Открытие проекта
         function openProject(projectHash) {
-            if (WebApp.HapticFeedback) {
+            if (WebApp && WebApp.HapticFeedback) {
                 WebApp.HapticFeedback.notificationOccurred('success');
             }
-            alert(`Открытие проекта с хэшем: ${projectHash}`);
+            alert(`Открытие проекта с хэшем: ${projectHash}\n\nВ будущем здесь будет детальный просмотр проекта.`);
         }
 
         // Создание задачи
