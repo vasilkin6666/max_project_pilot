@@ -11,6 +11,7 @@ from app.services import (
     generate_hash
 )
 import json
+from app.config import settings
 
 router = APIRouter(prefix="/api/direct", tags=["direct"])
 
@@ -184,7 +185,7 @@ async def get_user_data(user_id: str, request: Request):
                 return {"success": False, "error": "Project not found"}
 
             # Генерируем инвайт-ссылку
-            invite_link = f"https://vasilkin6666.github.io/max_project_pilot/webapp/?invite={project_hash}"
+            invite_link = f"{settings.MINIAPP_URL}?invite={project_hash}"
 
             return {
                 "success": True,
