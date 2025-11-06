@@ -6,8 +6,7 @@ from maxapi.types import (
     MessageCreated,
     MessageCallback,
     CallbackButton,
-    OpenAppButton,
-    ButtonsPayload
+    OpenAppButton
 )
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from app.services import (
@@ -38,6 +37,10 @@ async def cmd_start(event: MessageCreated):
         user = await get_or_create_user(str(event.from_user.user_id), event.from_user.full_name or "Аноним")
 
         builder = InlineKeyboardBuilder()
+
+        # Отладочная информация
+        logger.info(f"MINIAPP_URL from settings: {settings.MINIAPP_URL}")
+        logger.info(f"User ID: {event.from_user.user_id}")
 
         # Кнопка для открытия мини-приложения через OpenAppButton
         builder.row(

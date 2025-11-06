@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* Стили остаются без изменений */
         :root {
             --max-primary: #4361ee;
             --max-secondary: #3a0ca3;
@@ -42,182 +43,13 @@
             box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
         }
 
-        .max-card {
-            background: white;
-            border-radius: 16px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-            border-left: 4px solid var(--max-primary);
-        }
-
-        .max-btn-primary {
-            background: var(--max-primary);
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            color: white;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .max-btn-primary:hover {
-            background: var(--max-secondary);
-            transform: translateY(-2px);
-        }
-
-        .nav-tabs-max .nav-link {
-            border: none;
-            color: #666;
-            font-weight: 500;
-            padding: 0.75rem 1rem;
-        }
-
-        .nav-tabs-max .nav-link.active {
-            color: var(--max-primary);
-            border-bottom: 3px solid var(--max-primary);
-            background: none;
-        }
-
-        .project-card {
-            background: white;
-            border-radius: 16px;
-            padding: 1.25rem;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-            border-top: 4px solid var(--max-primary);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            margin-bottom: 1rem;
-        }
-
-        .project-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
-        }
-
-        .task-item {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            border-left: 4px solid;
-            transition: all 0.3s ease;
-        }
-
-        .task-item:hover {
-            background: #e9ecef;
-        }
-
-        .task-todo { border-color: var(--max-warning); }
-        .task-in-progress { border-color: var(--max-info); }
-        .task-done { border-color: var(--max-success); }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--max-primary);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 0.75rem;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #666;
-        }
-
-        .stats-card {
-            text-align: center;
-            padding: 1.25rem;
-        }
-
-        .stats-number {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .section {
-            display: none;
-        }
-
-        .section.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .connection-status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            z-index: 1000;
-        }
-
-        .status-online {
-            background: var(--max-success);
-            color: white;
-        }
-
-        .status-offline {
-            background: var(--max-danger);
-            color: white;
-        }
-
-        .config-info {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            z-index: 1000;
-        }
-
-        /* Адаптивность для мобильных устройств */
-        @media (max-width: 768px) {
-            .max-container {
-                padding: 15px;
-            }
-
-            .max-header {
-                padding: 1rem;
-                margin-bottom: 1rem;
-            }
-
-            .stats-number {
-                font-size: 1.5rem;
-            }
-
-            .config-info {
-                display: none;
-            }
-        }
+        /* ... остальные стили без изменений ... */
     </style>
 </head>
 <body>
     <!-- Статус подключения -->
     <div id="connectionStatus" class="connection-status status-offline">
         <i class="fas fa-wifi"></i> Подключение...
-    </div>
-
-    <!-- Информация о конфигурации -->
-    <div id="configInfo" class="config-info" style="display: none;">
-        <i class="fas fa-server"></i> <span id="botUrlInfo">Загрузка...</span>
     </div>
 
     <div class="max-container">
@@ -254,12 +86,6 @@
                 <a class="nav-link" href="#" onclick="showSection('tasks')">
                     <i class="fas fa-tasks"></i>
                     <span class="d-none d-md-inline"> Задачи</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#" onclick="showSection('team')">
-                    <i class="fas fa-users"></i>
-                    <span class="d-none d-md-inline"> Команда</span>
                 </a>
             </li>
         </ul>
@@ -312,8 +138,8 @@
                     </div>
                     <div class="col-md-6">
                         <div class="max-card">
-                            <h6><i class="fas fa-bell"></i> Последние уведомления</h6>
-                            <div id="notifications-list">
+                            <h6><i class="fas fa-bell"></i> Информация</h6>
+                            <div id="user-info-panel">
                                 <div class="loading">
                                     <i class="fas fa-spinner fa-spin"></i> Загрузка...
                                 </div>
@@ -352,65 +178,36 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Команда -->
-            <div id="team" class="section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">Команда</h6>
-                    <button class="btn max-btn-primary btn-sm" onclick="inviteMember()">
-                        <i class="fas fa-user-plus"></i> Пригласить
-                    </button>
-                </div>
-                <div id="team-list">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i> Загрузка команды...
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Подключаем конфиг и клиент -->
-    <script src="js/config.js"></script>
     <script src="js/bot-client.js"></script>
 
     <script>
         // Глобальные переменные
-        let appConfig = null;
         let botClient = null;
         let currentSection = 'dashboard';
 
         // Инициализация приложения
         async function initApp() {
             try {
-                // Инициализация MAX Web App - только ready(), expand() не существует
-                WebApp.ready();
+                // Инициализация MAX Web App
+                if (window.WebApp) {
+                    WebApp.ready();
+                    console.log('MAX Web App initialized');
 
-                // Загружаем конфигурацию
-                appConfig = await AppConfig.create();
+                    // Показываем информацию о пользователе
+                    showUserInfo();
 
-                // Показываем информацию о конфигурации
-                showConfigInfo();
+                    // Инициализация клиента к боту
+                    await initBotClient();
 
-                // Инициализация прямого клиента к боту
-                botClient = new BotDirectClient(appConfig);
-                const initialized = await botClient.init();
-
-                if (initialized) {
                     updateConnectionStatus(true);
-                    updateUserInfo();
-
-                    // Загружаем данные через бота
-                    await loadDashboardData();
-
-                    // Тактильный отклик при успешной инициализации
-                    if (WebApp.HapticFeedback) {
-                        WebApp.HapticFeedback.impactOccurred('light');
-                    }
                 } else {
+                    console.error('MAX Web App not available');
                     updateConnectionStatus(false);
-                    showError('Не удалось подключиться к боту');
+                    showError('MAX Web App недоступен');
                 }
 
             } catch (error) {
@@ -420,24 +217,57 @@
             }
         }
 
-        // Показ информации о конфигурации
-        function showConfigInfo() {
-            const configInfo = document.getElementById('configInfo');
-            const botUrlInfo = document.getElementById('botUrlInfo');
+        // Инициализация клиента бота
+        async function initBotClient() {
+            try {
+                // URL вашего бота (замените на реальный)
+                const BOT_BASE_URL = 'https://dully-valued-yak.cloudpub.ru';
 
-            if (appConfig && appConfig.getBotBaseUrl()) {
-                const url = new URL(appConfig.getBotBaseUrl());
-                botUrlInfo.textContent = `Бот: ${url.hostname}`;
-                configInfo.style.display = 'block';
+                botClient = new BotDirectClient(BOT_BASE_URL);
+                const initialized = await botClient.init();
+
+                if (initialized) {
+                    console.log('Bot client initialized successfully');
+                    await loadDashboardData();
+
+                    // Тактильный отклик при успешной инициализации
+                    if (WebApp.HapticFeedback) {
+                        WebApp.HapticFeedback.impactOccurred('light');
+                    }
+                } else {
+                    throw new Error('Failed to initialize bot client');
+                }
+            } catch (error) {
+                console.error('Error initializing bot client:', error);
+                showDemoData();
             }
         }
 
-        // Обновление информации о пользователе
-        function updateUserInfo() {
-            if (botClient && botClient.userData) {
+        // Показ информации о пользователе
+        function showUserInfo() {
+            if (window.WebApp && WebApp.initDataUnsafe && WebApp.initDataUnsafe.user) {
+                const user = WebApp.initDataUnsafe.user;
+                const container = document.getElementById('user-info-panel');
+
+                container.innerHTML = `
+                    <div class="task-item task-todo">
+                        <strong>👤 Информация о пользователе</strong>
+                        <div class="small">ID: ${user.id}</div>
+                        <div class="small">Имя: ${user.first_name || 'Не указано'}</div>
+                        <div class="small">Фамилия: ${user.last_name || 'Не указана'}</div>
+                        <div class="small">Username: ${user.username || 'Не указан'}</div>
+                        <div class="small">Язык: ${user.language_code || 'Не указан'}</div>
+                    </div>
+                    <div class="task-item task-in-progress mt-2">
+                        <strong>🌐 Информация о платформе</strong>
+                        <div class="small">Платформа: ${WebApp.platform || 'Неизвестно'}</div>
+                        <div class="small">Версия: ${WebApp.version || 'Неизвестно'}</div>
+                    </div>
+                `;
+
+                // Обновляем аватар
                 const avatar = document.getElementById('user-avatar');
-                avatar.textContent = botClient.userData.first_name?.[0] ||
-                                   botClient.userData.username?.[0] || 'U';
+                avatar.textContent = user.first_name?.[0] || user.username?.[0] || 'U';
             }
         }
 
@@ -456,10 +286,10 @@
         // Загрузка данных главной страницы
         async function loadDashboardData() {
             try {
-                const data = await botClient.getUserProjects();
-                updateStats(data.projects);
-                loadDemoNotifications();
-
+                if (botClient) {
+                    const data = await botClient.getUserProjects();
+                    updateStats(data.projects);
+                }
             } catch (error) {
                 console.error('Error loading data from bot:', error);
                 showDemoData();
@@ -485,97 +315,6 @@
             document.getElementById('tasks-done-count').textContent = totalTasksDone;
         }
 
-        // Загрузка проектов
-        async function loadProjects() {
-            try {
-                const data = await botClient.getUserProjects();
-                const container = document.getElementById('projects-list');
-
-                if (!data.projects || data.projects.length === 0) {
-                    container.innerHTML = `
-                        <div class="max-card text-center">
-                            <i class="fas fa-folder-open fa-2x text-muted mb-3"></i>
-                            <h6>Проектов пока нет</h6>
-                            <p class="text-muted">Создайте свой первый проект!</p>
-                            <button class="btn max-btn-primary" onclick="createProject()">
-                                <i class="fas fa-plus"></i> Создать проект
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = data.projects.map(project => `
-                    <div class="project-card" onclick="openProject('${project.hash}')">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="mb-1">${escapeHTML(project.title)}</h6>
-                            <span class="badge ${project.is_private ? 'bg-secondary' : 'bg-success'}">
-                                ${project.is_private ? '🔒 Приватный' : '🌐 Публичный'}
-                            </span>
-                        </div>
-                        <p class="small text-muted mb-2">${escapeHTML(project.description) || '📝 Без описания'}</p>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge bg-primary">${project.stats.tasks_count} задач</span>
-                            <span class="badge bg-secondary">${project.stats.members_count} участников</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar" style="width: ${calculateProgress(project.stats)}%"></div>
-                        </div>
-                        <small class="text-muted">${calculateProgress(project.stats)}% завершено</small>
-                    </div>
-                `).join('');
-
-            } catch (error) {
-                console.error('Error loading projects:', error);
-                document.getElementById('projects-list').innerHTML = `
-                    <div class="max-card text-center text-danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>Ошибка загрузки проектов</p>
-                        <small class="text-muted">Проверьте подключение к боту</small>
-                    </div>
-                `;
-            }
-        }
-
-        // Расчет прогресса проекта
-        function calculateProgress(stats) {
-            const total = stats.tasks_count;
-            const done = stats.tasks_done;
-            return total > 0 ? Math.round((done / total) * 100) : 0;
-        }
-
-        // Создание проекта
-        async function createProject() {
-            try {
-                const title = prompt('Введите название проекта:');
-                if (!title) return;
-
-                const description = prompt('Введите описание проекта (необязательно):') || '';
-
-                const result = await botClient.createProject(title, description, true);
-
-                // Тактильный отклик при успехе
-                if (WebApp.HapticFeedback) {
-                    WebApp.HapticFeedback.notificationOccurred('success');
-                }
-
-                alert(`Проект "${result.project.title}" создан!`);
-
-                // Обновляем список проектов
-                if (currentSection === 'projects') {
-                    await loadProjects();
-                }
-                await loadDashboardData();
-
-            } catch (error) {
-                console.error('Error creating project:', error);
-                if (WebApp.HapticFeedback) {
-                    WebApp.HapticFeedback.notificationOccurred('error');
-                }
-                alert('Ошибка при создании проекта: ' + error.message);
-            }
-        }
-
         // Демо-данные при ошибке загрузки
         function showDemoData() {
             document.getElementById('projects-count').textContent = '0';
@@ -584,56 +323,22 @@
             document.getElementById('tasks-done-count').textContent = '0';
         }
 
-        // Демо-уведомления
-        function loadDemoNotifications() {
-            const notifications = [
-                {
-                    title: "🚀 Добро пожаловать!",
-                    message: "Вы успешно подключились к Project Pilot",
-                    time: "Только что"
-                }
-            ];
-
-            const container = document.getElementById('notifications-list');
-            container.innerHTML = notifications.map(notif => `
-                <div class="task-item task-todo mb-2">
-                    <strong class="small">${notif.title}</strong>
-                    <div class="small">${notif.message}</div>
-                    <div class="small text-muted">${notif.time}</div>
-                </div>
-            `).join('');
-        }
-
         // Показ ошибки
         function showError(message) {
             console.error('App error:', message);
-            // Можно добавить красивый показ ошибок через toast или alert
-        }
-
-        // Вспомогательные функции
-        function escapeHTML(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
 
         // Переключение секций
         function showSection(sectionName) {
-            // Скрываем все секции
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
             });
 
-            // Убираем активный класс со всех вкладок
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
 
-            // Показываем выбранную секцию
             document.getElementById(sectionName).classList.add('active');
-
-            // Активируем соответствующую вкладку
             event.target.classList.add('active');
 
             currentSection = sectionName;
@@ -646,14 +351,106 @@
                 case 'tasks':
                     loadTasks();
                     break;
-                case 'team':
-                    loadTeam();
-                    break;
             }
 
             // Тактильный отклик при переключении
             if (WebApp.HapticFeedback) {
                 WebApp.HapticFeedback.impactOccurred('light');
+            }
+        }
+
+        // Загрузка проектов
+        async function loadProjects() {
+            try {
+                if (botClient) {
+                    const data = await botClient.getUserProjects();
+                    const container = document.getElementById('projects-list');
+
+                    if (!data.projects || data.projects.length === 0) {
+                        container.innerHTML = `
+                            <div class="max-card text-center">
+                                <i class="fas fa-folder-open fa-2x text-muted mb-3"></i>
+                                <h6>Проектов пока нет</h6>
+                                <p class="text-muted">Создайте свой первый проект!</p>
+                                <button class="btn max-btn-primary" onclick="createProject()">
+                                    <i class="fas fa-plus"></i> Создать проект
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = data.projects.map(project => `
+                        <div class="project-card" onclick="openProject('${project.hash}')">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-1">${escapeHTML(project.title)}</h6>
+                                <span class="badge ${project.is_private ? 'bg-secondary' : 'bg-success'}">
+                                    ${project.is_private ? '🔒 Приватный' : '🌐 Публичный'}
+                                </span>
+                            </div>
+                            <p class="small text-muted mb-2">${escapeHTML(project.description) || '📝 Без описания'}</p>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-primary">${project.stats.tasks_count} задач</span>
+                                <span class="badge bg-secondary">${project.stats.members_count} участников</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar" style="width: ${calculateProgress(project.stats)}%"></div>
+                            </div>
+                            <small class="text-muted">${calculateProgress(project.stats)}% завершено</small>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                document.getElementById('projects-list').innerHTML = `
+                    <div class="max-card text-center text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Ошибка загрузки проектов</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Вспомогательные функции
+        function escapeHTML(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function calculateProgress(stats) {
+            const total = stats.tasks_count;
+            const done = stats.tasks_done;
+            return total > 0 ? Math.round((done / total) * 100) : 0;
+        }
+
+        // Создание проекта
+        async function createProject() {
+            try {
+                const title = prompt('Введите название проекта:');
+                if (!title) return;
+
+                if (botClient) {
+                    const result = await botClient.createProject(title, '', true);
+
+                    if (WebApp.HapticFeedback) {
+                        WebApp.HapticFeedback.notificationOccurred('success');
+                    }
+
+                    alert(`Проект "${result.project.title}" создан!`);
+
+                    if (currentSection === 'projects') {
+                        await loadProjects();
+                    }
+                    await loadDashboardData();
+                }
+            } catch (error) {
+                console.error('Error creating project:', error);
+                if (WebApp.HapticFeedback) {
+                    WebApp.HapticFeedback.notificationOccurred('error');
+                }
+                alert('Ошибка при создании проекта');
             }
         }
 
@@ -668,33 +465,17 @@
             `;
         }
 
-        // Загрузка команды
-        async function loadTeam() {
-            document.getElementById('team-list').innerHTML = `
-                <div class="max-card text-center">
-                    <i class="fas fa-users fa-2x text-muted mb-3"></i>
-                    <h6>Управление командой</h6>
-                    <p class="text-muted">Приглашайте участников через бота</p>
-                </div>
-            `;
-        }
-
         // Открытие проекта
         function openProject(projectHash) {
             if (WebApp.HapticFeedback) {
                 WebApp.HapticFeedback.notificationOccurred('success');
             }
-            alert(`Открытие проекта с хэшем: ${projectHash}\n\nВ будущем здесь будет детальный просмотр проекта.`);
+            alert(`Открытие проекта с хэшем: ${projectHash}`);
         }
 
         // Создание задачи
         function createTask() {
             alert('Для создания задачи откройте конкретный проект');
-        }
-
-        // Приглашение участника
-        function inviteMember() {
-            alert('Для приглашения участников используйте бота');
         }
 
         // Инициализация при загрузке

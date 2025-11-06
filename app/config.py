@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/db.sqlite3"
     WEBHOOK_PATH: str = "/webhook"
 
-    # Единый публичный URL бота
-    BOT_PUBLIC_URL: str = "https://your-bot-domain.com"
+    # Единый публичный URL бота (должен быть доступен из интернета)
+    BOT_PUBLIC_URL: str = "https://dully-valued-yak.cloudpub.ru"
 
     # URL мини-приложения
-    MINIAPP_URL: str = "https://vasilkin6666.github.io/max_project_pilot/webapp/"
+    MINIAPP_URL: str = "https://max.ru/t44_hakaton_bot?startapp"
 
     class Config:
         env_file = ".env"
