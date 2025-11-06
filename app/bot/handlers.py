@@ -2,7 +2,13 @@ import logging
 from maxapi import Dispatcher, F
 from maxapi.filters.command import Command
 from maxapi.filters.callback_payload import CallbackPayload
-from maxapi.types import MessageCreated, MessageCallback, CallbackButton
+from maxapi.types import (
+    MessageCreated,
+    MessageCallback,
+    CallbackButton,
+    OpenAppButton,
+    ButtonsPayload
+)
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from app.services import (
     get_or_create_user,
@@ -31,74 +37,53 @@ async def cmd_start(event: MessageCreated):
     try:
         user = await get_or_create_user(str(event.from_user.user_id), event.from_user.full_name or "Аноним")
 
-        kb = InlineKeyboardBuilder()
+        builder = InlineKeyboardBuilder()
 
-        # Кнопка для открытия мини-приложения (обычная кнопка с URL)
-        kb.row(
-            CallbackButton(
+        # Кнопка для открытия мини-приложения через OpenAppButton
+        builder.row(
+            OpenAppButton(
                 text="🚀 Открыть приложение",
-                payload=Action(action="open_app").pack()
+                web_app=settings.MINIAPP_URL,
+                contact_id=event.from_user.user_id
             )
         )
 
-        kb.row(
+        builder.row(
             CallbackButton(text="🔔 Мои уведомления", payload=Action(action="notifications").pack()),
             CallbackButton(text="⚙️ Настройки", payload=Action(action="settings").pack())
         )
-        kb.row(
+        builder.row(
             CallbackButton(text="📋 Мои проекты", payload=Action(action="projects").pack())
         )
 
         await event.message.answer(
             text=f"👋 Привет, {user.full_name}!\n\n"
                  "🚀 **MAX Project Pilot**\n\n"
-                 "Откройте веб-приложение для управления проектами или используйте бота для уведомлений!\n\n"
-                 f"🔗 Ссылка на приложение: {settings.MINIAPP_URL}",
-            attachments=[kb.as_markup()]
+                 "Откройте веб-приложение для управления проектами или используйте бота для уведомлений!",
+            attachments=[builder.as_markup()]
         )
     except Exception as e:
         logger.error(f"Start error: {e}")
         await event.message.answer("❌ Ошибка при запуске. Попробуй позже.")
 
-# Обработка открытия приложения
-@dp.message_callback(Action.filter(F.action == "open_app"))
-async def open_app(event: MessageCallback, payload: Action):
-    """Отправляет пользователю ссылку на приложение"""
-    try:
-        await event.answer(notification=f"🔗 Открывайте приложение: {settings.MINIAPP_URL}")
-
-        # Также отправляем сообщение со ссылкой
-        await event.bot.send_message(
-            user_id=event.from_user.user_id,
-            text=f"🚀 **MAX Project Pilot - Веб-приложение**\n\n"
-                 f"Перейдите по ссылке чтобы открыть приложение:\n"
-                 f"{settings.MINIAPP_URL}\n\n"
-                 f"Приложение откроется в вашем браузере."
-        )
-
-    except Exception as e:
-        logger.error(f"Open app error: {e}")
-        await event.answer(notification="❌ Ошибка при открытии приложения")
-
 # Команда для прямого открытия приложения
 @dp.message_created(Command('app'))
 async def cmd_app(event: MessageCreated):
-    """Отправляет ссылку на приложение"""
-    kb = InlineKeyboardBuilder()
+    """Кнопка для открытия мини-приложения"""
+    builder = InlineKeyboardBuilder()
 
-    kb.row(
-        CallbackButton(
+    builder.row(
+        OpenAppButton(
             text="🚀 Открыть Project Pilot",
-            payload=Action(action="open_app").pack()
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
         )
     )
 
     await event.message.answer(
-        text=f"📱 **MAX Project Pilot - Веб-приложение**\n\n"
-             f"Перейдите по ссылке чтобы открыть приложение:\n"
-             f"{settings.MINIAPP_URL}\n\n"
-             "Или используйте кнопку ниже:",
-        attachments=[kb.as_markup()]
+        text="📱 **MAX Project Pilot - Веб-приложение**\n\n"
+             "Нажмите кнопку ниже чтобы открыть приложение:",
+        attachments=[builder.as_markup()]
     )
 
 # УВЕДОМЛЕНИЯ
@@ -108,7 +93,7 @@ async def show_notifications(event: MessageCallback, payload: Action):
         user = await get_or_create_user(str(event.from_user.user_id), event.from_user.full_name or "Аноним")
         notifications = await get_user_notifications(user.id, limit=10)
 
-        kb = InlineKeyboardBuilder()
+        builder = InlineKeyboardBuilder()
 
         if not notifications:
             text = "📭 У вас пока нет уведомлений\n\nНовые уведомления появятся здесь, когда в ваших проектах что-то произойдет!"
@@ -126,7 +111,7 @@ async def show_notifications(event: MessageCallback, payload: Action):
                 text += f"   📅 {notification.created_at.strftime('%d.%m %H:%M')}\n\n"
 
             if unread_count > 0:
-                kb.row(CallbackButton(
+                builder.row(CallbackButton(
                     text="✅ Отметить все как прочитанные",
                     payload=Action(action="mark_all_read").pack()
                 ))
@@ -134,14 +119,18 @@ async def show_notifications(event: MessageCallback, payload: Action):
             if len(notifications) > 5:
                 text += f"... и ещё {len(notifications) - 5} уведомлений"
 
-        kb.row(CallbackButton(text="🔄 Обновить", payload=Action(action="notifications").pack()))
-        kb.row(CallbackButton(text="🚀 Открыть приложение", payload=Action(action="open_app").pack()))
-        kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
+        builder.row(CallbackButton(text="🔄 Обновить", payload=Action(action="notifications").pack()))
+        builder.row(OpenAppButton(
+            text="🚀 Открыть приложение",
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
+        ))
+        builder.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         await event.bot.edit_message(
             message_id=event.message.body.mid,
             text=text,
-            attachments=[kb.as_markup()]
+            attachments=[builder.as_markup()]
         )
 
     except Exception as e:
@@ -169,7 +158,7 @@ async def show_settings(event: MessageCallback, payload: Action):
         user = await get_or_create_user(str(event.from_user.user_id), event.from_user.full_name or "Аноним")
         projects = await get_user_projects(user.id)
 
-        kb = InlineKeyboardBuilder()
+        builder = InlineKeyboardBuilder()
 
         if not projects:
             text = "⚙️ **Настройки уведомлений**\n\nУ вас пока нет проектов для настройки."
@@ -183,18 +172,22 @@ async def show_settings(event: MessageCallback, payload: Action):
                 text += f"{i}. {status} {project.title}\n"
 
                 # Кнопки для каждого проекта
-                kb.add(CallbackButton(
+                builder.add(CallbackButton(
                     text=f"{i}",
                     payload=Action(action="project_settings", data=project.hash).pack()
                 ))
 
-        kb.row(CallbackButton(text="🚀 Открыть приложение", payload=Action(action="open_app").pack()))
-        kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
+        builder.row(OpenAppButton(
+            text="🚀 Открыть приложение",
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
+        ))
+        builder.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         await event.bot.edit_message(
             message_id=event.message.body.mid,
             text=text,
-            attachments=[kb.as_markup()]
+            attachments=[builder.as_markup()]
         )
 
     except Exception as e:
@@ -214,30 +207,34 @@ async def project_settings(event: MessageCallback, payload: Action):
 
         current_setting = await get_notification_settings(user.id, project.id)
 
-        kb = InlineKeyboardBuilder()
+        builder = InlineKeyboardBuilder()
 
         if current_setting:
-            kb.row(CallbackButton(
+            builder.row(CallbackButton(
                 text="🔕 Отключить уведомления",
                 payload=Action(action="toggle_notifications", data=f"{project.hash}:false").pack()
             ))
             status_text = "🔔 Уведомления включены"
         else:
-            kb.row(CallbackButton(
+            builder.row(CallbackButton(
                 text="🔔 Включить уведомления",
                 payload=Action(action="toggle_notifications", data=f"{project.hash}:true").pack()
             ))
             status_text = "🔕 Уведомления отключены"
 
         # Кнопка для приглашения
-        kb.row(CallbackButton(
+        builder.row(CallbackButton(
             text="👥 Пригласить в проект",
             payload=Action(action="invite_to_project", data=project.hash).pack()
         ))
 
-        kb.row(CallbackButton(text="⬅️ Назад", payload=Action(action="settings").pack()))
-        kb.row(CallbackButton(text="🚀 Открыть приложение", payload=Action(action="open_app").pack()))
-        kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
+        builder.row(CallbackButton(text="⬅️ Назад", payload=Action(action="settings").pack()))
+        builder.row(OpenAppButton(
+            text="🚀 Открыть приложение",
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
+        ))
+        builder.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         text = f"⚙️ **Настройки уведомлений**\n\n"
         text += f"**Проект:** {project.title}\n"
@@ -251,7 +248,7 @@ async def project_settings(event: MessageCallback, payload: Action):
         await event.bot.edit_message(
             message_id=event.message.body.mid,
             text=text,
-            attachments=[kb.as_markup()]
+            attachments=[builder.as_markup()]
         )
 
     except Exception as e:
@@ -273,9 +270,13 @@ async def invite_to_project(event: MessageCallback, payload: Action):
         # Генерируем инвайт-ссылку
         invite_link = f"{settings.MINIAPP_URL}?invite={project.hash}"
 
-        kb = InlineKeyboardBuilder()
-        kb.row(CallbackButton(text="📋 Мои проекты", payload=Action(action="projects").pack()))
-        kb.row(CallbackButton(text="🚀 Открыть приложение", payload=Action(action="open_app").pack()))
+        builder = InlineKeyboardBuilder()
+        builder.row(CallbackButton(text="📋 Мои проекты", payload=Action(action="projects").pack()))
+        builder.row(OpenAppButton(
+            text="🚀 Открыть приложение",
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
+        ))
 
         await event.bot.edit_message(
             message_id=event.message.body.mid,
@@ -284,7 +285,7 @@ async def invite_to_project(event: MessageCallback, payload: Action):
                  f"Отправьте эту ссылку пользователю:\n"
                  f"`{invite_link}`\n\n"
                  f"При переходе по ссылке пользователь автоматически присоединится к проекту.",
-            attachments=[kb.as_markup()]
+            attachments=[builder.as_markup()]
         )
 
     except Exception as e:
@@ -324,7 +325,7 @@ async def show_projects(event: MessageCallback, payload: Action):
         user = await get_or_create_user(str(event.from_user.user_id), event.from_user.full_name or "Аноним")
         projects = await get_user_projects(user.id)
 
-        kb = InlineKeyboardBuilder()
+        builder = InlineKeyboardBuilder()
 
         if not projects:
             text = "📂 **Мои проекты**\n\nУ вас пока нет проектов.\n\nДля создания проектов и управления задачами используйте веб-приложение!"
@@ -339,14 +340,18 @@ async def show_projects(event: MessageCallback, payload: Action):
                 text += f"   👥 {members_count} участников | 📋 {tasks_count} задач\n"
                 text += f"   🔗 Хэш: `{project.hash}`\n\n"
 
-        kb.row(CallbackButton(text="🔔 Уведомления", payload=Action(action="notifications").pack()))
-        kb.row(CallbackButton(text="🚀 Открыть приложение", payload=Action(action="open_app").pack()))
-        kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
+        builder.row(CallbackButton(text="🔔 Уведомления", payload=Action(action="notifications").pack()))
+        builder.row(OpenAppButton(
+            text="🚀 Открыть приложение",
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
+        ))
+        builder.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         await event.bot.edit_message(
             message_id=event.message.body.mid,
             text=text,
-            attachments=[kb.as_markup()]
+            attachments=[builder.as_markup()]
         )
 
     except Exception as e:
@@ -360,22 +365,24 @@ async def handle_text_messages(event: MessageCreated):
 
     # Если сообщение похоже на хэш проекта (12 символов)
     if len(text) == 12 and text.isalnum():
-        kb = InlineKeyboardBuilder()
-        kb.row(CallbackButton(
+        builder = InlineKeyboardBuilder()
+        builder.row(OpenAppButton(
             text="🚀 Открыть приложение",
-            payload=Action(action="open_app").pack()
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
         ))
 
         await event.message.answer(
             "🔗 Для присоединения к проектам используйте веб-приложение.\n\n"
             "Откройте приложение по кнопке ниже:",
-            attachments=[kb.as_markup()]
+            attachments=[builder.as_markup()]
         )
     else:
-        kb = InlineKeyboardBuilder()
-        kb.row(CallbackButton(
+        builder = InlineKeyboardBuilder()
+        builder.row(OpenAppButton(
             text="🚀 Открыть приложение",
-            payload=Action(action="open_app").pack()
+            web_app=settings.MINIAPP_URL,
+            contact_id=event.from_user.user_id
         ))
 
         await event.message.answer(
@@ -385,5 +392,5 @@ async def handle_text_messages(event: MessageCreated):
             "• 🔔 Просмотра уведомлений\n"
             "• ⚙️ Настройки уведомлений\n"
             "• 📋 Просмотра проектов",
-            attachments=[kb.as_markup()]
+            attachments=[builder.as_markup()]
         )

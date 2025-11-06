@@ -41,8 +41,10 @@ class BotDirectClient {
                 });
 
                 if (result) {
-                    WebApp.HapticFeedback.notificationOccurred('success');
-                    WebApp.showAlert(`Вы присоединились к проекту!`);
+                    if (WebApp.HapticFeedback) {
+                        WebApp.HapticFeedback.notificationOccurred('success');
+                    }
+                    alert(`Вы присоединились к проекту!`);
 
                     // Убираем параметр из URL
                     window.history.replaceState({}, '', window.location.pathname);
@@ -50,7 +52,9 @@ class BotDirectClient {
             }
         } catch (error) {
             console.error('Error handling invite:', error);
-            WebApp.HapticFeedback.notificationOccurred('error');
+            if (WebApp.HapticFeedback) {
+                WebApp.HapticFeedback.notificationOccurred('error');
+            }
         }
     }
 
