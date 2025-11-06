@@ -22,6 +22,42 @@ async def get_or_create_user(max_id: str, full_name: str) -> User:
 
         return user
 
+# СОЗДАТЬ ПРОЕКТ
+async def create_project(owner: User, title: str, description: str = "", is_private: bool = True) -> Project:
+    async with AsyncSessionLocal() as db:
+        project = Project(
+            hash=generate_hash(),
+            title=title,
+            description=description,
+            is_private=is_private,
+            owner_id=owner.id
+        )
+        db.add(project)
+        await db.flush()
+
+        # Добавляем владельца как участника
+        member = ProjectMember(project_id=project.id, user_id=owner.id, role="owner")
+        db.add(member)
+
+        await db.commit()
+        await db.refresh(project)
+        return project
+
+# СОЗДАТЬ ЗАДАЧУ
+async def create_task(project_id: int, title: str, description: str = "", priority: str = "medium", due_date: datetime = None):
+    async with AsyncSessionLocal() as db:
+        task = Task(
+            project_id=project_id,
+            title=title,
+            description=description,
+            priority=priority,
+            due_date=due_date
+        )
+        db.add(task)
+        await db.commit()
+        await db.refresh(task)
+        return task
+
 # ПРОЕКТЫ ПОЛЬЗОВАТЕЛЯ
 async def get_user_projects(user_id: int):
     async with AsyncSessionLocal() as db:
@@ -48,6 +84,48 @@ async def get_project_by_hash(hash_: str):
             )
         )
         return result.scalar_one_or_none()
+
+# УЧАСТНИКИ ПРОЕКТА
+async def get_project_members(project_id: int):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(ProjectMember)
+            .where(ProjectMember.project_id == project_id)
+            .options(selectinload(ProjectMember.user))
+        )
+        return result.scalars().all()
+
+# ЗАДАЧИ ПРОЕКТА
+async def get_project_tasks(project_id: int):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Task)
+            .where(Task.project_id == project_id)
+            .options(selectinload(Task.assignees).selectinload(TaskAssignee.user))
+        )
+        return result.scalars().all()
+
+# ДОБАВИТЬ УЧАСТНИКА В ПРОЕКТ
+async def add_user_to_project(user_id: int, project_id: int, role: str = "member"):
+    async with AsyncSessionLocal() as db:
+        # Проверяем, не является ли пользователь уже участником
+        result = await db.execute(
+            select(ProjectMember)
+            .where(and_(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == user_id
+            ))
+        )
+        existing_member = result.scalar_one_or_none()
+
+        if existing_member:
+            return existing_member
+
+        member = ProjectMember(project_id=project_id, user_id=user_id, role=role)
+        db.add(member)
+        await db.commit()
+        await db.refresh(member)
+        return member
 
 # УВЕДОМЛЕНИЯ
 async def create_notification(user_id: int, project_id: int, type: NotificationType, title: str, message: str, data: dict = None):
@@ -204,23 +282,3 @@ async def get_notification_settings(user_id: int, project_id: int):
         )
         member = result.scalar_one_or_none()
         return member.notifications_enabled if member else True
-
-# УЧАСТНИКИ ПРОЕКТА
-async def get_project_members(project_id: int):
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(ProjectMember)
-            .where(ProjectMember.project_id == project_id)
-            .options(selectinload(ProjectMember.user))
-        )
-        return result.scalars().all()
-
-# ЗАДАЧИ ПРОЕКТА
-async def get_project_tasks(project_id: int):
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Task)
-            .where(Task.project_id == project_id)
-            .options(selectinload(Task.assignees).selectinload(TaskAssignee.user))
-        )
-        return result.scalars().all()
