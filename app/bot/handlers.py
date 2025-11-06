@@ -2,18 +2,20 @@ import logging
 from maxapi import Dispatcher, F
 from maxapi.filters.command import Command
 from maxapi.filters.callback_payload import CallbackPayload
-from maxapi.types import MessageCreated, MessageCallback, CallbackButton
+from maxapi.types import MessageCreated, MessageCallback, CallbackButton, WebAppInfo
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from app.services import (
     get_or_create_user,
     get_user_notifications,
-    mark_notification_as_read,
     mark_all_notifications_as_read,
     get_user_projects,
     toggle_user_notifications,
-    get_notification_settings
+    get_notification_settings,
+    get_project_by_hash,
+    generate_invite_link
 )
 from app.models import NotificationType
+from app.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,13 +26,22 @@ class Action(CallbackPayload, prefix="mpp"):
     action: str
     data: str = ""
 
-# СТАРТ - только уведомления
+# СТАРТ - с кнопкой для мини-приложения
 @dp.message_created(Command('start'))
 async def cmd_start(event: MessageCreated):
     try:
         user = await get_or_create_user(str(event.from_user.user_id), event.from_user.full_name or "Аноним")
 
         kb = InlineKeyboardBuilder()
+
+        # Кнопка для открытия мини-приложения
+        kb.row(
+            CallbackButton(
+                text="🚀 Открыть приложение",
+                web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")
+            )
+        )
+
         kb.row(
             CallbackButton(text="🔔 Мои уведомления", payload=Action(action="notifications").pack()),
             CallbackButton(text="⚙️ Настройки", payload=Action(action="settings").pack())
@@ -41,18 +52,32 @@ async def cmd_start(event: MessageCreated):
 
         await event.message.answer(
             text=f"👋 Привет, {user.full_name}!\n\n"
-                 "🔔 **MAX Project Pilot - Уведомления**\n\n"
-                 "Я буду присылать уведомления о:\n"
-                 "• ✅ Выполненных задачах\n"
-                 "• 🎯 Новых назначениях\n"
-                 "• 👥 Новых участниках\n"
-                 "• 📝 Изменениях в проектах\n\n"
-                 "Весь функционал управления проектами доступен в веб-приложении!",
+                 "🚀 **MAX Project Pilot**\n\n"
+                 "Откройте веб-приложение для управления проектами или используйте бота для уведомлений!",
             attachments=[kb.as_markup()]
         )
     except Exception as e:
         logger.error(f"Start error: {e}")
         await event.message.answer("❌ Ошибка при запуске. Попробуй позже.")
+
+# Команда для прямого открытия приложения
+@dp.message_created(Command('app'))
+async def cmd_app(event: MessageCreated):
+    """Кнопка для открытия мини-приложения"""
+    kb = InlineKeyboardBuilder()
+
+    kb.row(
+        CallbackButton(
+            text="🚀 Открыть Project Pilot",
+            web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")
+        )
+    )
+
+    await event.message.answer(
+        text="📱 **MAX Project Pilot - Веб-приложение**\n\n"
+             "Откройте веб-приложение для полного управления проектами:",
+        attachments=[kb.as_markup()]
+    )
 
 # УВЕДОМЛЕНИЯ
 @dp.message_callback(Action.filter(F.action == "notifications"))
@@ -88,6 +113,7 @@ async def show_notifications(event: MessageCallback, payload: Action):
                 text += f"... и ещё {len(notifications) - 5} уведомлений"
 
         kb.row(CallbackButton(text="🔄 Обновить", payload=Action(action="notifications").pack()))
+        kb.row(CallbackButton(text="🚀 Открыть приложение", web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")))
         kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         await event.bot.edit_message(
@@ -140,6 +166,7 @@ async def show_settings(event: MessageCallback, payload: Action):
                     payload=Action(action="project_settings", data=project.hash).pack()
                 ))
 
+        kb.row(CallbackButton(text="🚀 Открыть приложение", web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")))
         kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         await event.bot.edit_message(
@@ -180,7 +207,14 @@ async def project_settings(event: MessageCallback, payload: Action):
             ))
             status_text = "🔕 Уведомления отключены"
 
+        # Кнопка для приглашения
+        kb.row(CallbackButton(
+            text="👥 Пригласить в проект",
+            payload=Action(action="invite_to_project", data=project.hash).pack()
+        ))
+
         kb.row(CallbackButton(text="⬅️ Назад", payload=Action(action="settings").pack()))
+        kb.row(CallbackButton(text="🚀 Открыть приложение", web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")))
         kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         text = f"⚙️ **Настройки уведомлений**\n\n"
@@ -201,6 +235,39 @@ async def project_settings(event: MessageCallback, payload: Action):
     except Exception as e:
         logger.error(f"Project settings error: {e}")
         await event.answer(notification="❌ Ошибка")
+
+# ПРИГЛАШЕНИЕ В ПРОЕКТ
+@dp.message_callback(Action.filter(F.action == "invite_to_project"))
+async def invite_to_project(event: MessageCallback, payload: Action):
+    """Приглашение в проект"""
+    try:
+        user = await get_or_create_user(str(event.from_user.user_id), event.from_user.full_name or "Аноним")
+        project = await get_project_by_hash(payload.data)
+
+        if not project:
+            await event.answer(notification="❌ Проект не найден")
+            return
+
+        # Генерируем инвайт-ссылку
+        invite_link = f"https://vasilkin6666.github.io/max_project_pilot/webapp/?invite={project.hash}"
+
+        kb = InlineKeyboardBuilder()
+        kb.row(CallbackButton(text="📋 Мои проекты", payload=Action(action="projects").pack()))
+        kb.row(CallbackButton(text="🚀 Открыть приложение", web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")))
+
+        await event.bot.edit_message(
+            message_id=event.message.body.mid,
+            text=f"🔗 **Приглашение в проект**\n\n"
+                 f"Проект: **{project.title}**\n\n"
+                 f"Отправьте эту ссылку пользователю:\n"
+                 f"`{invite_link}`\n\n"
+                 f"При переходе по ссылке пользователь автоматически присоединится к проекту.",
+            attachments=[kb.as_markup()]
+        )
+
+    except Exception as e:
+        logger.error(f"Invite error: {e}")
+        await event.answer(notification="❌ Ошибка при создании приглашения")
 
 # ПЕРЕКЛЮЧЕНИЕ УВЕДОМЛЕНИЙ
 @dp.message_callback(Action.filter(F.action == "toggle_notifications"))
@@ -251,6 +318,7 @@ async def show_projects(event: MessageCallback, payload: Action):
                 text += f"   🔗 Хэш: `{project.hash}`\n\n"
 
         kb.row(CallbackButton(text="🔔 Уведомления", payload=Action(action="notifications").pack()))
+        kb.row(CallbackButton(text="🚀 Открыть приложение", web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")))
         kb.row(CallbackButton(text="🏠 Домой", payload=Action(action="start").pack()))
 
         await event.bot.edit_message(
@@ -272,14 +340,28 @@ async def handle_text_messages(event: MessageCreated):
     if len(text) == 12 and text.isalnum():
         await event.message.answer(
             "🔗 Для присоединения к проектам используйте веб-приложение.\n\n"
-            "В боте доступны только уведомления о событиях в ваших проектах!"
+            "Откройте приложение по кнопке ниже:",
+            attachments=[InlineKeyboardBuilder()
+                .row(CallbackButton(
+                    text="🚀 Открыть приложение",
+                    web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")
+                ))
+                .as_markup()
+            ]
         )
     else:
+        kb = InlineKeyboardBuilder()
+        kb.row(CallbackButton(
+            text="🚀 Открыть приложение",
+            web_app=WebAppInfo(url="https://vasilkin6666.github.io/max_project_pilot/webapp/")
+        ))
+
         await event.message.answer(
-            "🤖 Я бот для уведомлений!\n\n"
+            "🤖 Я бот для управления проектами!\n\n"
             "Используйте кнопки для:\n"
+            "• 🚀 Открытия веб-приложения\n"
             "• 🔔 Просмотра уведомлений\n"
             "• ⚙️ Настройки уведомлений\n"
-            "• 📋 Просмотра проектов\n\n"
-            "Весь функционал управления доступен в веб-приложении!"
+            "• 📋 Просмотра проектов",
+            attachments=[kb.as_markup()]
         )

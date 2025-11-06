@@ -22,6 +22,11 @@ async def get_or_create_user(max_id: str, full_name: str) -> User:
 
         return user
 
+async def generate_invite_link(project_hash: str) -> str:
+    """Генерация инвайт-ссылки для проекта"""
+    base_url = "https://vasilkin6666.github.io/max_project_pilot/webapp/"
+    return f"{base_url}?invite={project_hash}"
+
 # СОЗДАТЬ ПРОЕКТ
 async def create_project(owner: User, title: str, description: str = "", is_private: bool = True) -> Project:
     async with AsyncSessionLocal() as db:

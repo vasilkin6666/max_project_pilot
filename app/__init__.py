@@ -4,12 +4,16 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-app = FastAPI(title="MAX Project Pilot API", version="1.0.0")
+app = FastAPI(title="MAX Project Pilot Bot API", version="1.0.0")
 
-# Настройка CORS для мини-приложения
+# Разрешаем запросы с GitHub Pages и других доменов
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В продакшене укажите конкретный домен
+    allow_origins=[
+        "https://vasilkin6666.github.io",
+        "http://localhost:3000",
+        "*"  # временно для тестирования
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,11 +31,13 @@ templates = Jinja2Templates(directory="app/templates")
 from app.api.projects import router as projects_router
 from app.api.notifications import router as notifications_router
 from app.api.miniapp import router as miniapp_router
+from app.api.direct import router as direct_router
 
 app.include_router(projects_router)
 app.include_router(notifications_router)
 app.include_router(miniapp_router)
+app.include_router(direct_router)
 
 @app.get("/")
 async def root():
-    return {"message": "MAX Project Pilot API", "status": "running"}
+    return {"message": "MAX Project Pilot Bot API", "status": "running"}

@@ -156,6 +156,26 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            z-index: 1000;
+        }
+
+        .status-online {
+            background: var(--max-success);
+            color: white;
+        }
+
+        .status-offline {
+            background: var(--max-danger);
+            color: white;
+        }
+
         /* Адаптивность для мобильных устройств */
         @media (max-width: 768px) {
             .max-container {
@@ -174,6 +194,11 @@
     </style>
 </head>
 <body>
+    <!-- Статус подключения -->
+    <div id="connectionStatus" class="connection-status status-offline">
+        <i class="fas fa-wifi"></i> Подключение...
+    </div>
+
     <div class="max-container">
         <!-- Заголовок -->
         <div class="max-header">
@@ -256,17 +281,17 @@
                             <button class="btn max-btn-primary w-100 mb-2" onclick="createProject()">
                                 <i class="fas fa-plus"></i> Создать проект
                             </button>
-                            <button class="btn max-btn-primary w-100 mb-2" onclick="inviteMember()">
-                                <i class="fas fa-user-plus"></i> Пригласить
+                            <button class="btn max-btn-primary w-100 mb-2" onclick="showSection('projects')">
+                                <i class="fas fa-list"></i> Все проекты
                             </button>
-                            <button class="btn max-btn-primary w-100" onclick="createTask()">
-                                <i class="fas fa-tasks"></i> Новая задача
+                            <button class="btn max-btn-primary w-100" onclick="showSection('tasks')">
+                                <i class="fas fa-tasks"></i> Все задачи
                             </button>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="max-card">
-                            <h6><i class="fas fa-bell"></i> Уведомления</h6>
+                            <h6><i class="fas fa-bell"></i> Последние уведомления</h6>
                             <div id="notifications-list">
                                 <div class="loading">
                                     <i class="fas fa-spinner fa-spin"></i> Загрузка...
@@ -325,300 +350,13 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Инициализация MAX Web App
-        WebApp.ready();
-        WebApp.expand();
-
-        let currentUser = null;
-        let currentProject = null;
-
-        // Инициализация приложения
-        function initApp() {
-            const initData = WebApp.initDataUnsafe;
-            currentUser = initData.user;
-
-            // Обновляем информацию о пользователе
-            document.getElementById('user-avatar').textContent =
-                currentUser.first_name?.[0] || currentUser.username?.[0] || 'U';
-
-            // Загружаем начальные данные
-            loadDashboardData();
-
-            // Показываем тактильный отклик
-            WebApp.HapticFeedback.impactOccurred('light');
-        }
-
-        // Загрузка данных главной страницы
-        function loadDashboardData() {
-            // Демо-данные (в реальном приложении здесь будет API запрос)
-            const demoData = {
-                projects: 3,
-                tasks_todo: 5,
-                tasks_in_progress: 3,
-                tasks_done: 12,
-                notifications: [
-                    {
-                        title: "✅ Задача выполнена",
-                        message: "Иван выполнил задачу 'Дизайн главной страницы'",
-                        time: "5 мин назад"
-                    },
-                    {
-                        title: "🎯 Новая задача",
-                        message: "Вам назначена задача 'Тестирование API'",
-                        time: "1 час назад"
-                    },
-                    {
-                        title: "👥 Новый участник",
-                        message: "Анна присоединилась к проекту 'Веб-сайт'",
-                        time: "2 часа назад"
-                    }
-                ]
-            };
-
-            updateStats(demoData);
-            loadNotifications(demoData.notifications);
-        }
-
-        // Обновление статистики
-        function updateStats(data) {
-            document.getElementById('projects-count').textContent = data.projects;
-            document.getElementById('tasks-todo-count').textContent = data.tasks_todo;
-            document.getElementById('tasks-progress-count').textContent = data.tasks_in_progress;
-            document.getElementById('tasks-done-count').textContent = data.tasks_done;
-        }
-
-        // Загрузка уведомлений
-        function loadNotifications(notifications) {
-            const container = document.getElementById('notifications-list');
-            container.innerHTML = notifications.map(notif => `
-                <div class="task-item task-todo mb-2">
-                    <strong class="small">${notif.title}</strong>
-                    <div class="small">${notif.message}</div>
-                    <div class="small text-muted">${notif.time}</div>
-                </div>
-            `).join('');
-        }
-
-        // Переключение секций
-        function showSection(sectionName) {
-            // Скрываем все секции
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.remove('active');
-            });
-
-            // Убираем активный класс со всех вкладок
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-
-            // Показываем выбранную секцию
-            document.getElementById(sectionName).classList.add('active');
-
-            // Активируем соответствующую вкладку
-            event.target.classList.add('active');
-
-            // Загружаем данные для секции
-            switch(sectionName) {
-                case 'projects':
-                    loadProjects();
-                    break;
-                case 'tasks':
-                    loadTasks();
-                    break;
-                case 'team':
-                    loadTeam();
-                    break;
-            }
-
-            WebApp.HapticFeedback.impactOccurred('light');
-        }
-
-        // Загрузка проектов
-        function loadProjects() {
-            const projects = [
-                {
-                    id: 1,
-                    title: "Веб-сайт компании",
-                    description: "Разработка корпоративного сайта",
-                    tasks: 8,
-                    members: 3,
-                    progress: 65
-                },
-                {
-                    id: 2,
-                    title: "Мобильное приложение",
-                    description: "iOS и Android приложение",
-                    tasks: 12,
-                    members: 4,
-                    progress: 35
-                },
-                {
-                    id: 3,
-                    title: "API интеграция",
-                    description: "Интеграция с внешними сервисами",
-                    tasks: 5,
-                    members: 2,
-                    progress: 80
-                }
-            ];
-
-            const container = document.getElementById('projects-list');
-            container.innerHTML = projects.map(project => `
-                <div class="project-card" onclick="openProject(${project.id})">
-                    <h6 class="mb-1">${project.title}</h6>
-                    <p class="small text-muted mb-2">${project.description}</p>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="badge bg-primary">${project.tasks} задач</span>
-                        <span class="badge bg-secondary">${project.members} участников</span>
-                    </div>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" style="width: ${project.progress}%"></div>
-                    </div>
-                    <small class="text-muted">${project.progress}% завершено</small>
-                </div>
-            `).join('');
-        }
-
-        // Загрузка задач
-        function loadTasks() {
-            const tasks = [
-                {
-                    id: 1,
-                    title: "Дизайн главной страницы",
-                    project: "Веб-сайт",
-                    assignee: "Вы",
-                    status: "in-progress",
-                    priority: "high"
-                },
-                {
-                    id: 2,
-                    title: "Тестирование API",
-                    project: "API интеграция",
-                    assignee: "Иван",
-                    status: "todo",
-                    priority: "medium"
-                },
-                {
-                    id: 3,
-                    title: "Настройка сервера",
-                    project: "Мобильное приложение",
-                    assignee: "Анна",
-                    status: "done",
-                    priority: "low"
-                }
-            ];
-
-            const container = document.getElementById('tasks-list');
-            container.innerHTML = tasks.map(task => `
-                <div class="task-item task-${task.status}">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <h6 class="small mb-1">${task.title}</h6>
-                            <small class="text-muted">${task.project}</small>
-                            <div class="mt-1">
-                                <span class="badge bg-${getPriorityColor(task.priority)} me-1">
-                                    ${getPriorityText(task.priority)}
-                                </span>
-                                <span class="badge bg-${getStatusColor(task.status)}">
-                                    ${getStatusText(task.status)}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="text-end">
-                            <small class="text-muted">${task.assignee}</small>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Загрузка команды
-        function loadTeam() {
-            const team = [
-                { name: "Иван Петров", role: "Разработчик", projects: 3 },
-                { name: "Анна Сидорова", role: "Дизайнер", projects: 2 },
-                { name: "Вы", role: "Менеджер проекта", projects: 3 }
-            ];
-
-            const container = document.getElementById('team-list');
-            container.innerHTML = team.map(member => `
-                <div class="max-card">
-                    <div class="d-flex align-items-center">
-                        <div class="user-avatar">${member.name[0]}</div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 small">${member.name}</h6>
-                            <small class="text-muted">${member.role}</small>
-                        </div>
-                        <span class="badge bg-primary">${member.projects}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Вспомогательные функции
-        function getPriorityColor(priority) {
-            const colors = { high: 'danger', medium: 'warning', low: 'success' };
-            return colors[priority] || 'secondary';
-        }
-
-        function getPriorityText(priority) {
-            const texts = { high: 'Высокий', medium: 'Средний', low: 'Низкий' };
-            return texts[priority] || priority;
-        }
-
-        function getStatusColor(status) {
-            const colors = { 'todo': 'warning', 'in-progress': 'info', 'done': 'success' };
-            return colors[status] || 'secondary';
-        }
-
-        function getStatusText(status) {
-            const texts = { 'todo': 'К выполнению', 'in-progress': 'В работе', 'done': 'Выполнено' };
-            return texts[status] || status;
-        }
-
-        // Действия
-        function createProject() {
-            WebApp.HapticFeedback.notificationOccurred('success');
-            showSection('projects');
-            // В реальном приложении здесь будет модальное окно создания проекта
-            setTimeout(() => {
-                alert('Для создания проекта используйте бота @t44_hakaton_bot');
-            }, 300);
-        }
-
-        function createTask() {
-            WebApp.HapticFeedback.notificationOccurred('success');
-            showSection('tasks');
-            setTimeout(() => {
-                alert('Для создания задач используйте бота @t44_hakaton_bot');
-            }, 300);
-        }
-
-        function inviteMember() {
-            WebApp.HapticFeedback.notificationOccurred('success');
-            showSection('team');
-            setTimeout(() => {
-                alert('Для приглашения участников используйте бота @t44_hakaton_bot');
-            }, 300);
-        }
-
-        function openProject(projectId) {
-            WebApp.HapticFeedback.notificationOccurred('success');
-            // В реальном приложении здесь будет переход к деталям проекта
-            alert(`Проект #${projectId}\n\nДетальный просмотр проектов доступен через бота @t44_hakaton_bot`);
-        }
-
-        // Инициализация при загрузке
-        document.addEventListener('DOMContentLoaded', initApp);
-    </script>
-    <!-- Подключаем API -->
-    <script src="js/api.js"></script>
+    <!-- Подключаем прямой клиент к боту -->
+    <script src="js/bot-client.js"></script>
 
     <script>
         // Глобальные переменные
-        let currentUser = null;
-        let api = null;
+        let botClient = null;
+        const BOT_BASE_URL = 'https://your-bot-domain.com'; // ЗАМЕНИТЕ на реальный URL вашего бота
 
         // Инициализация приложения
         async function initApp() {
@@ -627,49 +365,61 @@
                 WebApp.ready();
                 WebApp.expand();
 
-                // Инициализация API
-                api = window.ProjectPilotAPI;
-                currentUser = await api.initUser();
+                // Инициализация прямого клиента к боту
+                botClient = new BotDirectClient(BOT_BASE_URL);
+                const initialized = await botClient.init();
 
-                // Обновляем UI
-                updateUserInfo();
+                if (initialized) {
+                    updateConnectionStatus(true);
+                    updateUserInfo();
 
-                // Загружаем данные
-                await loadDashboardData();
+                    // Загружаем данные через бота
+                    await loadDashboardData();
 
-                // Показываем тактильный отклик
-                WebApp.HapticFeedback.impactOccurred('light');
+                    WebApp.HapticFeedback.impactOccurred('light');
+                } else {
+                    updateConnectionStatus(false);
+                    showError('Не удалось подключиться к боту');
+                }
 
             } catch (error) {
                 console.error('Error initializing app:', error);
+                updateConnectionStatus(false);
                 showError('Ошибка инициализации приложения');
             }
         }
 
         // Обновление информации о пользователе
         function updateUserInfo() {
-            if (currentUser) {
+            if (botClient.userData) {
                 const avatar = document.getElementById('user-avatar');
-                avatar.textContent = currentUser.first_name?.[0] ||
-                                   currentUser.username?.[0] || 'U';
+                avatar.textContent = botClient.userData.first_name?.[0] ||
+                                   botClient.userData.username?.[0] || 'U';
+            }
+        }
+
+        // Обновление статуса подключения
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'connection-status status-online';
+                statusElement.innerHTML = '<i class="fas fa-wifi"></i> Онлайн';
+            } else {
+                statusElement.className = 'connection-status status-offline';
+                statusElement.innerHTML = '<i class="fas fa-wifi-slash"></i> Офлайн';
             }
         }
 
         // Загрузка данных главной страницы
         async function loadDashboardData() {
             try {
-                const data = await api.getUserProjects();
-
-                // Обновляем статистику
+                const data = await botClient.getUserProjects();
                 updateStats(data.projects);
-
-                // Загружаем уведомления
-                loadDemoNotifications();
+                loadDemoNotifications(); // Временные демо-уведомления
 
             } catch (error) {
-                console.error('Error loading dashboard data:', error);
-                // Показываем демо-данные при ошибке
-                showDemoData();
+                console.error('Error loading data from bot:', error);
+                showDemoData(); // Показываем демо-данные при ошибке
             }
         }
 
@@ -692,6 +442,90 @@
             document.getElementById('tasks-done-count').textContent = totalTasksDone;
         }
 
+        // Загрузка проектов
+        async function loadProjects() {
+            try {
+                const data = await botClient.getUserProjects();
+                const container = document.getElementById('projects-list');
+
+                if (!data.projects || data.projects.length === 0) {
+                    container.innerHTML = `
+                        <div class="max-card text-center">
+                            <i class="fas fa-folder-open fa-2x text-muted mb-3"></i>
+                            <h6>Проектов пока нет</h6>
+                            <p class="text-muted">Создайте свой первый проект!</p>
+                            <button class="btn max-btn-primary" onclick="createProject()">
+                                <i class="fas fa-plus"></i> Создать проект
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.projects.map(project => `
+                    <div class="project-card" onclick="openProject('${project.hash}')">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-1">${escapeHTML(project.title)}</h6>
+                            <span class="badge ${project.is_private ? 'bg-secondary' : 'bg-success'}">
+                                ${project.is_private ? '🔒 Приватный' : '🌐 Публичный'}
+                            </span>
+                        </div>
+                        <p class="small text-muted mb-2">${escapeHTML(project.description) || '📝 Без описания'}</p>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-primary">${project.stats.tasks_count} задач</span>
+                            <span class="badge bg-secondary">${project.stats.members_count} участников</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar" style="width: ${calculateProgress(project.stats)}%"></div>
+                        </div>
+                        <small class="text-muted">${calculateProgress(project.stats)}% завершено</small>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                document.getElementById('projects-list').innerHTML = `
+                    <div class="max-card text-center text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Ошибка загрузки проектов</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Расчет прогресса проекта
+        function calculateProgress(stats) {
+            const total = stats.tasks_count;
+            const done = stats.tasks_done;
+            return total > 0 ? Math.round((done / total) * 100) : 0;
+        }
+
+        // Создание проекта
+        async function createProject() {
+            try {
+                const title = prompt('Введите название проекта:');
+                if (!title) return;
+
+                const description = prompt('Введите описание проекта (необязательно):') || '';
+
+                const result = await botClient.createProject(title, description, true);
+
+                WebApp.HapticFeedback.notificationOccurred('success');
+                alert(`Проект "${result.project.title}" создан!`);
+
+                // Обновляем список проектов
+                if (currentSection === 'projects') {
+                    await loadProjects();
+                }
+                await loadDashboardData();
+
+            } catch (error) {
+                console.error('Error creating project:', error);
+                WebApp.HapticFeedback.notificationOccurred('error');
+                alert('Ошибка при создании проекта: ' + error.message);
+            }
+        }
+
         // Демо-данные при ошибке загрузки
         function showDemoData() {
             document.getElementById('projects-count').textContent = '3';
@@ -700,10 +534,121 @@
             document.getElementById('tasks-done-count').textContent = '12';
         }
 
+        // Демо-уведомления
+        function loadDemoNotifications() {
+            const notifications = [
+                {
+                    title: "🚀 Добро пожаловать!",
+                    message: "Вы успешно подключились к Project Pilot",
+                    time: "Только что"
+                },
+                {
+                    title: "📋 Создайте первый проект",
+                    message: "Начните работу с создания нового проекта",
+                    time: "1 мин назад"
+                }
+            ];
+
+            const container = document.getElementById('notifications-list');
+            container.innerHTML = notifications.map(notif => `
+                <div class="task-item task-todo mb-2">
+                    <strong class="small">${notif.title}</strong>
+                    <div class="small">${notif.message}</div>
+                    <div class="small text-muted">${notif.time}</div>
+                </div>
+            `).join('');
+        }
+
         // Показ ошибки
         function showError(message) {
             // Можно реализовать красивый показ ошибок
             console.error('App error:', message);
+        }
+
+        // Вспомогательные функции
+        function escapeHTML(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        let currentSection = 'dashboard';
+
+        // Переключение секций
+        function showSection(sectionName) {
+            // Скрываем все секции
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Убираем активный класс со всех вкладок
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Показываем выбранную секцию
+            document.getElementById(sectionName).classList.add('active');
+
+            // Активируем соответствующую вкладку
+            event.target.classList.add('active');
+
+            currentSection = sectionName;
+
+            // Загружаем данные для секции
+            switch(sectionName) {
+                case 'projects':
+                    loadProjects();
+                    break;
+                case 'tasks':
+                    loadTasks();
+                    break;
+                case 'team':
+                    loadTeam();
+                    break;
+            }
+
+            WebApp.HapticFeedback.impactOccurred('light');
+        }
+
+        // Загрузка задач
+        async function loadTasks() {
+            // Реализация загрузки задач
+            document.getElementById('tasks-list').innerHTML = `
+                <div class="max-card text-center">
+                    <i class="fas fa-tasks fa-2x text-muted mb-3"></i>
+                    <h6>Функционал задач</h6>
+                    <p class="text-muted">Для просмотра задач откройте конкретный проект</p>
+                </div>
+            `;
+        }
+
+        // Загрузка команды
+        async function loadTeam() {
+            // Реализация загрузки команды
+            document.getElementById('team-list').innerHTML = `
+                <div class="max-card text-center">
+                    <i class="fas fa-users fa-2x text-muted mb-3"></i>
+                    <h6>Управление командой</h6>
+                    <p class="text-muted">Приглашайте участников через бота</p>
+                </div>
+            `;
+        }
+
+        // Открытие проекта
+        function openProject(projectHash) {
+            WebApp.HapticFeedback.notificationOccurred('success');
+            alert(`Открытие проекта с хэшем: ${projectHash}\n\nВ будущем здесь будет детальный просмотр проекта.`);
+        }
+
+        // Создание задачи
+        function createTask() {
+            alert('Для создания задачи откройте конкретный проект');
+        }
+
+        // Приглашение участника
+        function inviteMember() {
+            alert('Для приглашения участников используйте бота');
         }
 
         // Инициализация при загрузке
