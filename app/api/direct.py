@@ -221,3 +221,17 @@ async def ping_user(user_id: str):
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@router.get("/config")
+async def get_bot_config():
+    """Возвращает конфигурацию бота для веб-приложения"""
+    from app.config import settings
+
+    return {
+        "bot_public_url": settings.BOT_PUBLIC_URL,
+        "miniapp_url": settings.MINIAPP_URL,
+        "api_routes": {
+            "user_data": "/api/direct/user/{user_id}/data",
+            "health": "/api/direct/health"
+        }
+    }

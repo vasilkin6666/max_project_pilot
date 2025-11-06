@@ -1,7 +1,8 @@
 // webapp/js/bot-client.js
 class BotDirectClient {
-    constructor(botBaseUrl) {
-        this.botBaseUrl = botBaseUrl;
+    constructor(appConfig) {
+        this.appConfig = appConfig;
+        this.botBaseUrl = appConfig.getBotBaseUrl();
         this.userId = null;
         this.userData = null;
     }
@@ -14,6 +15,7 @@ class BotDirectClient {
             this.userData = initData.user;
 
             console.log('BotDirectClient initialized for user:', this.userId);
+            console.log('Bot URL:', this.botBaseUrl);
 
             // Проверяем есть ли инвайт в URL
             await this.handleInviteFromUrl();
