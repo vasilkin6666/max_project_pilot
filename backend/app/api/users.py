@@ -1,14 +1,13 @@
-# backend/app/api/users.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func  # Добавьте func здесь!
 from sqlalchemy.orm import selectinload
 from app.database import get_db
-from app.models import User, ProjectMember, Project
+from app.models import User, ProjectMember, Project, Task  # Убедитесь, что Task импортирован
 from app.api.deps import get_current_user
-import logging  # Добавить эту строку
+import logging
 
-logger = logging.getLogger(__name__)  # Добавить эту строку
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -42,7 +41,6 @@ async def get_user_projects(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    # Проверяем авторизацию текущего пользователя
     if current_user.max_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to view this user's projects")
 
@@ -61,7 +59,7 @@ async def get_user_projects(
     for member in memberships:
         project = member.project
 
-        # Исправляем подсчет статистики задач - используем SQL запрос вместо обработки в Python
+        # Исправляем подсчет статистики задач
         stats_result = await db.execute(
             select(
                 func.count(Task.id).label('total_tasks'),
