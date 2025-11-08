@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAX Pilot</title>
+  <link rel="manifest" href="manifest.json">
+  <link href="style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+  <div id="app" :class="{ dark: darkMode }">
+    <div v-if="!userId" class="login">
+      <input v-model="tempId" placeholder="Твой MAX ID">
+      <button @click="login">Войти</button>
+    </div>
+    <div v-else class="app">
+      <header>
+        <h1>MAX Pilot {{ project?.emoji }} {{ project?.title }}</h1>
+        <div class="controls">
+          <input v-model="search" placeholder="Поиск...">
+          <button @click="toggleDark">Theme</button>
+          <button @click="showQR = true">QR</button>
+        </div>
+      </header>
+
+      <div v-if="!project" class="projects">
+        <button @click="createProject">+ Проект</button>
+        <div v-for="p in projects" @click="openProject(p)" class="card">
+          {{ p.emoji }} {{ p.title }}
+        </div>
+      </div>
+
+      <div v-else class="kanban">
+        <div v-for="col in columns" class="column">
+          <h3>{{ col.title }}</h3>
+          <div class="tasks" v-sortable>
+            <div v-for="t in tasks" v-if="t.column === col.id" class="task">
+              <input type="checkbox" v-model="t.done">
+              <span>{{ t.title }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showQR" class="modal" @click="showQR=false">
+      <div id="qrcode"></div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
