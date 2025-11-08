@@ -134,3 +134,37 @@ body.dark-theme {
 .dark-theme .btn-close {
     filter: invert(1);
 }
+
+/* Стили для поиска и уведомлений */
+mark {
+    background-color: #ffeb3b;
+    padding: 0.1em 0.2em;
+    border-radius: 0.2em;
+}
+
+.toast {
+    font-size: 0.875rem;
+}
+
+.search-highlight {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn-search-clear {
+    border-left: none;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .input-group {
+        flex-wrap: nowrap;
+    }
+
+    .input-group .btn {
+        white-space: nowrap;
+    }
+}

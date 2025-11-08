@@ -1,6 +1,23 @@
 // web/js/dashboard.js
 // import { getProjects, getTasks } from './api.js'; // Если используем ES6 modules
 
+// Добавьте эти функции если они используются в dashboard.js
+async function getProjects(userId, token) {
+    const API_BASE_URL = 'https://powerfully-exotic-chamois.cloudpub.ru/api';
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/projects`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await response.json();
+}
+
+async function getTasks(userId, token) {
+    const API_BASE_URL = 'https://powerfully-exotic-chamois.cloudpub.ru/api';
+    const response = await fetch(`${API_BASE_URL}/tasks/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await response.json();
+}
+
 async function loadDashboardData() {
     if (!currentUserId) return;
     const token = localStorage.getItem('access_token');

@@ -105,8 +105,9 @@
                     </div>
                 </div>
                 <div class="input-group mb-3">
-                    <input type="text" id="searchTasksInput" class="form-control" placeholder="Поиск задач...">
-                    <button class="btn btn-outline-secondary" type="button" onclick="searchTasks()"><i class="fas fa-search"></i></button>
+                    <input type="text" id="searchTasksInput" class="form-control" placeholder="Поиск задач по названию, описанию, проекту..." onkeypress="handleSearchKeyPress(event)">
+                    <button class="btn btn-outline-secondary" type="button" onclick="searchTasks()"><i class="fas fa-search"></i> Поиск</button>
+                    <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()" title="Очистить поиск"><i class="fas fa-times"></i></button>
                 </div>
                 <div id="tasks-list">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка задач...</div>
