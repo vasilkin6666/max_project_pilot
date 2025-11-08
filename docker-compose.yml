@@ -48,15 +48,10 @@ services:
     container_name: max_pilot_bot
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
-      # В Docker Compose внутренний URL для backend - это имя сервиса
-      - BACKEND_API_URL=http://backend:8000/api
-      # Для внешнего мира (например, если bot логирует URL для отладки)
-      # используйте переменную из .env, но для внутреннего взаимодействия - имя сервиса.
+      - BACKEND_API_URL=https://powerfully-exotic-chamois.cloudpub.ru/api  # Публичный URL
     depends_on:
       - backend
     restart: unless-stopped
-    # Убедитесь, что bot не пытается использовать порт, конфликтующий с чем-то другим.
-    # Long Polling не требует открытия портов для входящих соединений от MAX API.
 
 # Определение томов
 volumes:

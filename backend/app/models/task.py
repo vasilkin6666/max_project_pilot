@@ -11,14 +11,14 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
-    status = Column(String, default=TaskStatus.TODO) # Хранение строки
-    priority = Column(String, default=TaskPriority.MEDIUM) # Хранение строки
+    status = Column(String, default=TaskStatus.TODO)
+    priority = Column(String, default=TaskPriority.MEDIUM)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
-    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True) # ID исполнителя
+    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
-    parent_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True) # Для подзадач
-    depends_on_id = Column(Integer, ForeignKey("tasks.id"), nullable=True) # Для зависимостей
+    parent_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
+    depends_on_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -26,12 +26,44 @@ class Task(Base):
     project = relationship("Project", back_populates="tasks")
     creator = relationship("User", foreign_keys=[created_by])
     assignee = relationship("User", foreign_keys=[assigned_to_id])
-    parent_task = relationship("Task", remote_side=[id], back_populates="subtasks")
-    subtasks = relationship("Task", back_populates="parent_task", cascade="all, delete-orphan")
-    dependencies = relationship("Task", remote_side=[id], back_populates="dependents")
-    dependents = relationship("Task", back_populates="dependencies")
+
+    # Отношение для родительской задачи и подзадач
+    parent_task = relationship(
+        "Task",
+        remote_side=[id],
+        back_populates="subtasks",
+        foreign_keys=[parent_task_id],
+        post_update=True
+    )
+    subtasks = relationship(
+        "Task",
+        back_populates="parent_task",
+        cascade="all, delete-orphan",
+        foreign_keys=[parent_task_id],
+        post_update=True
+    )
+
+    # Отношение для зависимостей задач
+    dependencies = relationship(
+        "Task",
+        secondary="task_dependencies",
+        primaryjoin="Task.id==task_dependencies.c.task_id",
+        secondaryjoin="Task.id==task_dependencies.c.depends_on_id",
+        backref="dependents"
+    )
+
     assignees = relationship("TaskAssignee", back_populates="task", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="task", cascade="all, delete-orphan")
+
+# Таблица для отношений зависимостей между задачами
+class TaskDependency(Base):
+    __tablename__ = "task_dependencies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    depends_on_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+
+    __table_args__ = (UniqueConstraint('task_id', 'depends_on_id', name='unique_task_dependency'),)
 
 class TaskAssignee(Base):
     __tablename__ = "task_assignees"

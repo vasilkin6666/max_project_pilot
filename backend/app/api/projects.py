@@ -1,5 +1,5 @@
 # backend/app/api/projects.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
@@ -17,10 +17,10 @@ def generate_invite_hash():
 
 @router.post("/")
 async def create_project(
-    title: str,
-    description: str = "",
-    is_private: bool = True,
-    requires_approval: bool = False,
+    title: str = Query(..., description="Название проекта"),
+    description: str = Query("", description="Описание проекта"),
+    is_private: bool = Query(True, description="Приватный проект"),
+    requires_approval: bool = Query(False, description="Требуется одобрение для вступления"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -49,7 +49,11 @@ async def create_project(
     return {"project": project}
 
 @router.get("/{project_hash}")
-async def get_project(project_hash: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_project(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
@@ -90,7 +94,11 @@ async def get_project(project_hash: str, current_user: User = Depends(get_curren
     }
 
 @router.post("/{project_hash}/join")
-async def join_project_request(project_hash: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def join_project_request(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
@@ -132,7 +140,11 @@ async def join_project_request(project_hash: str, current_user: User = Depends(g
         return {"status": "pending_approval", "message": "Join request sent for approval"}
 
 @router.get("/{project_hash}/join-requests")
-async def get_join_requests(project_hash: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_join_requests(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
@@ -155,9 +167,14 @@ async def get_join_requests(project_hash: str, current_user: User = Depends(get_
     )
     requests = result.scalars().all()
     return {"requests": requests}
-    
+
 @router.post("/{project_hash}/join-requests/{request_id}/approve")
-async def approve_join_request(project_hash: str, request_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def approve_join_request(
+    project_hash: str,
+    request_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
@@ -197,7 +214,12 @@ async def approve_join_request(project_hash: str, request_id: int, current_user:
     return {"status": "success", "message": "Join request approved"}
 
 @router.post("/{project_hash}/join-requests/{request_id}/reject")
-async def reject_join_request(project_hash: str, request_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def reject_join_request(
+    project_hash: str,
+    request_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
@@ -233,7 +255,11 @@ async def reject_join_request(project_hash: str, request_id: int, current_user: 
     return {"status": "success", "message": "Join request rejected"}
 
 @router.post("/{project_hash}/regenerate-invite")
-async def regenerate_invite(project_hash: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def regenerate_invite(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
@@ -255,13 +281,18 @@ async def regenerate_invite(project_hash: str, current_user: User = Depends(get_
     return {"status": "success", "new_invite_hash": new_hash}
 
 @router.get("/{project_hash}/summary")
-async def get_project_summary(project_hash: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_project_summary(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """Эндпоинт для получения сводки проекта для бота"""
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    # Получаем информацию о членстве пользователя
     membership = await db.execute(
         select(ProjectMember).where(
             ProjectMember.project_id == project.id,
@@ -272,7 +303,13 @@ async def get_project_summary(project_hash: str, current_user: User = Depends(ge
     if not member:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Подсчет статистики
+    # Подсчет количества участников
+    members_count_result = await db.execute(
+        select(func.count(ProjectMember.id)).where(ProjectMember.project_id == project.id)
+    )
+    members_count = members_count_result.scalar()
+
+    # Подсчет статистики задач
     stats_result = await db.execute(
         select(
             func.count(Task.id).label('total_tasks'),
@@ -290,7 +327,7 @@ async def get_project_summary(project_hash: str, current_user: User = Depends(ge
         "hash": project.hash,
         "is_private": project.is_private,
         "requires_approval": project.requires_approval,
-        "members_count": len(project.members),
+        "members_count": members_count or 0,
         "tasks_count": stats.total_tasks or 0,
         "tasks_todo": stats.todo_tasks or 0,
         "tasks_in_progress": stats.in_progress_tasks or 0,

@@ -10,11 +10,11 @@ class Notification(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True) # Опционально
-    type = Column(String, nullable=False) # Хранение строки
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    type = Column(String, nullable=False)
     title = Column(String, nullable=False)
     message = Column(Text, nullable=False)
-    data = Column(Text, nullable=True) # JSON-строка
+    data = Column(Text, nullable=True)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -15,9 +15,20 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Добавляем отношения
+    # Добавляем отношения с явным указанием foreign_keys
     owned_projects = relationship("Project", back_populates="owner", foreign_keys="Project.created_by")
     projects = relationship("ProjectMember", back_populates="user")
-    join_requests = relationship("JoinRequest", back_populates="user", foreign_keys="JoinRequest.user_id")
-    processed_join_requests = relationship("JoinRequest", back_populates="processor", foreign_keys="JoinRequest.processed_by_id")
+
+    # Исправляем отношения для join_requests
+    join_requests = relationship(
+        "JoinRequest",
+        back_populates="user",
+        foreign_keys="JoinRequest.user_id"
+    )
+    processed_join_requests = relationship(
+        "JoinRequest",
+        back_populates="processor",
+        foreign_keys="JoinRequest.processed_by_id"
+    )
+
     notifications = relationship("Notification", back_populates="user")

@@ -1,6 +1,6 @@
 // web/js/main.js
 // --- Конфигурация ---
-const API_BASE_URL = 'http://localhost:8000/api'; // Заменить на URL вашего сервера
+const API_BASE_URL = 'https://powerfully-exotic-chamois.cloudpub.ru/api';
 let currentUserId = null;
 let currentSection = 'dashboard';
 let currentTheme = localStorage.getItem('theme') || 'light';

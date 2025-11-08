@@ -7,15 +7,21 @@ from app.models import User
 from app.core.security import create_access_token
 from datetime import timedelta
 from app.config import settings
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+class TokenRequest(BaseModel):
+    max_id: str
+    full_name: str
+    username: str = None
+
 @router.post("/token")
-async def login_or_create_user(max_id: str, full_name: str, username: str = None, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.max_id == max_id))
+async def login_or_create_user(request: TokenRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.max_id == request.max_id))
     user = result.scalar_one_or_none()
     if not user:
-        user = User(max_id=max_id, full_name=full_name, username=username)
+        user = User(max_id=request.max_id, full_name=request.full_name, username=request.username)
         db.add(user)
         await db.commit()
         await db.refresh(user)
