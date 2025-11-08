@@ -2,8 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.database import get_db
-from app.models import User, ProjectMember
+from app.models import User, ProjectMember, Project
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -16,9 +17,48 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 async def get_user_projects(user_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.max_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to view this user's projects")
+
     result = await db.execute(
-        select(ProjectMember).where(ProjectMember.user_id == current_user.id)
+        select(ProjectMember)
+        .where(ProjectMember.user_id == current_user.id)
+        .options(
+            selectinload(ProjectMember.project).selectinload(Project.members),
+            selectinload(ProjectMember.project).selectinload(Project.tasks)
+        )
     )
     memberships = result.scalars().all()
-    projects = [member.project for member in memberships]
-    return {"projects": projects}
+
+    projects_with_stats = []
+    for member in memberships:
+        project = member.project
+        # Подсчет статистики задач
+        tasks_count = len(project.tasks) if project.tasks else 0
+        tasks_done = len([t for t in (project.tasks or []) if t.status == 'done'])
+        tasks_in_progress = len([t for t in (project.tasks or []) if t.status == 'in_progress'])
+        tasks_todo = len([t for t in (project.tasks or []) if t.status == 'todo'])
+
+        project_data = {
+            "id": project.id,
+            "title": project.title,
+            "description": project.description,
+            "hash": project.hash,
+            "is_private": project.is_private,
+            "requires_approval": project.requires_approval,
+            "created_by": project.created_by,
+            "created_at": project.created_at,
+            "updated_at": project.updated_at,
+            "members": [{"user_id": m.user_id, "role": m.role} for m in project.members] if project.members else [],
+            "stats": {
+                "tasks_count": tasks_count,
+                "tasks_done": tasks_done,
+                "tasks_in_progress": tasks_in_progress,
+                "tasks_todo": tasks_todo
+            }
+        }
+
+        projects_with_stats.append({
+            "project": project_data,
+            "role": member.role
+        })
+
+    return {"projects": projects_with_stats}

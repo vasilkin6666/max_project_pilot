@@ -1,24 +1,20 @@
 # bot/app/handlers/projects.py
-from maxapi import MessageCreated, MessageCallback, CallbackButton, InlineKeyboardBuilder, F
+from maxapi.types import MessageCreated, MessageCallback, CallbackButton
+from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
+from maxapi.filters.command import Command
 from app.services.api_client import APIClient
 from app.utils import generate_invite_hash
+from app.config import settings
 import re
 
 api_client = APIClient()
 
 async def cmd_create_project(event: MessageCreated):
-    user_id = str(event.from_user.user_id)
-    full_name = event.from_user.full_name or "Аноним"
-    title = input("Введите название проекта: ") # Это не работает в боте так. Нужно состояние или callback.
-    # Реализуем через callback для формы.
     builder = InlineKeyboardBuilder()
     builder.row(CallbackButton(text="📁 Начать создание", payload="create_project_start"))
     await event.message.answer("Нажмите кнопку, чтобы начать создание проекта.", attachments=[builder.as_markup()])
 
 async def handle_callback_create_project_start(event: MessageCallback):
-    # Здесь нужно реализовать логику запроса названия проекта.
-    # MAX API не поддерживает формы напрямую. Используем команду или веб-приложение.
-    # Пока отправим в веб-приложение.
     user_id = str(event.from_user.user_id)
     web_app_url = f"{settings.SITE_URL}/?user_id={user_id}#projects"
     await event.message.answer(f"Для создания проекта перейдите в веб-приложение: {web_app_url}")
@@ -27,7 +23,7 @@ async def cmd_join_project(event: MessageCreated):
     user_id = str(event.from_user.user_id)
     full_name = event.from_user.full_name or "Аноним"
     text = event.message.body.text.strip()
-    # Команда /join <hash>
+
     parts = text.split(" ", 1)
     if len(parts) < 2:
         await event.message.answer("Пожалуйста, укажите хэш проекта. Пример: /join abc123def456")
@@ -52,11 +48,12 @@ async def handle_callback_projects(event: MessageCallback):
     user_id = str(event.from_user.user_id)
     full_name = event.from_user.full_name or "Аноним"
     projects_data = await api_client.get_user_projects(user_id)
+
     if not projects_data:
         text = "📂 У вас пока нет проектов. Используйте веб-приложение для создания проектов!"
     else:
         text = "📂 **Ваши проекты:**\n"
-        for i, member in enumerate(projects_data[:5], 1): # member.project
+        for i, member in enumerate(projects_data[:5], 1):
             project = member.get("project", {})
             role_emoji = {"owner": "👑", "admin": "⚡", "member": "👤"}.get(member.get("role"), "👤")
             tasks_count = len(project.get("tasks", []))
@@ -64,7 +61,6 @@ async def handle_callback_projects(event: MessageCallback):
             text += f"📋 {tasks_count} задач | 👥 {len(project.get('members', []))} участников\n"
             text += f"🔗 Хэш: `{project.get('hash', '')}`\n\n"
 
-    # Добавляем кнопки управления для каждого проекта (если админ/владелец)
     builder = InlineKeyboardBuilder()
     for i, member in enumerate(projects_data[:5], 1):
         project = member.get("project", {})
@@ -73,16 +69,23 @@ async def handle_callback_projects(event: MessageCallback):
                 CallbackButton(text=f"🔍 {i} - Подробнее", payload=f"project_summary:{project.get('hash')}"),
                 CallbackButton(text=f"🔗 {i} - Пригласить", payload=f"project_invite:{project.get('hash')}")
             )
-    builder.row(CallbackButton(text="🌐 Открыть веб-приложение", payload=f"open_webapp:{settings.SITE_URL}/?user_id={user_id}"))
+
+    web_app_url = f"{settings.SITE_URL}/?user_id={user_id}"
+    builder.row(CallbackButton(text="🌐 Открыть веб-приложение", payload=f"open_webapp:{web_app_url}"))
     builder.row(CallbackButton(text="🔄 Обновить", payload="projects"))
-    await event.bot.edit_message(message_id=event.message.body.mid, text=text, attachments=[builder.as_markup()])
+
+    await event.bot.edit_message(
+        message_id=event.message.body.mid,
+        text=text,
+        attachments=[builder.as_markup()]
+    )
 
 async def handle_callback_project_summary(event: MessageCallback):
-    # payload = "project_summary:{hash}"
-    parts = event.payload.split(":", 1)
+    parts = event.callback.payload.split(":", 1)
     if len(parts) != 2:
         await event.answer(notification="❌ Неверная команда")
         return
+
     project_hash = parts[1]
     user_id = str(event.from_user.user_id)
     full_name = event.from_user.full_name or "Аноним"
@@ -107,37 +110,46 @@ async def handle_callback_project_summary(event: MessageCallback):
     )
 
     builder = InlineKeyboardBuilder()
-    builder.row(CallbackButton(text="🌐 Открыть веб-приложение", payload=f"open_webapp:{settings.SITE_URL}/?user_id={user_id}#project={project_hash}"))
-    if summary['can_manage']:
+    web_app_url = f"{settings.SITE_URL}/?user_id={user_id}#project={project_hash}"
+    builder.row(CallbackButton(text="🌐 Открыть веб-приложение", payload=f"open_webapp:{web_app_url}"))
+
+    if summary.get('can_manage'):
         builder.row(CallbackButton(text="🔗 Пригласить", payload=f"project_invite:{project_hash}"))
         builder.row(CallbackButton(text="📋 Заявки", payload=f"project_requests:{project_hash}"))
+
     builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))
 
-    await event.bot.edit_message(message_id=event.message.body.mid, text=text, attachments=[builder.as_markup()])
+    await event.bot.edit_message(
+        message_id=event.message.body.mid,
+        text=text,
+        attachments=[builder.as_markup()]
+    )
 
 async def handle_callback_project_invite(event: MessageCallback):
-    # payload = "project_invite:{hash}"
-    parts = event.payload.split(":", 1)
+    parts = event.callback.payload.split(":", 1)
     if len(parts) != 2:
         await event.answer(notification="❌ Неверная команда")
         return
-    project_hash = parts[1]
-    user_id = str(event.from_user.user_id)
-    full_name = event.from_user.full_name or "Аноним"
 
+    project_hash = parts[1]
     invite_link = f"{settings.SITE_URL}/join/{project_hash}"
     text = f"🔗 **Приглашение в проект**\nПроект: **{project_hash}**\nОтправьте эту ссылку пользователям:\n`{invite_link}`\nИли поделитесь хэшем проекта:\n`{project_hash}`"
 
     builder = InlineKeyboardBuilder()
     builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))
-    await event.bot.edit_message(message_id=event.message.body.mid, text=text, attachments=[builder.as_markup()])
+
+    await event.bot.edit_message(
+        message_id=event.message.body.mid,
+        text=text,
+        attachments=[builder.as_markup()]
+    )
 
 async def handle_callback_project_requests(event: MessageCallback):
-    # payload = "project_requests:{hash}"
-    parts = event.payload.split(":", 1)
+    parts = event.callback.payload.split(":", 1)
     if len(parts) != 2:
         await event.answer(notification="❌ Неверная команда")
         return
+
     project_hash = parts[1]
     user_id = str(event.from_user.user_id)
     full_name = event.from_user.full_name or "Аноним"
@@ -158,4 +170,9 @@ async def handle_callback_project_requests(event: MessageCallback):
 
     builder = InlineKeyboardBuilder()
     builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))
-    await event.bot.edit_message(message_id=event.message.body.mid, text=text, attachments=[builder.as_markup()])
+
+    await event.bot.edit_message(
+        message_id=event.message.body.mid,
+        text=text,
+        attachments=[builder.as_markup()]
+    )

@@ -1,5 +1,6 @@
 # bot/app/handlers/start.py
-from maxapi import MessageCreated, CallbackButton, InlineKeyboardBuilder
+from maxapi.types import MessageCreated, CallbackButton
+from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from app.services.api_client import APIClient
 from app.config import settings
 

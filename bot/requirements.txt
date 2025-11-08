@@ -2,4 +2,6 @@ maxapi==0.9.7
 requests==2.32.3
 python-dotenv==1.0.1
 loguru==0.7.2
-aiohttp==3.10.10
+aiohttp>=3.12.14
+pydantic-settings>=2.0.0
+pydantic>=2.0.0

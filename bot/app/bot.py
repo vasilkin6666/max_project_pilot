@@ -1,6 +1,9 @@
 # bot/app/bot.py
 import asyncio
-from maxapi import Max, MessageCreated, Command, F
+from maxapi import Bot, Dispatcher, F
+from maxapi.types import MessageCreated, MessageCallback
+from maxapi.filters.command import Command
+
 from app.config import settings
 from app.handlers import (
     cmd_start, cmd_create_project, cmd_join_project,
@@ -12,43 +15,47 @@ from app.handlers import (
     handle_callback_notifications
 )
 
-bot = Max(token=settings.BOT_TOKEN)
+bot = Bot(token=settings.BOT_TOKEN)
+dp = Dispatcher()
 
-@bot.message_created(Command('start'))
+@dp.message_created(Command('start'))
 async def handle_start(event: MessageCreated):
     await cmd_start(event)
 
-@bot.message_created(Command('create_project'))
+@dp.message_created(Command('create_project'))
 async def handle_create_project(event: MessageCreated):
     await cmd_create_project(event)
 
-@bot.message_created(Command('join'))
+@dp.message_created(Command('join'))
 async def handle_join_project(event: MessageCreated):
     await cmd_join_project(event)
 
-@bot.message_callback(F.payload.startswith("projects"))
+@dp.message_callback(F.callback.payload.startswith("projects"))
 async def handle_projects_callback(event: MessageCallback):
     await handle_callback_projects(event)
 
-@bot.message_callback(F.payload.startswith("project_summary:"))
+@dp.message_callback(F.callback.payload.startswith("project_summary:"))
 async def handle_project_summary_callback(event: MessageCallback):
     await handle_callback_project_summary(event)
 
-@bot.message_callback(F.payload.startswith("project_invite:"))
+@dp.message_callback(F.callback.payload.startswith("project_invite:"))
 async def handle_project_invite_callback(event: MessageCallback):
     await handle_callback_project_invite(event)
 
-@bot.message_callback(F.payload.startswith("project_requests:"))
+@dp.message_callback(F.callback.payload.startswith("project_requests:"))
 async def handle_project_requests_callback(event: MessageCallback):
     await handle_callback_project_requests(event)
 
-@bot.message_callback(F.payload.startswith("notifications"))
+@dp.message_callback(F.callback.payload.startswith("notifications"))
 async def handle_notifications_callback(event: MessageCallback):
     await handle_callback_notifications(event)
 
-@bot.message_callback(F.payload.startswith("create_project_start"))
+@dp.message_callback(F.callback.payload.startswith("create_project_start"))
 async def handle_create_start_callback(event: MessageCallback):
     await handle_callback_create_project_start(event)
 
+async def main():
+    await dp.start_polling(bot)
+
 if __name__ == "__main__":
-    bot.run()
+    asyncio.run(main())

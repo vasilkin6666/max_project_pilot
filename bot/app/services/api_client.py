@@ -6,7 +6,7 @@ import json
 
 class APIClient:
     def __init__(self):
-        self.base_url = settings.BACKEND_API_URL
+        self.base_url = settings.BACKEND_API_URL.rstrip('/')
 
     async def get_user_projects(self, user_id: str):
         url = f"{self.base_url}/users/{user_id}/projects"
@@ -17,7 +17,7 @@ class APIClient:
                         data = await response.json()
                         return data.get("projects", [])
                     else:
-                        logger.error(f"API Error: {response.status}")
+                        logger.error(f"API Error: {response.status} for URL: {url}")
                         return []
         except Exception as e:
             logger.error(f"Network error: {e}")
@@ -79,7 +79,7 @@ class APIClient:
 
     async def _request_join_with_token(self, project_hash: str, token: str):
         url = f"{self.base_url}/projects/{project_hash}/join"
-        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {token}"}
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, headers=headers) as response:
@@ -97,7 +97,7 @@ class APIClient:
     async def get_user_notifications(self, user_id: str):
         # Аналогично, получаем токен и запрашиваем уведомления
         token_url = f"{self.base_url}/auth/token"
-        token_data = {"max_id": user_id, "full_name": "Anonymous"} # Имя не важно для получения токена
+        token_data = {"max_id": user_id, "full_name": "Anonymous"}
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(token_url, json=token_data) as response:
@@ -108,6 +108,18 @@ class APIClient:
                             return await self._get_notifications_with_token(access_token)
         except Exception as e:
             logger.error(f"Error getting token for notifications: {e}")
+        return {"notifications": []}
+
+    async def _get_notifications_with_token(self, token: str):
+        url = f"{self.base_url}/notifications/"
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        return await response.json()
+        except Exception as e:
+            logger.error(f"Error getting notifications: {e}")
         return {"notifications": []}
 
     async def get_project_summary(self, project_hash: str, user_id: str, full_name: str):
@@ -128,7 +140,7 @@ class APIClient:
 
     async def _get_project_summary_with_token(self, project_hash: str, token: str):
         url = f"{self.base_url}/projects/{project_hash}/summary"
-        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {token}"}
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
@@ -156,7 +168,7 @@ class APIClient:
 
     async def _get_project_join_requests_with_token(self, project_hash: str, token: str):
         url = f"{self.base_url}/projects/{project_hash}/join-requests"
-        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {token}"}
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:

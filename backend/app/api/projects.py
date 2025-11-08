@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
+from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models import User, Project, ProjectMember, JoinRequest, Task
 from app.api.deps import get_current_user
@@ -144,7 +145,7 @@ async def get_join_requests(project_hash: str, current_user: User = Depends(get_
         )
     )
     member = membership.scalar_one_or_none()
-    if not member or member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+    if not member or member.role not in ["owner", "admin"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     result = await db.execute(
@@ -154,7 +155,7 @@ async def get_join_requests(project_hash: str, current_user: User = Depends(get_
     )
     requests = result.scalars().all()
     return {"requests": requests}
-
+    
 @router.post("/{project_hash}/join-requests/{request_id}/approve")
 async def approve_join_request(project_hash: str, request_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Project).where(Project.hash == project_hash))

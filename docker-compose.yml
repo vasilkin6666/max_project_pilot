@@ -10,9 +10,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_/var/lib/postgresql/data
+      # Используем именованный том, определённый внизу
+      - postgres_data:/var/lib/postgresql/data
+      # Если нужно, можно также монтировать локальную директорию (не рекомендуется для production без контроля прав)
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Пример для инициализации
     ports:
-      - "5432:5432" # Только для отладки, можно убрать в проде
+      # Открываем порт 5432 только для отладки. В продакшене НЕ открывать!
+      # Убедитесь, что он не конфликтует с локальным PostgreSQL.
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -25,25 +30,39 @@ services:
     ports:
       - "${BACKEND_PORT}:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_SERVER}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB} # Используем имя сервиса 'db'
       - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=${ALGORITHM}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
       - SITE_URL=${SITE_URL}
+      - BACKEND_API_URL=${BACKEND_API_URL} # Убедитесь, что это публичный URL для бота
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
+    # Важно: backend не должен зависеть от bot
+    # depends_on не ждёт готовности bot, только запуска.
 
   bot:
     build: ./bot
     container_name: max_pilot_bot
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
-      - BACKEND_API_URL=${BACKEND_API_URL} # Используем внешний URL для Docker Compose
+      # В Docker Compose внутренний URL для backend - это имя сервиса
+      - BACKEND_API_URL=http://backend:8000/api
+      # Для внешнего мира (например, если bot логирует URL для отладки)
+      # используйте переменную из .env, но для внутреннего взаимодействия - имя сервиса.
     depends_on:
       - backend
     restart: unless-stopped
+    # Убедитесь, что bot не пытается использовать порт, конфликтующий с чем-то другим.
+    # Long Polling не требует открытия портов для входящих соединений от MAX API.
 
+# Определение томов
 volumes:
-  postgres_
+  postgres_data: # Именованный том для данных PostgreSQL
+    # driver: local # Необязательно, по умолчанию local
+    # driver_opts: # Необязательно, можно указать опции драйвера
+    #   type: none
+    #   o: bind
+    #   device: /host/path/directory # Только для типа 'bind'
