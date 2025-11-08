@@ -83,8 +83,10 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         'Content-Type': 'application/json',
     };
 
+    // ВАЖНО: Добавляем токен в заголовки, если он передан
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+        log(`Adding Authorization header with token: ${token.substring(0, 20)}...`);
     }
 
     const config = {
@@ -96,7 +98,7 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         config.body = JSON.stringify(data);
     }
 
-    log(`API call: ${method} ${url}`, data);
+    log(`API call: ${method} ${url}`, { data, hasToken: !!token });
 
     try {
         const response = await fetch(url, config);
@@ -385,12 +387,12 @@ async function createProject() {
     try {
         log(`Creating project with title: "${title}", description: "${description}"`);
 
-        // Создаем проект с правильными параметрами
+        // Создаем проект с правильными параметрами и токеном
         const result = await apiCall(
             `/projects/?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&is_private=true&requires_approval=false`,
             'POST',
             null,
-            token
+            token  // Добавляем токен здесь!
         );
 
         if (result && result.project) {
@@ -871,24 +873,30 @@ function handleSearchKeyPress(event) {
 
 
 
-// Временная функция для тестирования - можно удалить после отладки
+// Временная функция для тестирования создания проекта
 window.testCreateProject = async function() {
     const token = localStorage.getItem('access_token');
+    console.log('Current token:', token);
+
     if (!token) {
-        console.error('No token found');
+        console.error('No token found in localStorage');
         return;
     }
 
     try {
+        console.log('Testing project creation...');
+
         const result = await apiCall(
             '/projects/?title=Test%20Project&description=Test%20description&is_private=true&requires_approval=false',
             'POST',
             null,
             token
         );
-        console.log('Test project created:', result);
+
+        console.log('✅ Test project created successfully:', result);
         return result;
     } catch (error) {
-        console.error('Test project creation failed:', error);
+        console.error('❌ Test project creation failed:', error);
+        throw error;
     }
 };
