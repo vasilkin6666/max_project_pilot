@@ -25,9 +25,8 @@ async def login_or_create_user(request: TokenRequest, db: AsyncSession = Depends
         db.add(user)
         await db.commit()
         await db.refresh(user)
-
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.max_id}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "user": {"id": user.max_id, "full_name": user.full_name}}
+    return {"access_token": access_token, "token_type": "bearer", "user": {"id": user.max_id, "full_name": user.full_name, "username": user.username}}

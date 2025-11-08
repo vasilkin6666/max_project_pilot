@@ -16,9 +16,10 @@ class APIClient:
                         return await response.json()
                     else:
                         logger.error(f"API Error: {response.status} for URL: {url}")
+                        return None
         except Exception as e:
             logger.error(f"Network error: {e}")
-        return None
+            return None
 
     async def get_user_projects(self, user_id: str):
         url = f"{self.base_url}/users/{user_id}/projects"

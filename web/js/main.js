@@ -152,10 +152,7 @@ function showAuthSection() {
 }
 
 function showMainInterface() {
-    document.getElementById('authSection').style.display = 'none';
     document.getElementById('mainInterface').style.display = 'block';
-    document.getElementById('user-name').textContent = localStorage.getItem('user_name');
-    document.getElementById('user-avatar').textContent = localStorage.getItem('user_name').charAt(0).toUpperCase();
 }
 
 async function login() {
@@ -185,19 +182,29 @@ async function login() {
 
 // Проверка авторизации при загрузке
 window.addEventListener('load', () => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-        currentUserId = localStorage.getItem('user_id');
-        if (currentUserId) {
-            showMainInterface();
-            // Загрузка данных может быть вызвана позже
-        } else {
-            showAuthSection();
-        }
-    } else {
-        showAuthSection();
-    }
+    showUserInfo();
 });
+
+function showUserInfo() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user_id');
+    const userName = urlParams.get('user_name') || localStorage.getItem('user_name') || 'Гость';
+
+    if (userId) {
+        document.getElementById('user-name').textContent = userName;
+        document.getElementById('user-avatar').textContent = userName.charAt(0).toUpperCase();
+        localStorage.setItem('user_name', userName);
+        showMainInterface();
+    } else {
+        document.getElementById('mainInterface').innerHTML = `
+            <div class="max-card text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-muted mb-3"></i>
+                <h6>Ошибка</h6>
+                <p class="text-muted">Отсутствует идентификатор пользователя. Перейдите в бота для авторизации.</p>
+            </div>
+        `;
+    }
+}
 
 // --- Секции ---
 async function showSection(sectionName) {

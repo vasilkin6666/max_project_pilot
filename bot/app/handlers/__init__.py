@@ -1,5 +1,4 @@
-# bot/app/handlers/__init__.py
-from .start import cmd_start
+from .start import cmd_start, cmd_help
 from .projects import (
     cmd_create_project, cmd_join_project,
     handle_callback_create_project_start,
@@ -12,6 +11,7 @@ from .notifications import handle_callback_notifications
 
 __all__ = [
     "cmd_start",
+    "cmd_help",
     "cmd_create_project",
     "cmd_join_project",
     "handle_callback_create_project_start",
