@@ -1,12 +1,24 @@
-# bot/app/services/api_client.py
 import aiohttp
 from app.config import settings
 from loguru import logger
-import json
 
 class APIClient:
     def __init__(self):
-        self.base_url = settings.BACKEND_API_URL.rstrip('/')
+        self.base_url = settings.BACKEND_API_URL
+
+    async def create_user(self, user_id: str, full_name: str, username: str = None):
+        url = f"{self.base_url}/auth/token"
+        token_data = {"max_id": user_id, "full_name": full_name, "username": username}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=token_data) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        logger.error(f"API Error: {response.status} for URL: {url}")
+        except Exception as e:
+            logger.error(f"Network error: {e}")
+        return None
 
     async def get_user_projects(self, user_id: str):
         url = f"{self.base_url}/users/{user_id}/projects"
@@ -53,16 +65,9 @@ class APIClient:
         return None
 
     async def get_project_by_hash(self, project_hash: str):
-        # Предположим, есть эндпоинт для получения проекта по хэшу без авторизации
-        # или с токеном владельца, что сложно в боте. Реализуем как вызов из веб-приложения.
-        # В боте можно реализовать только join.
-        # Или бот может использовать токен текущего пользователя.
-        # Для упрощения, пусть бот использует токен для проверки доступа.
-        # Пока возвращаем заглушку.
         pass
 
     async def request_join_project(self, project_hash: str, user_id: str, full_name: str):
-        # Сначала получаем токен
         token_url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": full_name}
         try:
@@ -95,7 +100,6 @@ class APIClient:
         return {"status": "error", "message": "Failed to join project"}
 
     async def get_user_notifications(self, user_id: str):
-        # Аналогично, получаем токен и запрашиваем уведомления
         token_url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": "Anonymous"}
         try:
@@ -123,7 +127,6 @@ class APIClient:
         return {"notifications": []}
 
     async def get_project_summary(self, project_hash: str, user_id: str, full_name: str):
-        """Получение сводки проекта для бота"""
         token_url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": full_name}
         try:
@@ -151,7 +154,6 @@ class APIClient:
         return None
 
     async def get_project_join_requests(self, project_hash: str, user_id: str, full_name: str):
-        """Получение запросов на присоединение к проекту"""
         token_url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": full_name}
         try:
@@ -179,7 +181,6 @@ class APIClient:
         return {"requests": []}
 
     async def approve_join_request(self, project_hash: str, request_id: int, user_id: str, full_name: str):
-        """Одобрение запроса на присоединение"""
         token_url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": full_name}
         try:
@@ -207,7 +208,6 @@ class APIClient:
         return {"status": "error", "message": "Failed to approve"}
 
     async def reject_join_request(self, project_hash: str, request_id: int, user_id: str, full_name: str):
-        """Отклонение запроса на присоединение"""
         token_url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": full_name}
         try:

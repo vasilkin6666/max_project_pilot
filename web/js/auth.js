@@ -1,77 +1,35 @@
-// web/js/auth.js
-// import { apiCall } from './api.js'; // Если используем ES6 modules
+// Функция для отображения данных пользователя
+function showUserInfo() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user_id');
+    const userName = localStorage.getItem('user_name') || 'Гость';
 
-// Глобальные переменные (если не используем модули)
-let currentUserId = null;
-
-// Функция входа
-async function login(userId, fullName) {
-    try {
-        const response = await apiCall('/auth/token', 'POST', { max_id: userId, full_name: fullName });
-        if (response.access_token) {
-            localStorage.setItem('access_token', response.access_token);
-            localStorage.setItem('user_id', response.user.id);
-            localStorage.setItem('user_name', response.user.full_name);
-            currentUserId = response.user.id;
-            return response.user;
-        }
-        return null;
-    } catch (error) {
-        console.error('Login error:', error);
-        throw error;
+    if (userId) {
+        document.getElementById('user-name').textContent = userName;
+        document.getElementById('user-avatar').textContent = userName.charAt(0).toUpperCase();
+        showMainInterface();
+    } else {
+        document.getElementById('mainInterface').innerHTML = `
+            <div class="max-card text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-muted mb-3"></i>
+                <h6>Ошибка</h6>
+                <p class="text-muted">Отсутствует идентификатор пользователя. Перейдите в бота для авторизации.</p>
+            </div>
+        `;
     }
 }
 
-// Проверка авторизации при загрузке
+// Проверка наличия user_id при загрузке страницы
 window.addEventListener('load', () => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-        currentUserId = localStorage.getItem('user_id');
-        if (currentUserId) {
-            showMainInterface();
-        } else {
-            showAuthSection();
-        }
-    } else {
-        showAuthSection();
-    }
+    showUserInfo();
 });
 
-// Функции показа интерфейса (предполагаем, что они определены в main.js)
+// Функции для отображения интерфейса
 function showAuthSection() {
     document.getElementById('authSection').style.display = 'block';
     document.getElementById('mainInterface').style.display = 'none';
 }
 
 function showMainInterface() {
-    document.getElementById('authSection').style.display = 'none';
     document.getElementById('mainInterface').style.display = 'block';
-    document.getElementById('user-name').textContent = localStorage.getItem('user_name');
-    document.getElementById('user-avatar').textContent = localStorage.getItem('user_name').charAt(0).toUpperCase();
-}
-
-// Функция вызова из main.js
-async function login() {
-    const userId = document.getElementById('userIdInput').value.trim();
-    if (!userId) {
-        alert('Введите User ID');
-        return;
-    }
-    // Для простоты, используем 'Anonymous' как имя, если не получено из MAX
-    const fullName = prompt('Введите ваше имя (для регистрации):') || 'Anonymous';
-    try {
-        const user = await login(userId, fullName); // Вызываем локальную функцию login
-        if (user) {
-            showMainInterface();
-            await loadDashboardData();
-            await loadProjects();
-            await loadTasks();
-            await loadNotifications();
-        } else {
-            alert('Ошибка входа');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        alert('Ошибка входа: ' + error.message);
-    }
 }

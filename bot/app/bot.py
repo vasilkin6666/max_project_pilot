@@ -1,12 +1,10 @@
-# bot/app/bot.py
 import asyncio
 from maxapi import Bot, Dispatcher, F
 from maxapi.types import MessageCreated, MessageCallback
 from maxapi.filters.command import Command
-
 from app.config import settings
 from app.handlers import (
-    cmd_start, cmd_create_project, cmd_join_project,
+    cmd_start, cmd_help, cmd_create_project, cmd_join_project,
     handle_callback_create_project_start,
     handle_callback_projects,
     handle_callback_project_summary,
@@ -21,6 +19,10 @@ dp = Dispatcher()
 @dp.message_created(Command('start'))
 async def handle_start(event: MessageCreated):
     await cmd_start(event)
+
+@dp.message_created(Command('help'))
+async def handle_help(event: MessageCreated):
+    await cmd_help(event)
 
 @dp.message_created(Command('create_project'))
 async def handle_create_project(event: MessageCreated):
