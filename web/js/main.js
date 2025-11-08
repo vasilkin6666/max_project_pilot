@@ -82,14 +82,17 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
     const headers = {
         'Content-Type': 'application/json',
     };
+
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
+
     const config = {
         method,
         headers,
     };
-    if (data) {
+
+    if (data && method !== 'GET') {
         config.body = JSON.stringify(data);
     }
 
@@ -97,10 +100,25 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 
     try {
         const response = await fetch(url, config);
+
+        if (response.status === 401) {
+            // Токен истек или невалиден
+            localStorage.removeItem('access_token');
+            showToast('Сессия истекла. Пожалуйста, обновите страницу.', 'warning');
+            throw new Error('Authentication required');
+        }
+
+        if (response.status === 422) {
+            const errorData = await response.json();
+            logError(`Validation error: ${JSON.stringify(errorData)}`);
+            throw new Error(`Validation error: ${errorData.detail?.[0]?.msg || 'Invalid data'}`);
+        }
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
         }
+
         const responseData = await response.json();
         log(`API response: ${method} ${url}`, responseData);
         return responseData;
@@ -117,12 +135,13 @@ async function fetchUserData(userId) {
         // Сначала получаем токен
         const tokenResponse = await apiCall('/auth/token', 'POST', {
             max_id: userId,
-            full_name: 'User', // Можно получить из URL или запросить
+            full_name: 'User',
             username: ''
         });
 
         if (tokenResponse && tokenResponse.access_token) {
             localStorage.setItem('access_token', tokenResponse.access_token);
+            log('Access token saved to localStorage');
 
             // Теперь получаем данные пользователя с токеном
             const response = await apiCall(`/users/${userId}`, 'GET', null, tokenResponse.access_token);
@@ -298,7 +317,9 @@ async function loadProjects() {
                     <i class="fas fa-folder-open fa-2x text-muted mb-3"></i>
                     <h6>Проектов пока нет</h6>
                     <p class="text-muted">Создайте свой первый проект!</p>
-                    <button class="btn max-btn-primary" onclick="createProject()"><i class="fas fa-plus"></i> Создать проект</button>
+                    <button class="btn max-btn-primary" onclick="createProject()">
+                        <i class="fas fa-plus"></i> Создать проект
+                    </button>
                 </div>`;
             log('No projects found');
             return;
@@ -338,6 +359,7 @@ async function loadProjects() {
 
 async function createProject() {
     log('Creating project');
+
     if (!currentUserId) {
         alert('Необходима авторизация для создания проекта');
         log('No currentUserId, cannot create project');
@@ -345,41 +367,49 @@ async function createProject() {
     }
 
     const title = prompt('Введите название проекта:');
-    if (!title) return;
+    if (!title) {
+        log('Project creation cancelled - no title');
+        return;
+    }
 
     const description = prompt('Введите описание проекта (необязательно):') || '';
 
+    // Получаем токен из localStorage
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        alert('Ошибка авторизации. Пожалуйста, обновите страницу.');
+        log('No access token found');
+        return;
+    }
+
     try {
-        // Сначала получаем токен
-        const tokenResponse = await apiCall('/auth/token', 'POST', {
-            max_id: currentUserId,
-            full_name: document.getElementById('user-name').textContent,
-            username: ''
-        });
+        log(`Creating project with title: "${title}", description: "${description}"`);
 
-        if (!tokenResponse || !tokenResponse.access_token) {
-            throw new Error('Не удалось получить токен авторизации');
-        }
-
-        const token = tokenResponse.access_token;
-        localStorage.setItem('access_token', token);
-
-        // Создаем проект
-        const result = await createProject(title, description, token);
+        // Создаем проект с правильными параметрами
+        const result = await apiCall(
+            `/projects/?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&is_private=true&requires_approval=false`,
+            'POST',
+            null,
+            token
+        );
 
         if (result && result.project) {
             log('Project created successfully', result);
-            alert(`Проект "${result.project.title}" создан!`);
+            showToast(`Проект "${result.project.title}" создан!`, 'success');
+
+            // Обновляем интерфейс
             if (currentSection === 'projects') {
                 await loadProjects();
             }
-            await loadDashboardData();
+            if (currentSection === 'dashboard') {
+                await loadDashboardData();
+            }
         } else {
             throw new Error('Не удалось создать проект: ответ сервера не содержит данных проекта');
         }
     } catch (error) {
         logError('Project creation error', error);
-        alert('Ошибка при создании проекта: ' + error.message);
+        showToast('Ошибка при создании проекта: ' + error.message, 'error');
     }
 }
 
@@ -412,7 +442,10 @@ async function loadTasks(status = null) {
                 <div class="max-card text-center">
                     <i class="fas fa-tasks fa-2x text-muted mb-3"></i>
                     <h6>Задач пока нет</h6>
-                    <p class="text-muted">Создайте первую задачу в проекте!</p>
+                    <p class="text-muted">Создайте проект и добавьте задачи!</p>
+                    <button class="btn max-btn-primary" onclick="showSection('projects')">
+                        <i class="fas fa-project-diagram"></i> Перейти к проектам
+                    </button>
                 </div>`;
             log('No tasks found');
             return;
@@ -834,3 +867,28 @@ function handleSearchKeyPress(event) {
         searchTasks();
     }
 }
+
+
+
+
+// Временная функция для тестирования - можно удалить после отладки
+window.testCreateProject = async function() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        console.error('No token found');
+        return;
+    }
+
+    try {
+        const result = await apiCall(
+            '/projects/?title=Test%20Project&description=Test%20description&is_private=true&requires_approval=false',
+            'POST',
+            null,
+            token
+        );
+        console.log('Test project created:', result);
+        return result;
+    } catch (error) {
+        console.error('Test project creation failed:', error);
+    }
+};
