@@ -1,4 +1,4 @@
-//web/js/main.js
+// web/js/main.js
 // --- Конфигурация ---
 const API_BASE_URL = 'https://powerfully-exotic-chamois.cloudpub.ru/api';
 let currentUserId = null;
@@ -86,7 +86,9 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
     // ВАЖНО: Добавляем токен в заголовки, если он передан
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-        log(`Adding Authorization header with token: ${token.substring(0, 20)}...`);
+        console.log('🔑 Adding Authorization header with token');
+    } else {
+        console.warn('⚠️ No token provided for API call');
     }
 
     const config = {
@@ -98,10 +100,12 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         config.body = JSON.stringify(data);
     }
 
-    log(`API call: ${method} ${url}`, { data, hasToken: !!token });
+    log(`API call: ${method} ${url}`, { hasToken: !!token, data });
 
     try {
         const response = await fetch(url, config);
+
+        console.log(`📡 API Response Status: ${response.status} ${response.statusText}`);
 
         if (response.status === 401) {
             // Токен истек или невалиден
@@ -112,7 +116,7 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 
         if (response.status === 422) {
             const errorData = await response.json();
-            logError(`Validation error: ${JSON.stringify(errorData)}`);
+            console.error('❌ Validation error details:', errorData);
             throw new Error(`Validation error: ${errorData.detail?.[0]?.msg || 'Invalid data'}`);
         }
 
@@ -368,14 +372,6 @@ async function createProject() {
         return;
     }
 
-    const title = prompt('Введите название проекта:');
-    if (!title) {
-        log('Project creation cancelled - no title');
-        return;
-    }
-
-    const description = prompt('Введите описание проекта (необязательно):') || '';
-
     // Получаем токен из localStorage
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -385,6 +381,16 @@ async function createProject() {
     }
 
     try {
+        // Получаем название проекта
+        const title = prompt('Введите название проекта:');
+        if (!title) {
+            log('Project creation cancelled - no title');
+            return;
+        }
+
+        // Получаем описание проекта
+        const description = prompt('Введите описание проекта (необязательно):') || '';
+
         log(`Creating project with title: "${title}", description: "${description}"`);
 
         // Создаем проект с правильными параметрами и токеном
@@ -392,7 +398,7 @@ async function createProject() {
             `/projects/?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&is_private=true&requires_approval=false`,
             'POST',
             null,
-            token  // Добавляем токен здесь!
+            token
         );
 
         if (result && result.project) {
@@ -419,9 +425,12 @@ async function createProject() {
 let currentTaskId = null;
 let currentTaskDetails = null;
 let taskSearchFuse = null;
+let currentSearchQuery = '';
+let allTasks = [];
 
 async function loadTasks(status = null) {
     log('Loading tasks');
+
     if (!currentUserId) {
         document.getElementById('tasks-list').innerHTML = `
             <div class="max-card text-center">
@@ -432,13 +441,18 @@ async function loadTasks(status = null) {
         log('No currentUserId, cannot load tasks');
         return;
     }
+
     const token = localStorage.getItem('access_token');
     try {
         const data = await getTasks(currentUserId, token);
         log('Tasks loaded', data);
+
         const tasks = data.tasks || [];
+        allTasks = tasks; // Сохраняем задачи для поиска
+
         const filteredTasks = status ? tasks.filter(t => t.status === status) : tasks;
         const container = document.getElementById('tasks-list');
+
         if (filteredTasks.length === 0) {
             container.innerHTML = `
                 <div class="max-card text-center">
@@ -452,6 +466,7 @@ async function loadTasks(status = null) {
             log('No tasks found');
             return;
         }
+
         container.innerHTML = filteredTasks.map(task => {
             const statusColor = getStatusColor(task.status);
             const statusText = getStatusText(task.status);
@@ -473,10 +488,7 @@ async function loadTasks(status = null) {
                     </div>
                 </div>`;
         }).join('');
-        taskSearchFuse = new Fuse(tasks, {
-            keys: ['title', 'description'],
-            threshold: 0.3
-        });
+
         log('Tasks displayed successfully');
     } catch (error) {
         logError('Tasks load error', error);
@@ -555,7 +567,7 @@ async function getNotifications(userId, token) {
     return await apiCall('/notifications/', 'GET', null, token);
 }
 
-async function createProject(title, description, token) {
+async function createProjectAPI(title, description, token) {
     const params = new URLSearchParams({
         title: title,
         description: description,
@@ -570,6 +582,7 @@ async function updateTaskStatus(taskId, status, token) {
     return await apiCall(`/tasks/${taskId}/status?${params}`, 'PUT', null, token);
 }
 
+// --- Функции уведомлений и поиска ---
 async function markAllNotificationsRead() {
     log('Marking all notifications as read');
 
@@ -605,9 +618,6 @@ async function markAllNotificationsRead() {
         showToast('Ошибка при обновлении уведомлений: ' + error.message, 'error');
     }
 }
-
-let currentSearchQuery = '';
-let allTasks = [];
 
 async function searchTasks() {
     const searchInput = document.getElementById('searchTasksInput');
@@ -792,77 +802,6 @@ function createToastContainer() {
     return container;
 }
 
-// Обновленная функция loadTasks для сохранения всех задач
-async function loadTasks(status = null) {
-    log('Loading tasks');
-
-    if (!currentUserId) {
-        document.getElementById('tasks-list').innerHTML = `
-            <div class="max-card text-center">
-                <i class="fas fa-tasks fa-2x text-muted mb-3"></i>
-                <h6>Необходима авторизация</h6>
-                <p class="text-muted">Для просмотра задач войдите в систему</p>
-            </div>`;
-        log('No currentUserId, cannot load tasks');
-        return;
-    }
-
-    const token = localStorage.getItem('access_token');
-    try {
-        const data = await getTasks(currentUserId, token);
-        log('Tasks loaded', data);
-
-        const tasks = data.tasks || [];
-        allTasks = tasks; // Сохраняем задачи для поиска
-
-        const filteredTasks = status ? tasks.filter(t => t.status === status) : tasks;
-        const container = document.getElementById('tasks-list');
-
-        if (filteredTasks.length === 0) {
-            container.innerHTML = `
-                <div class="max-card text-center">
-                    <i class="fas fa-tasks fa-2x text-muted mb-3"></i>
-                    <h6>Задач пока нет</h6>
-                    <p class="text-muted">Создайте первую задачу в проекте!</p>
-                </div>`;
-            log('No tasks found');
-            return;
-        }
-
-        container.innerHTML = filteredTasks.map(task => {
-            const statusColor = getStatusColor(task.status);
-            const statusText = getStatusText(task.status);
-            return `
-                <div class="task-item task-${task.status} max-card" onclick="openTaskModal(${task.id})">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0">${task.title}</h6>
-                            <p class="text-muted small mb-1">${task.description ? task.description.substring(0, 50) + '...' : ''}</p>
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-${statusColor} me-2">${statusText}</span>
-                                <span class="text-muted small">${formatDate(task.created_at)}</span>
-                            </div>
-                        </div>
-                        <div class="text-end">
-                            <div class="text-muted small">Проект: ${task.project.title}</div>
-                            <div class="text-muted small">Приоритет: ${task.priority}</div>
-                        </div>
-                    </div>
-                </div>`;
-        }).join('');
-
-        log('Tasks displayed successfully');
-    } catch (error) {
-        logError('Tasks load error', error);
-        document.getElementById('tasks-list').innerHTML = `
-            <div class="max-card text-center">
-                <i class="fas fa-exclamation-triangle fa-2x text-muted mb-3"></i>
-                <h6>Ошибка загрузки</h6>
-                <p class="text-muted">Не удалось загрузить задачи</p>
-            </div>`;
-    }
-}
-
 // Функция для обработки поиска по нажатию Enter
 function handleSearchKeyPress(event) {
     if (event.key === 'Enter') {
@@ -870,21 +809,58 @@ function handleSearchKeyPress(event) {
     }
 }
 
+// --- Вспомогательные функции ---
+function openProject(projectHash) {
+    // Здесь можно открыть модальное окно с деталями проекта или перейти на страницу проекта
+    // Пока просто покажем QR-код для приглашения
+    showProjectInviteQR(projectHash);
+}
 
+function showProjectInviteQR(projectHash) {
+    const inviteUrl = `${window.location.origin}/?join=${projectHash}`;
+    const modal = new bootstrap.Modal(document.createElement('div'));
+    const modalHTML = `
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Пригласить в проект</h5>
+                        <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <p>Отправьте этот QR-код пользователю:</p>
+                        <div id="qrCodeContainer"></div>
+                        <p class="mt-2">Или поделитесь ссылкой: <code>${inviteUrl}</code></p>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modalElement = document.querySelector('.modal.show');
+    new QRCode(document.getElementById('qrCodeContainer'), { text: inviteUrl, width: 200, height: 200 });
+    modalElement.querySelector('.btn-close').addEventListener('click', () => modalElement.remove());
+}
 
+function openTaskModal(taskId) {
+    // TODO: Реализовать открытие модального окна с деталями задачи
+    console.log('Opening task modal for task ID:', taskId);
+    showToast('Функция просмотра задачи будет реализована в будущем обновлении', 'info');
+}
 
-// Временная функция для тестирования создания проекта
+// --- Тестовые функции ---
 window.testCreateProject = async function() {
+    console.log('=== TESTING PROJECT CREATION ===');
+
     const token = localStorage.getItem('access_token');
-    console.log('Current token:', token);
+    console.log('Token:', token ? '✅ Found' : '❌ Not found');
 
     if (!token) {
-        console.error('No token found in localStorage');
+        console.error('❌ No token found in localStorage');
         return;
     }
 
     try {
-        console.log('Testing project creation...');
+        console.log('🔄 Testing project creation...');
 
         const result = await apiCall(
             '/projects/?title=Test%20Project&description=Test%20description&is_private=true&requires_approval=false',
@@ -894,9 +870,66 @@ window.testCreateProject = async function() {
         );
 
         console.log('✅ Test project created successfully:', result);
+        alert('✅ Тестовый проект создан успешно!');
         return result;
     } catch (error) {
         console.error('❌ Test project creation failed:', error);
+        alert('❌ Ошибка создания тестового проекта: ' + error.message);
         throw error;
+    }
+};
+
+// Альтернативная функция создания проекта (использует fetch напрямую)
+window.createProjectDirect = async function() {
+    const title = prompt('Введите название проекта:');
+    if (!title) return;
+
+    const description = prompt('Введите описание проекта:') || '';
+    const token = localStorage.getItem('access_token');
+
+    console.log('🔑 Token:', token);
+    console.log('📝 Title:', title);
+    console.log('📄 Description:', description);
+
+    if (!token) {
+        alert('Токен не найден');
+        return;
+    }
+
+    try {
+        const url = `https://powerfully-exotic-chamois.cloudpub.ru/api/projects/?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&is_private=true&requires_approval=false`;
+
+        console.log('🔄 Making request to:', url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('📡 Response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Project created:', result);
+        alert('✅ Проект создан успешно!');
+
+        // Обновляем интерфейс
+        if (currentSection === 'projects') {
+            await loadProjects();
+        }
+
+        return result;
+
+    } catch (error) {
+        console.error('❌ Error creating project:', error);
+        alert('❌ Ошибка при создании проекта: ' + error.message);
     }
 };
