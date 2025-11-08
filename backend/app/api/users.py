@@ -42,9 +42,11 @@ async def get_user_projects(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    # Проверяем авторизацию текущего пользователя
     if current_user.max_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to view this user's projects")
 
+    # Получаем членства в проектах
     result = await db.execute(
         select(ProjectMember)
         .where(ProjectMember.user_id == current_user.id)
@@ -58,11 +60,17 @@ async def get_user_projects(
     projects_with_stats = []
     for member in memberships:
         project = member.project
-        # Подсчет статистики задач
-        tasks_count = len(project.tasks) if project.tasks else 0
-        tasks_done = len([t for t in (project.tasks or []) if t.status == 'done'])
-        tasks_in_progress = len([t for t in (project.tasks or []) if t.status == 'in_progress'])
-        tasks_todo = len([t for t in (project.tasks or []) if t.status == 'todo'])
+
+        # Исправляем подсчет статистики задач - используем SQL запрос вместо обработки в Python
+        stats_result = await db.execute(
+            select(
+                func.count(Task.id).label('total_tasks'),
+                func.sum(func.iif(Task.status == 'done', 1, 0)).label('done_tasks'),
+                func.sum(func.iif(Task.status == 'in_progress', 1, 0)).label('in_progress_tasks'),
+                func.sum(func.iif(Task.status == 'todo', 1, 0)).label('todo_tasks')
+            ).where(Task.project_id == project.id)
+        )
+        stats = stats_result.first()
 
         project_data = {
             "id": project.id,
@@ -76,13 +84,12 @@ async def get_user_projects(
             "updated_at": project.updated_at,
             "members": [{"user_id": m.user_id, "role": m.role} for m in project.members] if project.members else [],
             "stats": {
-                "tasks_count": tasks_count,
-                "tasks_done": tasks_done,
-                "tasks_in_progress": tasks_in_progress,
-                "tasks_todo": tasks_todo
+                "tasks_count": stats.total_tasks or 0,
+                "tasks_done": stats.done_tasks or 0,
+                "tasks_in_progress": stats.in_progress_tasks or 0,
+                "tasks_todo": stats.todo_tasks or 0
             }
         }
-
         projects_with_stats.append({
             "project": project_data,
             "role": member.role
