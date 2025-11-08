@@ -71,26 +71,40 @@ async def get_project(
     if project.is_private and not member:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Подсчет статистики
-    stats_result = await db.execute(
-        select(
-            func.count(Task.id).label('total_tasks'),
-            func.sum(func.iif(Task.status == 'done', 1, 0)).label('done_tasks'),
-            func.sum(func.iif(Task.status == 'in_progress', 1, 0)).label('in_progress_tasks'),
-            func.sum(func.iif(Task.status == 'todo', 1, 0)).label('todo_tasks')
-        ).where(Task.project_id == project.id)
+    # ИСПРАВЛЕННЫЙ подсчет статистики - отдельные запросы
+    total_result = await db.execute(
+        select(func.count(Task.id)).where(Task.project_id == project.id)
     )
-    stats = stats_result.first()
+    done_result = await db.execute(
+        select(func.count(Task.id)).where(
+            Task.project_id == project.id,
+            Task.status == 'done'
+        )
+    )
+    in_progress_result = await db.execute(
+        select(func.count(Task.id)).where(
+            Task.project_id == project.id,
+            Task.status == 'in_progress'
+        )
+    )
+    todo_result = await db.execute(
+        select(func.count(Task.id)).where(
+            Task.project_id == project.id,
+            Task.status == 'todo'
+        )
+    )
+
+    stats = {
+        "tasks_count": total_result.scalar() or 0,
+        "tasks_done": done_result.scalar() or 0,
+        "tasks_in_progress": in_progress_result.scalar() or 0,
+        "tasks_todo": todo_result.scalar() or 0
+    }
 
     return {
         "project": project,
         "members": project.members,
-        "stats": {
-            "tasks_count": stats.total_tasks or 0,
-            "tasks_done": stats.done_tasks or 0,
-            "tasks_in_progress": stats.in_progress_tasks or 0,
-            "tasks_todo": stats.todo_tasks or 0
-        }
+        "stats": stats
     }
 
 @router.post("/{project_hash}/join")
@@ -309,16 +323,28 @@ async def get_project_summary(
     )
     members_count = members_count_result.scalar()
 
-    # Подсчет статистики задач
-    stats_result = await db.execute(
-        select(
-            func.count(Task.id).label('total_tasks'),
-            func.sum(func.iif(Task.status == 'done', 1, 0)).label('done_tasks'),
-            func.sum(func.iif(Task.status == 'in_progress', 1, 0)).label('in_progress_tasks'),
-            func.sum(func.iif(Task.status == 'todo', 1, 0)).label('todo_tasks')
-        ).where(Task.project_id == project.id)
+    # ИСПРАВЛЕННЫЙ подсчет статистики задач - отдельные запросы
+    total_result = await db.execute(
+        select(func.count(Task.id)).where(Task.project_id == project.id)
     )
-    stats = stats_result.first()
+    done_result = await db.execute(
+        select(func.count(Task.id)).where(
+            Task.project_id == project.id,
+            Task.status == 'done'
+        )
+    )
+    in_progress_result = await db.execute(
+        select(func.count(Task.id)).where(
+            Task.project_id == project.id,
+            Task.status == 'in_progress'
+        )
+    )
+    todo_result = await db.execute(
+        select(func.count(Task.id)).where(
+            Task.project_id == project.id,
+            Task.status == 'todo'
+        )
+    )
 
     return {
         "id": project.id,
@@ -328,10 +354,10 @@ async def get_project_summary(
         "is_private": project.is_private,
         "requires_approval": project.requires_approval,
         "members_count": members_count or 0,
-        "tasks_count": stats.total_tasks or 0,
-        "tasks_todo": stats.todo_tasks or 0,
-        "tasks_in_progress": stats.in_progress_tasks or 0,
-        "tasks_done": stats.done_tasks or 0,
+        "tasks_count": total_result.scalar() or 0,
+        "tasks_todo": todo_result.scalar() or 0,
+        "tasks_in_progress": in_progress_result.scalar() or 0,
+        "tasks_done": done_result.scalar() or 0,
         "user_role": member.role,
         "can_manage": member.role in [ProjectRole.OWNER, ProjectRole.ADMIN]
     }

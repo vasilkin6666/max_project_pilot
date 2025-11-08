@@ -22,8 +22,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://vasilkin6666.github.io",
-        "http://localhost:3000",  # для локальной разработки
-        "http://127.0.0.1:3000"
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://powerfully-exotic-chamois.cloudpub.ru"  # Добавьте ваш домен бэкенда если нужно
     ],
     allow_credentials=True,
     allow_methods=["*"],

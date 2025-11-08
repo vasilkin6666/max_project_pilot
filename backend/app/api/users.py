@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func  # Добавьте func здесь!
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from app.database import get_db
-from app.models import User, ProjectMember, Project, Task  # Убедитесь, что Task импортирован
+from app.models import User, ProjectMember, Project, Task
 from app.api.deps import get_current_user
 import logging
 
@@ -59,16 +59,35 @@ async def get_user_projects(
     for member in memberships:
         project = member.project
 
-        # Исправляем подсчет статистики задач
-        stats_result = await db.execute(
-            select(
-                func.count(Task.id).label('total_tasks'),
-                func.sum(func.iif(Task.status == 'done', 1, 0)).label('done_tasks'),
-                func.sum(func.iif(Task.status == 'in_progress', 1, 0)).label('in_progress_tasks'),
-                func.sum(func.iif(Task.status == 'todo', 1, 0)).label('todo_tasks')
-            ).where(Task.project_id == project.id)
+        # АЛЬТЕРНАТИВНОЕ РЕШЕНИЕ: отдельные запросы для каждого статуса
+        total_result = await db.execute(
+            select(func.count(Task.id)).where(Task.project_id == project.id)
         )
-        stats = stats_result.first()
+        done_result = await db.execute(
+            select(func.count(Task.id)).where(
+                Task.project_id == project.id,
+                Task.status == 'done'
+            )
+        )
+        in_progress_result = await db.execute(
+            select(func.count(Task.id)).where(
+                Task.project_id == project.id,
+                Task.status == 'in_progress'
+            )
+        )
+        todo_result = await db.execute(
+            select(func.count(Task.id)).where(
+                Task.project_id == project.id,
+                Task.status == 'todo'
+            )
+        )
+
+        stats = {
+            "tasks_count": total_result.scalar() or 0,
+            "tasks_done": done_result.scalar() or 0,
+            "tasks_in_progress": in_progress_result.scalar() or 0,
+            "tasks_todo": todo_result.scalar() or 0
+        }
 
         project_data = {
             "id": project.id,
@@ -81,12 +100,7 @@ async def get_user_projects(
             "created_at": project.created_at,
             "updated_at": project.updated_at,
             "members": [{"user_id": m.user_id, "role": m.role} for m in project.members] if project.members else [],
-            "stats": {
-                "tasks_count": stats.total_tasks or 0,
-                "tasks_done": stats.done_tasks or 0,
-                "tasks_in_progress": stats.in_progress_tasks or 0,
-                "tasks_todo": stats.todo_tasks or 0
-            }
+            "stats": stats
         }
         projects_with_stats.append({
             "project": project_data,

@@ -10,35 +10,49 @@ class APIClient:
         url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": full_name, "username": username or ""}
         logger.info(f"Creating user with data: {token_data}")
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=token_data) as response:
                     if response.status == 200:
                         response_data = await response.json()
-                        logger.info(f"User created successfully: {response_data}")
+                        logger.info(f"User created/token received successfully: {response_data}")
                         return response_data
                     else:
-                        error_data = await response.json()
-                        logger.error(f"API Error: {response.status}, details: {error_data}")
+                        error_text = await response.text()
+                        logger.error(f"API Error: {response.status}, details: {error_text}")
                         return None
         except Exception as e:
-            logger.error(f"Network error: {e}")
+            logger.error(f"Network error in create_user: {e}")
             return None
 
     async def get_user_projects(self, user_id: str):
-        url = f"{self.base_url}/users/{user_id}/projects"
+        # Сначала получаем токен для пользователя
+        token_url = f"{self.base_url}/auth/token"
+        token_data = {"max_id": user_id, "full_name": "User", "username": ""}
+
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
+                async with session.post(token_url, json=token_data) as response:
                     if response.status == 200:
-                        data = await response.json()
-                        return data.get("projects", [])
-                    else:
-                        logger.error(f"API Error: {response.status} for URL: {url}")
-                        return []
+                        token_response = await response.json()
+                        access_token = token_response.get("access_token")
+
+                        if access_token:
+                            # Теперь делаем запрос с токеном
+                            url = f"{self.base_url}/users/{user_id}/projects"
+                            headers = {"Authorization": f"Bearer {access_token}"}
+
+                            async with session.get(url, headers=headers) as projects_response:
+                                if projects_response.status == 200:
+                                    data = await projects_response.json()
+                                    return data.get("projects", [])
+                                else:
+                                    logger.error(f"API Error: {projects_response.status} for URL: {url}")
+                                    return []
         except Exception as e:
-            logger.error(f"Network error: {e}")
-            return []
+            logger.error(f"Network error in get_user_projects: {e}")
+        return []
 
     async def create_project(self, user_id: str, full_name: str, title: str, description: str = ""):
         url = f"{self.base_url}/auth/token"

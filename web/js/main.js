@@ -150,12 +150,23 @@ async function fetchUserData(userId) {
             log('Access token saved to localStorage');
 
             // Теперь получаем данные пользователя с токеном
-            const response = await apiCall(`/users/${userId}`, 'GET', null, tokenResponse.access_token);
-            log(`User data fetched successfully for user_id: ${userId}`, response);
-            return response;
+            const userResponse = await apiCall(`/users/${userId}`, 'GET', null, tokenResponse.access_token);
+            log(`User data fetched successfully for user_id: ${userId}`, userResponse);
+
+            return {
+                ...userResponse,
+                access_token: tokenResponse.access_token
+            };
         }
     } catch (error) {
         logError(`Error fetching user data for user_id: ${userId}`, error);
+        // Попробуем получить хотя бы базовые данные
+        return {
+            id: userId,
+            max_id: userId,
+            full_name: 'Пользователь',
+            username: ''
+        };
     }
     return null;
 }
