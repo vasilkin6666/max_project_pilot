@@ -9,6 +9,22 @@ from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+@router.get("/{user_id}")
+async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
+    logger.info(f"Fetching user data for user_id: {user_id}")
+    result = await db.execute(select(User).where(User.max_id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        logger.error(f"User not found for user_id: {user_id}")
+        raise HTTPException(status_code=404, detail="User not found")
+    logger.info(f"User data fetched successfully for user_id: {user_id}")
+    return {
+        "id": user.id,
+        "max_id": user.max_id,
+        "full_name": user.full_name,
+        "username": user.username
+    }
+
 @router.get("/me")
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user

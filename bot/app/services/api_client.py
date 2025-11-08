@@ -6,16 +6,20 @@ class APIClient:
     def __init__(self):
         self.base_url = settings.BACKEND_API_URL
 
-    async def create_user(self, user_id: str, full_name: str, username: str = None):
+    async def create_user(self, user_id: str, full_name: str, username: str = ""):
         url = f"{self.base_url}/auth/token"
-        token_data = {"max_id": user_id, "full_name": full_name, "username": username}
+        token_data = {"max_id": user_id, "full_name": full_name, "username": username or ""}
+        logger.info(f"Creating user with data: {token_data}")
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=token_data) as response:
                     if response.status == 200:
-                        return await response.json()
+                        response_data = await response.json()
+                        logger.info(f"User created successfully: {response_data}")
+                        return response_data
                     else:
-                        logger.error(f"API Error: {response.status} for URL: {url}")
+                        error_data = await response.json()
+                        logger.error(f"API Error: {response.status}, details: {error_data}")
                         return None
         except Exception as e:
             logger.error(f"Network error: {e}")

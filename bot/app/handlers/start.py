@@ -8,13 +8,13 @@ api_client = APIClient()
 async def cmd_start(event: MessageCreated):
     user_id = str(event.from_user.user_id)
     full_name = event.from_user.full_name or "Аноним"
-    username = event.from_user.username or None
+    username = event.from_user.username or ""  # Изменено на пустую строку вместо None
 
     # Создаем пользователя в базе данных
     await api_client.create_user(user_id, full_name, username)
 
     builder = InlineKeyboardBuilder()
-    web_app_url = f"{settings.SITE_URL}/?user_id={user_id}&user_name={full_name}"
+    web_app_url = f"{settings.SITE_URL}/?user_id={user_id}"
     builder.row(CallbackButton(text="🌐 Открыть веб-приложение", payload=f"open_webapp:{web_app_url}"))
     builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))
     builder.row(CallbackButton(text="🔔 Уведомления", payload="notifications"))

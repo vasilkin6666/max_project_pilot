@@ -20,12 +20,7 @@ app = FastAPI(title="MAX Project Pilot API", version="1.0.0")
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://vasilkin6666.github.io",  # GitHub Pages
-        "https://powerfully-exotic-chamois.cloudpub.ru",  # Ваш бэкенд
-        "http://localhost:3000",  # для локальной разработки
-        "http://localhost:8000",  # для локальной разработки
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
