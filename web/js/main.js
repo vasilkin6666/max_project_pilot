@@ -113,13 +113,25 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 async function fetchUserData(userId) {
     log(`Fetching user data for user_id: ${userId}`);
     try {
-        const response = await apiCall(`/users/${userId}`);
-        log(`User data fetched successfully for user_id: ${userId}`, response);
-        return response;
+        // Сначала получаем токен
+        const tokenResponse = await apiCall('/auth/token', 'POST', {
+            max_id: userId,
+            full_name: 'User', // Можно получить из URL или запросить
+            username: ''
+        });
+
+        if (tokenResponse && tokenResponse.access_token) {
+            localStorage.setItem('access_token', tokenResponse.access_token);
+
+            // Теперь получаем данные пользователя с токеном
+            const response = await apiCall(`/users/${userId}`, 'GET', null, tokenResponse.access_token);
+            log(`User data fetched successfully for user_id: ${userId}`, response);
+            return response;
+        }
     } catch (error) {
         logError(`Error fetching user data for user_id: ${userId}`, error);
-        return null;
     }
+    return null;
 }
 
 // --- Авторизация ---
