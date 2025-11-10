@@ -24,6 +24,49 @@ class TokenResponse(BaseModel):
     token_type: str
     user: dict
 
+# Перенесем функцию get_current_user сюда, чтобы избежать циклического импорта
+async def get_current_user_for_auth(
+    authorization: str = None,
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """Получить текущего аутентифицированного пользователя для auth модуля"""
+    from app.core.security import verify_token
+
+    if not authorization or not authorization.startswith("Bearer "):
+        logger.warning("Missing or invalid authorization header")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = authorization.replace("Bearer ", "")
+    user_max_id = verify_token(token)
+
+    if not user_max_id:
+        logger.warning("Invalid token provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    logger.info(f"Looking for user with max_id: {user_max_id}")
+
+    result = await db.execute(select(User).where(User.max_id == user_max_id))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        logger.error(f"User not found for max_id: {user_max_id}")
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.is_active:
+        logger.warning(f"Inactive user attempted access: {user_max_id}")
+        raise HTTPException(status_code=403, detail="User account is disabled")
+
+    logger.info(f"Authenticated user: {user.max_id} (ID: {user.id})")
+    return user
+
 @router.post("/token", response_model=TokenResponse)
 async def login_or_create_user(
     request: TokenRequest,
@@ -86,39 +129,4 @@ async def login_or_create_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authentication failed"
-        )
-
-@router.post("/refresh")
-async def refresh_token(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Обновление токена"""
-    try:
-        logger.info(f"Refreshing token for user: {current_user.max_id}")
-
-        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": current_user.max_id},
-            expires_delta=access_token_expires
-        )
-
-        logger.info(f"Token refreshed for user_id: {current_user.max_id}")
-
-        return TokenResponse(
-            access_token=access_token,
-            token_type="bearer",
-            user={
-                "id": current_user.id,
-                "max_id": current_user.max_id,
-                "full_name": current_user.full_name,
-                "username": current_user.username
-            }
-        )
-
-    except Exception as e:
-        logger.error(f"Error refreshing token for {current_user.max_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Token refresh failed"
         )

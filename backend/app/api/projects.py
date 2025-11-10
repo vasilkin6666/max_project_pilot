@@ -7,30 +7,35 @@ from app.database import get_db
 from app.models import User, Project, ProjectMember, JoinRequest, Task
 from app.api.deps import get_current_user
 from app.models.enums import ProjectRole
+from pydantic import BaseModel
 import secrets
 import string
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+# Добавьте Pydantic модель для создания проекта
+class ProjectCreate(BaseModel):
+    title: str
+    description: str = ""
+    is_private: bool = True
+    requires_approval: bool = False
 
 def generate_invite_hash():
     return ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(12))
 
 @router.post("/")
 async def create_project(
-    title: str = Query(..., description="Название проекта"),
-    description: str = Query("", description="Описание проекта"),
-    is_private: bool = Query(True, description="Приватный проект"),
-    requires_approval: bool = Query(False, description="Требуется одобрение для вступления"),
+    project_data: ProjectCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     invite_hash = generate_invite_hash()
     project = Project(
-        title=title,
-        description=description,
+        title=project_data.title,
+        description=project_data.description,
         hash=invite_hash,
-        is_private=is_private,
-        requires_approval=requires_approval,
+        is_private=project_data.is_private,
+        requires_approval=project_data.requires_approval,
         created_by=current_user.id
     )
     db.add(project)

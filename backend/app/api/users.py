@@ -16,7 +16,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/me")
 async def read_users_me(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
 ):
     """Получить данные текущего аутентифицированного пользователя"""
     logger.info(f"Fetching current user data for: {current_user.max_id}")
@@ -28,7 +27,7 @@ async def read_users_me(
             "full_name": current_user.full_name,
             "username": current_user.username,
             "is_active": current_user.is_active,
-            "created_at": current_user.created_at
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None
         }
     except Exception as e:
         logger.error(f"Error fetching current user data: {str(e)}")
@@ -75,7 +74,7 @@ async def get_user(
             "full_name": user.full_name,
             "username": user.username,
             "is_active": user.is_active,
-            "created_at": user.created_at
+            "created_at": user.created_at.isoformat() if user.created_at else None
         }
 
     except HTTPException:
@@ -234,7 +233,7 @@ async def update_current_user(
             "full_name": current_user.full_name,
             "username": current_user.username,
             "is_active": current_user.is_active,
-            "created_at": current_user.created_at
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None
         }
 
     except HTTPException:

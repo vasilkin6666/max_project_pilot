@@ -10,11 +10,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def get_current_user(
-    authorization: str = Header(..., description="Bearer token"),
+    authorization: str = Header(None, description="Bearer token"),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """Получить текущего аутентифицированного пользователя"""
-    if not authorization.startswith("Bearer "):
+    if not authorization or not authorization.startswith("Bearer "):
+        logger.warning("Missing or invalid authorization header")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authorization header",
@@ -22,32 +23,34 @@ async def get_current_user(
         )
 
     token = authorization.replace("Bearer ", "")
-    user_id = verify_token(token)
+    user_max_id = verify_token(token)
 
-    if not user_id:
-        logger.warning(f"Invalid token provided")
+    if not user_max_id:
+        logger.warning("Invalid token provided")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    result = await db.execute(select(User).where(User.max_id == user_id))
+    logger.info(f"Looking for user with max_id: {user_max_id}")
+
+    result = await db.execute(select(User).where(User.max_id == user_max_id))
     user = result.scalar_one_or_none()
 
     if user is None:
-        logger.error(f"User not found for max_id: {user_id}")
+        logger.error(f"User not found for max_id: {user_max_id}")
         raise HTTPException(status_code=404, detail="User not found")
 
     if not user.is_active:
-        logger.warning(f"Inactive user attempted access: {user_id}")
+        logger.warning(f"Inactive user attempted access: {user_max_id}")
         raise HTTPException(status_code=403, detail="User account is disabled")
 
     logger.info(f"Authenticated user: {user.max_id} (ID: {user.id})")
     return user
 
 async def get_current_user_data(
-    authorization: str = Header(..., description="Bearer token"),
+    authorization: str = Header(None, description="Bearer token"),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Получить сериализуемые данные текущего пользователя"""
@@ -64,7 +67,7 @@ async def get_current_user_data(
     }
 
 async def get_current_user_id(
-    authorization: str = Header(..., description="Bearer token"),
+    authorization: str = Header(None, description="Bearer token"),
     db: AsyncSession = Depends(get_db)
 ) -> int:
     """Получить только ID текущего пользователя (для оптимизации)"""
