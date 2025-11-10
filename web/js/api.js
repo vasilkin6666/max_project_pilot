@@ -154,8 +154,6 @@ class ApiService {
         return await this.apiCall(`/projects/${projectHash}`, 'DELETE');
     }
 
-    // ✅ Задачи
-    // ИСПРАВЛЕНО: Правильные endpoints для задач
     static async apiGetAllTasks(status = null, projectHash = null) {
         const params = {};
         if (status) params.status = status;

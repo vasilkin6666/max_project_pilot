@@ -44,6 +44,48 @@ async def check_project_manage_access(project_id: int, user_id: int, db: AsyncSe
     member = membership.scalar_one_or_none()
     return member is not None and member.role in [ProjectRole.OWNER, ProjectRole.ADMIN]
 
+@router.get("/")
+async def get_user_tasks(
+    status: TaskStatus = Query(None, description="Фильтр по статусу"),
+    project_hash: str = Query(None, description="Фильтр по проекту"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получить задачи пользователя"""
+    try:
+        logger.info(f"Fetching tasks for user: {current_user.max_id}")
+
+        # Базовый запрос для задач, где пользователь является участником проекта
+        query = (
+            select(Task)
+            .join(Project, Task.project_id == Project.id)
+            .join(ProjectMember, Project.id == ProjectMember.project_id)
+            .where(ProjectMember.user_id == current_user.id)
+        )
+
+        # Применяем фильтры
+        if status:
+            query = query.where(Task.status == status)
+
+        if project_hash:
+            query = query.where(Project.hash == project_hash)
+
+        # Сортируем по дате создания
+        query = query.order_by(Task.created_at.desc())
+
+        result = await db.execute(query)
+        tasks = result.scalars().all()
+
+        logger.info(f"Successfully fetched {len(tasks)} tasks for user: {current_user.max_id}")
+        return {"tasks": tasks}
+
+    except Exception as e:
+        logger.error(f"Error fetching tasks for user {current_user.max_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
 @router.post("/")
 async def create_task(
     task_data: TaskCreate,

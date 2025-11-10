@@ -90,15 +90,31 @@ async def get_user_projects(
 ):
     """Получить проекты пользователя"""
     try:
-        if current_user.max_id != user_id:
-            logger.warning(f"User {current_user.max_id} attempted to access projects of {user_id}")
-            raise HTTPException(status_code=403, detail="Not authorized to view this user's projects")
+        # ИСПРАВЛЕНИЕ: Обработка случая "me"
+        if user_id == "me":
+            # Разрешить доступ к собственным проектам
+            target_user_id = current_user.max_id
+        else:
+            # Проверка доступа к чужим проектам
+            if current_user.max_id != user_id:
+                logger.warning(f"User {current_user.max_id} attempted to access projects of {user_id}")
+                raise HTTPException(status_code=403, detail="Not authorized to view this user's projects")
+            target_user_id = user_id
 
-        logger.info(f"Fetching projects for user: {user_id}")
+        logger.info(f"Fetching projects for user: {target_user_id}")
+
+        # Получаем пользователя по max_id
+        result = await db.execute(
+            select(User).where(User.max_id == target_user_id)
+        )
+        target_user = result.scalar_one_or_none()
+
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
 
         result = await db.execute(
             select(ProjectMember)
-            .where(ProjectMember.user_id == current_user.id)
+            .where(ProjectMember.user_id == target_user.id)
             .options(selectinload(ProjectMember.member_project))
         )
         memberships = result.scalars().all()
@@ -173,7 +189,7 @@ async def get_user_projects(
                 "role": member.role
             })
 
-        logger.info(f"Successfully fetched {len(projects_with_stats)} projects for user: {user_id}")
+        logger.info(f"Successfully fetched {len(projects_with_stats)} projects for user: {target_user_id}")
         return {"projects": projects_with_stats}
 
     except HTTPException:
