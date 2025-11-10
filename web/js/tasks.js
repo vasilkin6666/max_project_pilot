@@ -168,7 +168,9 @@ class TasksManager {
         }
 
         try {
-            const task = await ApiService.apiGetTaskById(taskId);
+            const response = await ApiService.apiGetTaskById(taskId);
+            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
+            const task = response.task || response;
             if (task) {
                 this.showTaskModal(task);
             }
@@ -405,8 +407,11 @@ class TasksManager {
         }
 
         try {
-            const dependencies = await ApiService.apiGetTaskDependencies(taskId);
-            this.showDependenciesModal(dependencies, taskId);
+            const response = await ApiService.apiGetTaskDependencies(taskId);
+            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
+            const dependencies = response.dependencies || [];
+            const dependents = response.dependents || [];
+            this.showDependenciesModal({ dependencies, dependents }, taskId);
         } catch (error) {
             Utils.logError('Error loading task dependencies', error);
             ToastManager.showToast('Ошибка загрузки зависимостей', 'error');
@@ -509,7 +514,9 @@ class TasksManager {
         }
 
         try {
-            const comments = await ApiService.apiGetTaskComments(taskId);
+            const response = await ApiService.apiGetTaskComments(taskId);
+            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
+            const comments = response.comments || [];
             this.showCommentsModal(comments, taskId);
         } catch (error) {
             Utils.logError('Error loading task comments', error);
@@ -518,6 +525,9 @@ class TasksManager {
     }
 
     static showCommentsModal(comments, taskId) {
+        // ИСПРАВЛЕНО: Проверка что comments - массив
+        const commentsArray = Array.isArray(comments) ? comments : [];
+
         const modalHTML = `
             <div class="modal fade" id="commentsModal" tabindex="-1">
                 <div class="modal-dialog modal-lg">
@@ -528,12 +538,12 @@ class TasksManager {
                         </div>
                         <div class="modal-body">
                             <div class="mb-4" style="max-height: 400px; overflow-y: auto;">
-                                ${comments.length === 0 ? `
+                                ${commentsArray.length === 0 ? `
                                     <div class="text-center text-muted">
                                         <i class="fas fa-comments fa-3x mb-3"></i>
                                         <p>Комментариев пока нет</p>
                                     </div>
-                                ` : comments.map(comment => `
+                                ` : commentsArray.map(comment => `
                                     <div class="max-card mb-3">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <div>
