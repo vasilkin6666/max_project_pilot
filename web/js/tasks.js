@@ -9,6 +9,14 @@ class TasksManager {
             const data = await ApiService.apiGetAllTasks(status);
             // ИСПРАВЛЕНО: Правильная обработка структуры ответа
             this.allTasks = data.tasks || [];
+
+            // Отладочное логирование
+            console.log('Tasks loaded:', this.allTasks);
+            if (this.allTasks.length > 0) {
+                console.log('First task structure:', this.allTasks[0]);
+                console.log('Task ID:', this.allTasks[0].id, 'Type:', typeof this.allTasks[0].id);
+            }
+
             this.renderTasks(this.allTasks);
             Utils.log('Tasks loaded successfully', { count: this.allTasks.length });
         } catch (error) {
@@ -19,6 +27,8 @@ class TasksManager {
     }
 
     static renderTasks(tasks) {
+        console.log('Rendering tasks:', tasks); // Отладочное логирование
+
         const container = document.getElementById('tasks-list');
 
         if (tasks.length === 0) {
@@ -26,15 +36,23 @@ class TasksManager {
             return;
         }
 
-        container.innerHTML = tasks.map(task => this.renderTaskCard(task)).join('');
+        // Проверить структуру первой задачи
+        if (tasks[0]) {
+            console.log('First task structure:', tasks[0]);
+            console.log('Task ID:', tasks[0].id, 'Type:', typeof tasks[0].id);
+        }
+
+        container.innerHTML = tasks.map((task, index) => this.renderTaskCard(task, index)).join('');
     }
 
-    static renderTaskCard(task) {
+    static renderTaskCard(task, index) {
+        // ИСПРАВЛЕНО: Используем task.id или временный идентификатор
+        const taskIdentifier = task.id || `temp_${index}`;
         const statusColor = Utils.getStatusColor(task.status);
         const statusText = Utils.getStatusText(task.status);
 
         return `
-            <div class="task-item task-${task.status} max-card mb-3" onclick="TasksManager.openTaskDetail(${task.id})">
+            <div class="task-item task-${task.status} max-card mb-3" onclick="TasksManager.openTaskDetail('${taskIdentifier}')">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
                         <h6 class="mb-1">${Utils.escapeHTML(task.title)}</h6>
@@ -51,11 +69,11 @@ class TasksManager {
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus(${task.id}, 'todo')">К выполнению</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus(${task.id}, 'in_progress')">В работу</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus(${task.id}, 'done')">Завершить</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus('${taskIdentifier}', 'todo')">К выполнению</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus('${taskIdentifier}', 'in_progress')">В работу</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus('${taskIdentifier}', 'done')">Завершить</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="TasksManager.deleteTask(${task.id})">Удалить</a></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="TasksManager.deleteTask('${taskIdentifier}')">Удалить</a></li>
                         </ul>
                     </div>
                 </div>
@@ -92,6 +110,13 @@ class TasksManager {
     }
 
     static async updateTaskStatus(taskId, status) {
+        // ИСПРАВЛЕНО: Валидация ID
+        if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
+            Utils.logError('Invalid task ID', taskId);
+            ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
+            return;
+        }
+
         try {
             await ApiService.apiUpdateTaskStatus(taskId, status);
             ToastManager.showToast(`Статус задачи обновлен на: ${Utils.getStatusText(status)}`, 'success');
@@ -108,6 +133,13 @@ class TasksManager {
     }
 
     static async deleteTask(taskId) {
+        // ИСПРАВЛЕНО: Валидация ID
+        if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
+            Utils.logError('Invalid task ID for deletion', taskId);
+            ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
+            return;
+        }
+
         if (!confirm('Вы уверены, что хотите удалить эту задачу?')) {
             return;
         }
@@ -128,6 +160,13 @@ class TasksManager {
     }
 
     static async openTaskDetail(taskId) {
+        // ИСПРАВЛЕНО: Валидация ID
+        if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
+            Utils.logError('Invalid task ID for detail', taskId);
+            ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
+            return;
+        }
+
         try {
             const task = await ApiService.apiGetTaskById(taskId);
             if (task) {
@@ -140,49 +179,53 @@ class TasksManager {
     }
 
     static showTaskModal(task) {
+        // ИСПРАВЛЕНО: Используем task.task если структура вложенная
+        const taskData = task.task || task;
+        const taskId = taskData.id;
+
         const modalHTML = `
             <div class="modal fade" id="taskModal" tabindex="-1">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">${Utils.escapeHTML(task.title)}</h5>
+                            <h5 class="modal-title">${Utils.escapeHTML(taskData.title)}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                             <div class="mb-3">
                                 <h6>Описание</h6>
-                                <p class="text-muted">${Utils.escapeHTML(task.description || 'Без описания')}</p>
+                                <p class="text-muted">${Utils.escapeHTML(taskData.description || 'Без описания')}</p>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <strong>Статус:</strong>
-                                    <span class="badge bg-${Utils.getStatusColor(task.status)} ms-2">${Utils.getStatusText(task.status)}</span>
+                                    <span class="badge bg-${Utils.getStatusColor(taskData.status)} ms-2">${Utils.getStatusText(taskData.status)}</span>
                                 </div>
                                 <div class="col-6">
                                     <strong>Приоритет:</strong>
-                                    <span class="badge bg-${Utils.getPriorityColor(task.priority)} ms-2">${task.priority}</span>
+                                    <span class="badge bg-${Utils.getPriorityColor(taskData.priority)} ms-2">${taskData.priority}</span>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <strong>Проект:</strong>
-                                    <span class="ms-2">${Utils.escapeHTML(task.project?.title || 'Неизвестно')}</span>
+                                    <span class="ms-2">${Utils.escapeHTML(taskData.project?.title || 'Неизвестно')}</span>
                                 </div>
                                 <div class="col-6">
                                     <strong>Создана:</strong>
-                                    <span class="ms-2">${Utils.formatDate(task.created_at)}</span>
+                                    <span class="ms-2">${Utils.formatDate(taskData.created_at)}</span>
                                 </div>
                             </div>
 
-                            ${task.due_date ? `
+                            ${taskData.due_date ? `
                             <div class="row mb-3">
                                 <div class="col-12">
                                     <strong>Срок выполнения:</strong>
-                                    <span class="ms-2 ${this.isOverdue(task.due_date) ? 'text-danger' : ''}">
-                                        ${Utils.formatDate(task.due_date)}
-                                        ${this.isOverdue(task.due_date) ? ' (Просрочено)' : ''}
+                                    <span class="ms-2 ${this.isOverdue(taskData.due_date) ? 'text-danger' : ''}">
+                                        ${Utils.formatDate(taskData.due_date)}
+                                        ${this.isOverdue(taskData.due_date) ? ' (Просрочено)' : ''}
                                     </span>
                                 </div>
                             </div>
@@ -190,25 +233,25 @@ class TasksManager {
 
                             <div class="d-grid gap-2 mb-3">
                                 <div class="btn-group">
-                                    <button class="btn btn-outline-warning" onclick="TasksManager.updateTaskStatus(${task.id}, 'todo')">К выполнению</button>
-                                    <button class="btn btn-outline-info" onclick="TasksManager.updateTaskStatus(${task.id}, 'in_progress')">В работу</button>
-                                    <button class="btn btn-outline-success" onclick="TasksManager.updateTaskStatus(${task.id}, 'done')">Завершить</button>
+                                    <button class="btn btn-outline-warning" onclick="TasksManager.updateTaskStatus('${taskId}', 'todo')">К выполнению</button>
+                                    <button class="btn btn-outline-info" onclick="TasksManager.updateTaskStatus('${taskId}', 'in_progress')">В работу</button>
+                                    <button class="btn btn-outline-success" onclick="TasksManager.updateTaskStatus('${taskId}', 'done')">Завершить</button>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-4">
-                                    <button class="btn btn-outline-primary w-100" onclick="TasksManager.showTaskDependencies(${task.id})">
+                                    <button class="btn btn-outline-primary w-100" onclick="TasksManager.showTaskDependencies('${taskId}')">
                                         <i class="fas fa-link"></i> Зависимости
                                     </button>
                                 </div>
                                 <div class="col-4">
-                                    <button class="btn btn-outline-info w-100" onclick="TasksManager.showTaskComments(${task.id})">
+                                    <button class="btn btn-outline-info w-100" onclick="TasksManager.showTaskComments('${taskId}')">
                                         <i class="fas fa-comments"></i> Комментарии
                                     </button>
                                 </div>
                                 <div class="col-4">
-                                    <button class="btn btn-outline-danger w-100" onclick="TasksManager.deleteTask(${task.id})">
+                                    <button class="btn btn-outline-danger w-100" onclick="TasksManager.deleteTask('${taskId}')">
                                         <i class="fas fa-trash"></i> Удалить
                                     </button>
                                 </div>
@@ -354,6 +397,13 @@ class TasksManager {
     }
 
     static async showTaskDependencies(taskId) {
+        // ИСПРАВЛЕНО: Валидация ID
+        if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
+            Utils.logError('Invalid task ID for dependencies', taskId);
+            ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
+            return;
+        }
+
         try {
             const dependencies = await ApiService.apiGetTaskDependencies(taskId);
             this.showDependenciesModal(dependencies, taskId);
@@ -404,7 +454,7 @@ class TasksManager {
                                 <h6>Добавить зависимость</h6>
                                 <div class="input-group">
                                     <input type="number" class="form-control" id="dependencyTaskId" placeholder="ID задачи-зависимости">
-                                    <button class="btn max-btn-primary" onclick="TasksManager.addTaskDependency(${taskId})">
+                                    <button class="btn max-btn-primary" onclick="TasksManager.addTaskDependency('${taskId}')">
                                         <i class="fas fa-link"></i> Добавить
                                     </button>
                                 </div>
@@ -423,6 +473,13 @@ class TasksManager {
     }
 
     static async addTaskDependency(taskId) {
+        // ИСПРАВЛЕНО: Валидация ID
+        if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
+            Utils.logError('Invalid task ID for adding dependency', taskId);
+            ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
+            return;
+        }
+
         const dependsOnId = document.getElementById('dependencyTaskId').value;
 
         if (!dependsOnId) {
@@ -444,6 +501,13 @@ class TasksManager {
     }
 
     static async showTaskComments(taskId) {
+        // ИСПРАВЛЕНО: Валидация ID
+        if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
+            Utils.logError('Invalid task ID for comments', taskId);
+            ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
+            return;
+        }
+
         try {
             const comments = await ApiService.apiGetTaskComments(taskId);
             this.showCommentsModal(comments, taskId);
@@ -487,7 +551,7 @@ class TasksManager {
                                 <div class="mb-3">
                                     <textarea class="form-control" id="commentContent" rows="3" placeholder="Введите ваш комментарий..."></textarea>
                                 </div>
-                                <button class="btn max-btn-primary" onclick="TasksManager.addTaskComment(${taskId})">
+                                <button class="btn max-btn-primary" onclick="TasksManager.addTaskComment('${taskId}')">
                                     <i class="fas fa-paper-plane"></i> Отправить
                                 </button>
                             </div>
@@ -505,6 +569,13 @@ class TasksManager {
     }
 
     static async addTaskComment(taskId) {
+        // ИСПРАВЛЕНО: Валидация ID
+        if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
+            Utils.logError('Invalid task ID for adding comment', taskId);
+            ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
+            return;
+        }
+
         const content = document.getElementById('commentContent').value;
 
         if (!content.trim()) {
@@ -574,7 +645,7 @@ class TasksManager {
                     <i class="fas fa-times"></i> Очистить поиск
                 </button>
             </div>
-            ${results.map(task => this.renderTaskCard(task)).join('')}
+            ${results.map((task, index) => this.renderTaskCard(task, index)).join('')}
         `;
     }
 

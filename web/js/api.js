@@ -163,7 +163,11 @@ class ApiService {
     }
 
     static async apiGetTaskById(taskId) {
-        return await this.apiCall(`/tasks/${taskId}`, 'GET');
+        const numericId = parseInt(taskId);
+        if (isNaN(numericId)) {
+            throw new Error(`Invalid task ID: ${taskId}`);
+        }
+        return await this.apiCall(`/tasks/${numericId}`, 'GET');
     }
 
     static async apiGetProjectTasks(projectHash) {
@@ -175,11 +179,20 @@ class ApiService {
     }
 
     static async apiUpdateTaskStatus(taskId, status) {
-        return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', { status });
+        // Преобразовать в число
+        const numericId = parseInt(taskId);
+        if (isNaN(numericId)) {
+            throw new Error(`Invalid task ID: ${taskId}`);
+        }
+        return await this.apiCall(`/tasks/${numericId}/status`, 'PUT', { status });
     }
 
     static async apiGetTaskDependencies(taskId) {
-        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'GET');
+        const numericId = parseInt(taskId);
+        if (isNaN(numericId)) {
+            throw new Error(`Invalid task ID: ${taskId}`);
+        }
+        return await this.apiCall(`/tasks/${numericId}/dependencies`, 'GET');
     }
 
     static async apiAddTaskDependency(taskId, dependsOnId) {
@@ -187,7 +200,11 @@ class ApiService {
     }
 
     static async apiGetTaskComments(taskId) {
-        return await this.apiCall(`/tasks/${taskId}/comments`, 'GET');
+        const numericId = parseInt(taskId);
+        if (isNaN(numericId)) {
+            throw new Error(`Invalid task ID: ${taskId}`);
+        }
+        return await this.apiCall(`/tasks/${numericId}/comments`, 'GET');
     }
 
     static async apiAddTaskComment(taskId, content) {
@@ -195,7 +212,11 @@ class ApiService {
     }
 
     static async apiDeleteTask(taskId) {
-        return await this.apiCall(`/tasks/${taskId}`, 'DELETE');
+        const numericId = parseInt(taskId);
+        if (isNaN(numericId)) {
+            throw new Error(`Invalid task ID: ${taskId}`);
+        }
+        return await this.apiCall(`/tasks/${numericId}`, 'DELETE');
     }
 
     // 🔔 Уведомления
