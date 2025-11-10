@@ -49,7 +49,7 @@ async def cmd_help(event: MessageCreated):
     builder.row(OpenAppButton(
         text="🚀 Открыть Project Pilot",
         web_app=event.bot.me.username,
-        start_param="help"
+        start_param="start"
     ))
 
     builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))

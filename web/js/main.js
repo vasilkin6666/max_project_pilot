@@ -1,9 +1,9 @@
 // web/js/main.js - Только для MAX среды
-// --- Конфигурация ---
 const API_BASE_URL = 'https://powerfully-exotic-chamois.cloudpub.ru/api';
 let currentUserId = null;
 let currentSection = 'dashboard';
 let currentTheme = localStorage.getItem('theme') || 'light';
+let allTasks = [];
 
 // Проверяем, что мы в MAX среде
 if (typeof window.WebApp === 'undefined') {
@@ -28,42 +28,6 @@ function logError(message, error = null) {
     console.error(`[MAX App Error] ${new Date().toISOString()} - ${message}`, error || '');
 }
 
-// --- Утилиты ---
-function escapeHTML(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU');
-}
-
-function getStatusColor(status) {
-    const colors = {'todo': 'warning', 'in_progress': 'info', 'done': 'success'};
-    return colors[status] || 'secondary';
-}
-
-function getStatusText(status) {
-    const texts = {'todo': 'К выполнению', 'in_progress': 'В работе', 'done': 'Завершено'};
-    return texts[status] || status;
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
 // --- Тема ---
 function applyTheme() {
     const body = document.body;
@@ -83,45 +47,6 @@ function toggleTheme() {
     currentTheme = currentTheme === 'light' ? 'dark' : 'light';
     localStorage.setItem('theme', currentTheme);
     applyTheme();
-}
-
-// --- Получение токена (отдельная функция без использования apiCall) ---
-async function getAuthToken(userId, fullName, username = '') {
-    const url = `${API_BASE_URL}/auth/token`;
-    const data = {
-        max_id: userId,
-        full_name: fullName,
-        username: username
-    };
-
-    log(`Getting auth token for user: ${userId}, ${fullName}`);
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        if (result && result.access_token) {
-            localStorage.setItem('access_token', result.access_token);
-            log('Auth token saved to localStorage');
-            return result.access_token;
-        } else {
-            throw new Error('No access token in response');
-        }
-    } catch (error) {
-        logError('Error getting auth token', error);
-        throw error;
-    }
 }
 
 // --- MAX Bridge интеграция ---
@@ -206,11 +131,7 @@ function handleMaxBackButton() {
     }
 
     // Тактильная обратная связь
-    try {
-        window.WebApp.HapticFeedback.impactOccurred('light');
-    } catch (error) {
-        logError('Haptic feedback error', error);
-    }
+    provideHapticFeedback('light');
 }
 
 function shareInMax(text, link) {
@@ -224,70 +145,12 @@ function shareInMax(text, link) {
     }
 }
 
-// --- API ---
-async function apiCall(endpoint, method = 'GET', data = null, token = null) {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-
-    // Используем токен из localStorage если не передан явно
-    const authToken = token || localStorage.getItem('access_token');
-    if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-    } else {
-        throw new Error('No authentication token available');
-    }
-
-    const config = {
-        method,
-        headers,
-    };
-
-    if (data && method !== 'GET') {
-        config.body = JSON.stringify(data);
-    }
-
-    log(`API call: ${method} ${url}`);
-
-    try {
-        const response = await fetch(url, config);
-
-        if (response.status === 401) {
-            localStorage.removeItem('access_token');
-            // Пытаемся получить новый токен
-            const userData = window.WebApp.initDataUnsafe?.user;
-            if (userData) {
-                const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'MAX User';
-                await getAuthToken(currentUserId, fullName, userData.username || '');
-                // Повторяем запрос с новым токеном
-                return apiCall(endpoint, method, data, localStorage.getItem('access_token'));
-            }
-            throw new Error('Authentication required');
-        }
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        logError(`API Error: ${method} ${url}`, error);
-        throw error;
-    }
-}
-
 // --- Секции ---
 async function showSection(sectionName) {
     log(`Showing section: ${sectionName}`);
 
     // Тактильная обратная связь
-    try {
-        window.WebApp.HapticFeedback.impactOccurred('light');
-    } catch (error) {
-        logError('Haptic feedback error', error);
-    }
+    provideHapticFeedback('light');
 
     // Скрыть все секции
     document.querySelectorAll('.section').forEach(section => {
@@ -439,11 +302,7 @@ async function createProject() {
     log('Creating project');
 
     // Тактильная обратная связь
-    try {
-        window.WebApp.HapticFeedback.impactOccurred('medium');
-    } catch (error) {
-        logError('Haptic feedback error', error);
-    }
+    provideHapticFeedback('medium');
 
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -457,20 +316,11 @@ async function createProject() {
 
         const description = prompt('Введите описание проекта (необязательно):') || '';
 
-        const result = await apiCall(
-            `/projects/?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&is_private=true&requires_approval=false`,
-            'POST',
-            null,
-            token
-        );
+        const result = await createProject(title, description, token);
 
         if (result && result.project) {
             // Тактильная обратная связь при успехе
-            try {
-                window.WebApp.HapticFeedback.notificationOccurred('success');
-            } catch (error) {
-                logError('Haptic feedback error', error);
-            }
+            provideHapticFeedback('notification');
 
             showToast(`Проект "${result.project.title}" создан!`, 'success');
 
@@ -482,23 +332,13 @@ async function createProject() {
         logError('Project creation error', error);
 
         // Тактильная обратная связь при ошибке
-        try {
-            window.WebApp.HapticFeedback.notificationOccurred('error');
-        } catch (error) {
-            logError('Haptic feedback error', error);
-        }
+        provideHapticFeedback('notification');
 
         showToast('Ошибка при создании проекта: ' + error.message, 'error');
     }
 }
 
 // --- Задачи ---
-let currentTaskId = null;
-let currentTaskDetails = null;
-let taskSearchFuse = null;
-let currentSearchQuery = '';
-let allTasks = [];
-
 async function loadTasks(status = null) {
     log('Loading tasks');
 
@@ -557,6 +397,59 @@ async function loadTasks(status = null) {
     }
 }
 
+function handleSearchKeyPress(event) {
+    if (event.key === 'Enter') {
+        searchTasks();
+    }
+}
+
+function searchTasks() {
+    const query = document.getElementById('searchTasksInput').value.trim();
+    if (!query) {
+        loadTasks();
+        return;
+    }
+
+    const filteredTasks = allTasks.filter(task =>
+        task.title.toLowerCase().includes(query.toLowerCase()) ||
+        (task.description && task.description.toLowerCase().includes(query.toLowerCase())) ||
+        task.project.title.toLowerCase().includes(query.toLowerCase())
+    );
+
+    const container = document.getElementById('tasks-list');
+    if (filteredTasks.length === 0) {
+        container.innerHTML = '<p class="text-muted">Задачи не найдены.</p>';
+        return;
+    }
+
+    container.innerHTML = filteredTasks.map(task => {
+        const statusColor = getStatusColor(task.status);
+        const statusText = getStatusText(task.status);
+        return `
+            <div class="task-item task-${task.status} max-card" onclick="openTaskModal(${task.id})">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0">${task.title}</h6>
+                        <p class="text-muted small mb-1">${task.description ? task.description.substring(0, 50) + '...' : ''}</p>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-${statusColor} me-2">${statusText}</span>
+                            <span class="text-muted small">${formatDate(task.created_at)}</span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted small">Проект: ${task.project.title}</div>
+                        <div class="text-muted small">Приоритет: ${task.priority}</div>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function clearSearch() {
+    document.getElementById('searchTasksInput').value = '';
+    loadTasks();
+}
+
 // --- Уведомления ---
 async function loadNotifications() {
     log('Loading notifications');
@@ -600,18 +493,9 @@ async function loadNotifications() {
     }
 }
 
-// --- API Functions ---
-async function getProjects(userId, token) {
-    return await apiCall(`/users/${userId}/projects`, 'GET', null, token);
-}
-
-async function getTasks(userId, token, status = null) {
-    const endpoint = status ? `/tasks/?status=${status}` : '/tasks/';
-    return await apiCall(endpoint, 'GET', null, token);
-}
-
-async function getNotifications(userId, token) {
-    return await apiCall('/notifications/', 'GET', null, token);
+function markAllNotificationsRead() {
+    showToast('Все уведомления отмечены как прочитанные', 'success');
+    // Здесь будет вызов API для отметки всех уведомлений как прочитанных
 }
 
 // --- Вспомогательные функции ---
@@ -655,6 +539,23 @@ function shareProject(projectHash) {
 
 function openTaskModal(taskId) {
     showToast('Функция просмотра задачи будет реализована в будущем обновлении', 'info');
+}
+
+function debounceSaveTaskDescription() {
+    // Заглушка для будущей реализации
+    console.log('Saving task description...');
+}
+
+function addSubtask() {
+    showToast('Функция добавления подзадачи будет реализована в будущем обновлении', 'info');
+}
+
+function addComment() {
+    showToast('Функция добавления комментария будет реализована в будущем обновлении', 'info');
+}
+
+function updateTask() {
+    showToast('Функция обновления задачи будет реализована в будущем обновлении', 'info');
 }
 
 // Функция для показа toast-уведомлений
