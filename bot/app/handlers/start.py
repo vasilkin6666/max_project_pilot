@@ -17,10 +17,11 @@ async def cmd_start(event: MessageCreated):
     builder = InlineKeyboardBuilder()
 
     # Кнопка для открытия мини-приложения
+    # Используем имя бота как web_app параметр
     builder.row(OpenAppButton(
         text="🚀 Открыть Project Pilot",
-        web_app=event.bot.me.username,  # Имя бота (web_app)
-        contact_id=event.bot.me.user_id  # ID бота (contact_id)
+        web_app=event.bot.me.username,  # Имя бота (username)
+        start_param="start"  # Стартовый параметр
     ))
 
     builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))
@@ -48,7 +49,7 @@ async def cmd_help(event: MessageCreated):
     builder.row(OpenAppButton(
         text="🚀 Открыть Project Pilot",
         web_app=event.bot.me.username,
-        contact_id=event.bot.me.user_id
+        start_param="help"
     ))
 
     builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))

@@ -85,6 +85,45 @@ function toggleTheme() {
     applyTheme();
 }
 
+// --- Получение токена (отдельная функция без использования apiCall) ---
+async function getAuthToken(userId, fullName, username = '') {
+    const url = `${API_BASE_URL}/auth/token`;
+    const data = {
+        max_id: userId,
+        full_name: fullName,
+        username: username
+    };
+
+    log(`Getting auth token for user: ${userId}, ${fullName}`);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result && result.access_token) {
+            localStorage.setItem('access_token', result.access_token);
+            log('Auth token saved to localStorage');
+            return result.access_token;
+        } else {
+            throw new Error('No access token in response');
+        }
+    } catch (error) {
+        logError('Error getting auth token', error);
+        throw error;
+    }
+}
+
 // --- MAX Bridge интеграция ---
 async function initMaxBridge() {
     log('Initializing MAX Bridge');
@@ -96,8 +135,14 @@ async function initMaxBridge() {
             currentUserId = userData.id.toString();
             log(`MAX user ID detected: ${currentUserId}`);
 
+            const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'MAX User';
+            const username = userData.username || '';
+
             // Получаем токен для этого пользователя
-            await getMaxUserToken();
+            await getAuthToken(currentUserId, fullName, username);
+
+            // Обновляем интерфейс пользователя
+            updateUserInterface(userData);
         } else {
             throw new Error('User data not found in MAX Bridge');
         }
@@ -119,9 +164,6 @@ async function initMaxBridge() {
         // Включаем подтверждение закрытия
         window.WebApp.enableClosingConfirmation();
 
-        // Обновляем интерфейс пользователя
-        updateUserInterface(userData);
-
         // Сообщаем MAX, что приложение готово
         window.WebApp.ready();
 
@@ -132,37 +174,8 @@ async function initMaxBridge() {
 
     } catch (error) {
         logError('MAX Bridge initialization error', error);
-        showError('Ошибка инициализации MAX Bridge');
+        showError('Ошибка инициализации MAX Bridge: ' + error.message);
     }
-}
-
-// Получение токена для пользователя MAX
-async function getMaxUserToken() {
-    if (!currentUserId) return null;
-
-    try {
-        const userData = window.WebApp.initDataUnsafe?.user;
-        const fullName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() : 'MAX User';
-        const username = userData?.username || '';
-
-        log(`Getting token for MAX user: ${currentUserId}, ${fullName}`);
-
-        const tokenResponse = await apiCall('/auth/token', 'POST', {
-            max_id: currentUserId,
-            full_name: fullName,
-            username: username
-        });
-
-        if (tokenResponse && tokenResponse.access_token) {
-            localStorage.setItem('access_token', tokenResponse.access_token);
-            log('MAX user token saved to localStorage');
-            return tokenResponse.access_token;
-        }
-    } catch (error) {
-        logError('Error getting MAX user token', error);
-        throw error;
-    }
-    return null;
 }
 
 // Обновление интерфейса пользователя
@@ -243,8 +256,14 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         if (response.status === 401) {
             localStorage.removeItem('access_token');
             // Пытаемся получить новый токен
-            await getMaxUserToken();
-            throw new Error('Authentication required - token refreshed');
+            const userData = window.WebApp.initDataUnsafe?.user;
+            if (userData) {
+                const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'MAX User';
+                await getAuthToken(currentUserId, fullName, userData.username || '');
+                // Повторяем запрос с новым токеном
+                return apiCall(endpoint, method, data, localStorage.getItem('access_token'));
+            }
+            throw new Error('Authentication required');
         }
 
         if (!response.ok) {
@@ -357,7 +376,7 @@ async function loadDashboardData() {
         }
     } catch (error) {
         logError('Dashboard load error', error);
-        showError('Ошибка загрузки дашборда');
+        showError('Ошибка загрузки дашборда: ' + error.message);
     }
 }
 
@@ -412,7 +431,7 @@ async function loadProjects() {
 
     } catch (error) {
         logError('Projects load error', error);
-        showError('Ошибка загрузки проектов');
+        showError('Ошибка загрузки проектов: ' + error.message);
     }
 }
 
@@ -534,7 +553,7 @@ async function loadTasks(status = null) {
 
     } catch (error) {
         logError('Tasks load error', error);
-        showError('Ошибка загрузки задач');
+        showError('Ошибка загрузки задач: ' + error.message);
     }
 }
 
@@ -577,7 +596,7 @@ async function loadNotifications() {
 
     } catch (error) {
         logError('Notifications load error', error);
-        showError('Ошибка загрузки уведомлений');
+        showError('Ошибка загрузки уведомлений: ' + error.message);
     }
 }
 

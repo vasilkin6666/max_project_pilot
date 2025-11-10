@@ -1,7 +1,7 @@
 # bot/app/bot.py
 import asyncio
 import logging
-from maxapi import Bot, Dispatcher
+from maxapi import Bot, Dispatcher, F
 from maxapi.types import MessageCreated, MessageCallback, CallbackButton
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from maxapi.filters.command import Command
