@@ -167,7 +167,7 @@ class ApiService {
     }
 
     static async apiGetProjectTasks(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}/tasks`, 'GET');
+        return await this.apiCall('/tasks/', 'GET', null, { project_hash: projectHash });
     }
 
     static async apiCreateTask(taskData) {
