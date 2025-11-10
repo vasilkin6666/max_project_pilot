@@ -1,5 +1,4 @@
 // web/js/main.js - Только для MAX среды
-const API_BASE_URL = 'https://powerfully-exotic-chamois.cloudpub.ru/api';
 let currentUserId = null;
 let currentSection = 'dashboard';
 let currentTheme = localStorage.getItem('theme') || 'light';
