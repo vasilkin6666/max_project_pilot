@@ -1,24 +1,24 @@
-# **MAX Project Pilot API**
-## **Полная инструкция для фронтенд-разработчика**
+ MAX Project Pilot API
+Полная инструкция для фронтенд-разработчика
 ---
 
-## **БАЗОВЫЕ ПАРАМЕТРЫ**
+БАЗОВЫЕ ПАРАМЕТРЫ
 
 | Параметр | Значение |
 |--------|--------|
-| **Базовый URL** | `https://powerfully-exotic-chamois.cloudpub.ru` |
-| **API префикс** | `/api` |
-| **Аутентификация** | Bearer Token в заголовке `Authorization` |
-| **Формат данных** | `application/json` |
-| **Язык ответов** | JSON |
+| Базовый URL | `https://powerfully-exotic-chamois.cloudpub.ru` |
+| API префикс | `/api` |
+| Аутентификация | Bearer Token в заголовке `Authorization` |
+| Формат данных | `application/json` |
+| Язык ответов | JSON |
 
 ---
 
-## **1. Аутентификация (Auth)**
+1. Аутентификация (Auth)
 
-### `POST /api/auth/token`
+`POST /api/auth/token`
 
-**Описание:** Создание пользователя и вход в систему (если пользователь существует — возвращается токен).
+Описание: Создание пользователя и вход в систему (если пользователь существует — возвращается токен).
 
 ```http
 POST /api/auth/token
@@ -31,7 +31,7 @@ Content-Type: application/json
 }
 ```
 
-#### **Ответ (200 OK)**
+Ответ (200 OK)
 
 ```json
 {
@@ -48,25 +48,25 @@ Content-Type: application/json
 }
 ```
 
-> **Сохрани `access_token` в localStorage / Vuex / Redux**
-> **Добавляй в каждый запрос:**
+> Сохрани `access_token` в localStorage / Vuex / Redux
+> Добавляй в каждый запрос:
 > ```js
 > headers: { Authorization: `Bearer ${token}` }
 > ```
 
 ---
 
-## **2. Пользователь (Users)**
+2. Пользователь (Users)
 
-### `GET /api/users/me`
+`GET /api/users/me`
 
-**Получить данные текущего пользователя**
+Получить данные текущего пользователя
 
 ```js
 fetch('/api/users/me', { headers: authHeader() })
 ```
 
-#### Ответ:
+Ответ:
 ```json
 {
   "id": 1,
@@ -80,9 +80,9 @@ fetch('/api/users/me', { headers: authHeader() })
 
 ---
 
-### `PUT /api/users/me`
+`PUT /api/users/me`
 
-**Обновить профиль**
+Обновить профиль
 
 ```http
 PUT /api/users/me?full_name=Иван%20Петров&username=petrov
@@ -100,11 +100,11 @@ fetch('/api/users/me', {
 
 ---
 
-### `GET /api/users/{max_id}`
+`GET /api/users/{max_id}`
 
-**Получить данные другого пользователя (только своего!)**
+Получить данные другого пользователя (только своего!)
 
-> **Доступ к чужому профилю → 403 Forbidden**
+> Доступ к чужому профилю → 403 Forbidden
 
 ```js
 GET /api/users/user_123
@@ -112,9 +112,9 @@ GET /api/users/user_123
 
 ---
 
-### `GET /api/users/{max_id}/projects`
+`GET /api/users/{max_id}/projects`
 
-**Получить все проекты пользователя**
+Получить все проекты пользователя
 
 ```json
 {
@@ -129,11 +129,11 @@ GET /api/users/user_123
 
 ---
 
-## **3. Проекты (Projects)**
+3. Проекты (Projects)
 
-### `POST /api/projects/`
+`POST /api/projects/`
 
-**Создать проект**
+Создать проект
 
 ```json
 {
@@ -144,7 +144,7 @@ GET /api/users/user_123
 }
 ```
 
-#### Ответ:
+Ответ:
 ```json
 {
   "project": {
@@ -160,9 +160,9 @@ GET /api/users/user_123
 
 ---
 
-### `GET /api/projects/{hash}`
+`GET /api/projects/{hash}`
 
-**Получить проект по хешу**
+Получить проект по хешу
 
 ```js
 GET /api/projects/abc123xyz
@@ -170,9 +170,9 @@ GET /api/projects/abc123xyz
 
 ---
 
-### `GET /api/projects/{hash}/summary`
+`GET /api/projects/{hash}/summary`
 
-**Сводка по проекту (статистика задач)**
+Сводка по проекту (статистика задач)
 
 ```json
 {
@@ -185,9 +185,9 @@ GET /api/projects/abc123xyz
 
 ---
 
-### `POST /api/projects/{hash}/join`
+`POST /api/projects/{hash}/join`
 
-**Запрос на вступление в приватный проект**
+Запрос на вступление в приватный проект
 
 ```http
 POST /api/projects/abc123xyz/join
@@ -195,9 +195,9 @@ POST /api/projects/abc123xyz/join
 
 ---
 
-### `GET /api/projects/{hash}/join-requests` *(владелец)*
+`GET /api/projects/{hash}/join-requests` *(владелец)*
 
-**Получить заявки на вступление**
+Получить заявки на вступление
 
 ```json
 {
@@ -209,9 +209,9 @@ POST /api/projects/abc123xyz/join
 
 ---
 
-### `POST /api/projects/{hash}/join-requests/{id}/approve`
+`POST /api/projects/{hash}/join-requests/{id}/approve`
 
-**Одобрить заявку**
+Одобрить заявку
 
 ```http
 POST /api/projects/abc123xyz/join-requests/5/approve
@@ -219,9 +219,9 @@ POST /api/projects/abc123xyz/join-requests/5/approve
 
 ---
 
-### `POST /api/projects/{hash}/join-requests/{id}/reject`
+`POST /api/projects/{hash}/join-requests/{id}/reject`
 
-**Отклонить заявку**
+Отклонить заявку
 
 ```http
 POST /api/projects/abc123xyz/join-requests/5/reject
@@ -229,24 +229,24 @@ POST /api/projects/abc123xyz/join-requests/5/reject
 
 ---
 
-### `POST /api/projects/{hash}/regenerate-invite`
+`POST /api/projects/{hash}/regenerate-invite`
 
-**Регенерировать инвайт-ссылку**
+Регенерировать инвайт-ссылку
 
-#### Ответ:
+Ответ:
 ```json
 {
   "new_invite_hash": "newhash789"
 }
 ```
 
-> **Обнови ссылку в UI!**
+> Обнови ссылку в UI!
 
 ---
 
-### `PUT /api/projects/{hash}` *(владелец)*
+`PUT /api/projects/{hash}` *(владелец)*
 
-**Обновить проект**
+Обновить проект
 
 ```json
 {
@@ -257,9 +257,9 @@ POST /api/projects/abc123xyz/join-requests/5/reject
 
 ---
 
-### `DELETE /api/projects/{hash}` *(владелец)*
+`DELETE /api/projects/{hash}` *(владелец)*
 
-**Удалить проект**
+Удалить проект
 
 ```http
 DELETE /api/projects/abc123xyz
@@ -267,11 +267,11 @@ DELETE /api/projects/abc123xyz
 
 ---
 
-## **4. Задачи (Tasks)**
+4. Задачи (Tasks)
 
-### `POST /api/tasks/`
+`POST /api/tasks/`
 
-**Создать задачу**
+Создать задачу
 
 ```json
 {
@@ -283,7 +283,7 @@ DELETE /api/projects/abc123xyz
 }
 ```
 
-#### Ответ:
+Ответ:
 ```json
 {
   "task": {
@@ -298,9 +298,9 @@ DELETE /api/projects/abc123xyz
 
 ---
 
-### `GET /api/tasks/{id}`
+`GET /api/tasks/{id}`
 
-**Получить задачу**
+Получить задачу
 
 ```json
 {
@@ -314,9 +314,9 @@ DELETE /api/projects/abc123xyz
 
 ---
 
-### `PUT /api/tasks/{id}/status`
+`PUT /api/tasks/{id}/status`
 
-**Изменить статус**
+Изменить статус
 
 ```http
 PUT /api/tasks/101/status?status=done
@@ -329,9 +329,9 @@ PUT /api/tasks/101/status?status=done
 
 ---
 
-### `POST /api/tasks/{id}/comments`
+`POST /api/tasks/{id}/comments`
 
-**Добавить комментарий**
+Добавить комментарий
 
 ```http
 POST /api/tasks/101/comments?content=Отлично!
@@ -339,9 +339,9 @@ POST /api/tasks/101/comments?content=Отлично!
 
 ---
 
-### `GET /api/tasks/{id}/comments`
+`GET /api/tasks/{id}/comments`
 
-**Получить комментарии**
+Получить комментарии
 
 ```json
 [
@@ -351,9 +351,9 @@ POST /api/tasks/101/comments?content=Отлично!
 
 ---
 
-### `POST /api/tasks/{task_id}/dependencies`
+`POST /api/tasks/{task_id}/dependencies`
 
-**Добавить зависимость**
+Добавить зависимость
 
 ```http
 POST /api/tasks/102/dependencies?depends_on_id=101
@@ -361,9 +361,9 @@ POST /api/tasks/102/dependencies?depends_on_id=101
 
 ---
 
-### `GET /api/tasks/{id}/dependencies`
+`GET /api/tasks/{id}/dependencies`
 
-**Получить зависимости**
+Получить зависимости
 
 ```json
 [ { "id": 101, "title": "Сделать API" } ]
@@ -371,9 +371,9 @@ POST /api/tasks/102/dependencies?depends_on_id=101
 
 ---
 
-### `DELETE /api/tasks/{id}`
+`DELETE /api/tasks/{id}`
 
-**Удалить задачу**
+Удалить задачу
 
 ```http
 DELETE /api/tasks/101
@@ -381,11 +381,11 @@ DELETE /api/tasks/101
 
 ---
 
-## **5. Уведомления (Notifications)**
+5. Уведомления (Notifications)
 
-### `GET /api/notifications/`
+`GET /api/notifications/`
 
-**Получить уведомления**
+Получить уведомления
 
 ```json
 [
@@ -401,9 +401,9 @@ DELETE /api/tasks/101
 
 ---
 
-### `PUT /api/notifications/mark_all_read`
+`PUT /api/notifications/mark_all_read`
 
-**Отметить все как прочитанные**
+Отметить все как прочитанные
 
 ```http
 PUT /api/notifications/mark_all_read
@@ -411,11 +411,11 @@ PUT /api/notifications/mark_all_read
 
 ---
 
-## **6. Health Check**
+6. Health Check
 
-### `GET /health` | `GET /api/health` | `GET /`
+`GET /health` | `GET /api/health` | `GET /`
 
-**Проверка работоспособности**
+Проверка работоспособности
 
 ```json
 { "status": "ok" }
@@ -423,7 +423,7 @@ PUT /api/notifications/mark_all_read
 
 ---
 
-## **7. Коды ошибок**
+7. Коды ошибок
 
 | Код | Описание |
 |-----|--------|
@@ -436,7 +436,7 @@ PUT /api/notifications/mark_all_read
 
 ---
 
-## **8. Пример фронтенда (JavaScript / Fetch)**
+8. Пример фронтенда (JavaScript / Fetch)
 
 ```js
 const API_URL = 'https://powerfully-exotic-chamois.cloudpub.ru/api';
@@ -477,20 +477,20 @@ async function createTask(projectHash, title, desc) {
 
 ---
 
-## **9. Рекомендации по фронтенду**
+9. Рекомендации по фронтенду
 
 | Задача | Решение |
 |------|--------|
-| **Токен истёк** | 401 → перенаправить на логин |
-| **403** | Показать "Нет доступа" |
-| **404** | "Проект/задача не найдена" |
-| **Загрузка** | Спиннеры + `try/catch` |
-| **Кэширование** | React Query / SWR |
-| **Типизация** | TypeScript + интерфейсы |
+| Токен истёк | 401 → перенаправить на логин |
+| 403 | Показать "Нет доступа" |
+| 404 | "Проект/задача не найдена" |
+| Загрузка | Спиннеры + `try/catch` |
+| Кэширование | React Query / SWR |
+| Типизация | TypeScript + интерфейсы |
 
 ---
 
-## **10. TypeScript интерфейсы (пример)**
+10. TypeScript интерфейсы (пример)
 
 ```ts
 interface User {

@@ -6,7 +6,9 @@ class ProjectsManager {
 
         try {
             const data = await ApiService.apiGetUserProjects();
-            this.allProjects = data.projects || [];
+            // ИСПРАВЛЕНО: Универсальная обработка структуры ответа
+            this.allProjects = Array.isArray(data.projects) ? data.projects :
+                             Array.isArray(data) ? data : [];
             this.renderProjects(this.allProjects);
             Utils.log('Projects loaded successfully', { count: this.allProjects.length });
         } catch (error) {
@@ -28,7 +30,9 @@ class ProjectsManager {
     }
 
     static renderProjectCard(member) {
-        const project = member.project;
+        // ИСПРАВЛЕНО: Универсальная обработка структуры проекта
+        const project = member.project || member;
+        const role = member.role || 'member';
         const stats = project.stats || { tasks_count: 0, tasks_done: 0 };
         const progress = stats.tasks_count > 0 ? Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
 
@@ -36,7 +40,7 @@ class ProjectsManager {
             <div class="project-card max-card mb-3" onclick="ProjectsManager.openProjectDetail('${project.hash}')">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h6 class="mb-0">${Utils.escapeHTML(project.title)}</h6>
-                    <span class="badge bg-${member.role === 'owner' ? 'primary' : member.role === 'admin' ? 'info' : 'secondary'}">${member.role}</span>
+                    <span class="badge bg-${role === 'owner' ? 'primary' : role === 'admin' ? 'info' : 'secondary'}">${role}</span>
                 </div>
                 <p class="text-muted mb-2">${Utils.escapeHTML(project.description || 'Без описания')}</p>
                 <div class="d-flex justify-content-between align-items-center mb-2">

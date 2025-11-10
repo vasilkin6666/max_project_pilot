@@ -104,7 +104,7 @@ class ApiService {
 
     // ИСПРАВЛЕНО: Правильный endpoint для проектов пользователя
     static async apiGetUserProjects() {
-        return await this.apiCall('/users/me/projects', 'GET');
+        return await this.apiCall('/projects/my', 'GET');
     }
 
     // 🏢 Проекты
@@ -155,7 +155,7 @@ class ApiService {
         if (status) params.status = status;
         if (projectHash) params.project_hash = projectHash;
 
-        return await this.apiCall('/tasks/', 'GET', null, params);
+        return await this.apiCall('/tasks/my', 'GET', null, params);
     }
 
     static async apiGetTaskById(taskId) {

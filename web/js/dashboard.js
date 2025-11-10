@@ -9,8 +9,12 @@ class DashboardManager {
                 ApiService.apiGetAllTasks()
             ]);
 
-            this.updateStats(projectsData, tasksData);
-            this.renderDashboardProjects(projectsData);
+            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
+            const projects = projectsData.projects || projectsData || [];
+            const tasks = tasksData.tasks || tasksData || [];
+
+            this.updateStats(projects, tasks);
+            this.renderDashboardProjects(projects);
             Utils.log('Dashboard data loaded successfully');
         } catch (error) {
             Utils.logError('Dashboard load error', error);
@@ -20,8 +24,8 @@ class DashboardManager {
     }
 
     static updateStats(projectsData, tasksData) {
-        const projectsCount = projectsData.projects ? projectsData.projects.length : 0;
-        const tasks = tasksData.tasks || [];
+        const projectsCount = Array.isArray(projectsData) ? projectsData.length : 0;
+        const tasks = Array.isArray(tasksData) ? tasksData : [];
         const tasksTodo = tasks.filter(t => t.status === 'todo').length;
         const tasksProgress = tasks.filter(t => t.status === 'in_progress').length;
         const tasksDone = tasks.filter(t => t.status === 'done').length;
@@ -35,26 +39,30 @@ class DashboardManager {
     static renderDashboardProjects(projectsData) {
         const container = document.getElementById('dashboard-projects-list');
 
-        if (!projectsData.projects || projectsData.projects.length === 0) {
+        const projects = Array.isArray(projectsData) ? projectsData : [];
+
+        if (projects.length === 0) {
             container.innerHTML = this.getEmptyStateHTML();
             return;
         }
 
         // Показываем только первые 3 проекта
-        const projectsToShow = projectsData.projects.slice(0, 3);
+        const projectsToShow = projects.slice(0, 3);
 
-        container.innerHTML = projectsToShow.map(member => {
-            const project = member.project;
-            const stats = project.stats || { tasks_count: 0, tasks_done: 0 };
+        container.innerHTML = projectsToShow.map(project => {
+            // ИСПРАВЛЕНО: Универсальная обработка структуры проекта
+            const projectObj = project.project || project;
+            const stats = projectObj.stats || { tasks_count: 0, tasks_done: 0 };
             const progress = stats.tasks_count > 0 ? Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+            const role = project.role || 'member';
 
             return `
-                <div class="project-card max-card mb-3" onclick="ProjectsManager.openProjectDetail('${project.hash}')">
+                <div class="project-card max-card mb-3" onclick="ProjectsManager.openProjectDetail('${projectObj.hash}')">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0">${Utils.escapeHTML(project.title)}</h6>
-                        <span class="badge bg-${member.role === 'owner' ? 'primary' : 'secondary'}">${member.role}</span>
+                        <h6 class="mb-0">${Utils.escapeHTML(projectObj.title)}</h6>
+                        <span class="badge bg-${role === 'owner' ? 'primary' : 'secondary'}">${role}</span>
                     </div>
-                    <p class="text-muted small mb-2">${Utils.escapeHTML(project.description || 'Без описания')}</p>
+                    <p class="text-muted small mb-2">${Utils.escapeHTML(projectObj.description || 'Без описания')}</p>
                     <div class="progress mb-2" style="height: 8px;">
                         <div class="progress-bar" style="width: ${progress}%"></div>
                     </div>
