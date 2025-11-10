@@ -10,8 +10,8 @@ class DashboardManager {
             ]);
 
             // ИСПРАВЛЕНО: Правильная обработка структуры ответа
-            const projects = projectsData.projects || projectsData || [];
-            const tasks = tasksData.tasks || tasksData || [];
+            const projects = projectsData.projects || [];
+            const tasks = tasksData.tasks || [];
 
             this.updateStats(projects, tasks);
             this.renderDashboardProjects(projects);

@@ -55,7 +55,13 @@ class ApiService {
             if (response.status === 422) {
                 const errorData = await response.json();
                 Utils.logError('Validation error:', errorData);
-                throw new Error(`Validation error: ${errorData.detail || 'Invalid data'}`);
+                // Показываем детальную информацию об ошибке валидации
+                const errorMessage = errorData.detail ?
+                    (Array.isArray(errorData.detail) ?
+                     errorData.detail.map(err => err.msg || err.loc?.join('.')).join(', ') :
+                     errorData.detail) :
+                    'Invalid data';
+                throw new Error(`Validation error: ${errorMessage}`);
             }
 
             // Обработка других ошибок
@@ -104,7 +110,7 @@ class ApiService {
 
     // ИСПРАВЛЕНО: Правильный endpoint для проектов пользователя
     static async apiGetUserProjects() {
-        return await this.apiCall('/projects/my', 'GET');
+        return await this.apiCall('/users/me/projects', 'GET');
     }
 
     // 🏢 Проекты
@@ -155,7 +161,7 @@ class ApiService {
         if (status) params.status = status;
         if (projectHash) params.project_hash = projectHash;
 
-        return await this.apiCall('/tasks/my', 'GET', null, params);
+        return await this.apiCall('/tasks/', 'GET', null, params);
     }
 
     static async apiGetTaskById(taskId) {

@@ -7,9 +7,8 @@ class TasksManager {
 
         try {
             const data = await ApiService.apiGetAllTasks(status);
-            // ИСПРАВЛЕНО: Универсальная обработка структуры ответа
-            this.allTasks = Array.isArray(data.tasks) ? data.tasks :
-                           Array.isArray(data) ? data : [];
+            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
+            this.allTasks = data.tasks || [];
             this.renderTasks(this.allTasks);
             Utils.log('Tasks loaded successfully', { count: this.allTasks.length });
         } catch (error) {

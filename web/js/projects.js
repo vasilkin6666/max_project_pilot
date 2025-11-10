@@ -6,9 +6,8 @@ class ProjectsManager {
 
         try {
             const data = await ApiService.apiGetUserProjects();
-            // ИСПРАВЛЕНО: Универсальная обработка структуры ответа
-            this.allProjects = Array.isArray(data.projects) ? data.projects :
-                             Array.isArray(data) ? data : [];
+            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
+            this.allProjects = data.projects || [];
             this.renderProjects(this.allProjects);
             Utils.log('Projects loaded successfully', { count: this.allProjects.length });
         } catch (error) {
