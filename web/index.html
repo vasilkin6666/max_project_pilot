@@ -42,6 +42,10 @@
                             <div class="user-avatar" id="user-avatar">U</div>
                             <div id="user-name" class="ms-2 d-none d-sm-block">Гость</div>
                         </div>
+                        <!-- Добавляем персистентный индикатор -->
+                        <div id="persistent-notification-badge" class="notification-badge-persistent" style="display: none;">
+                            <span id="persistent-notification-count">0</span>
+                        </div>
                         <button id="theme-toggle" class="btn btn-sm btn-outline-secondary theme-toggle-btn">
                             <i class="fas fa-moon"></i>
                         </button>
@@ -203,7 +207,7 @@
             <!-- Секция: Задачи -->
             <div id="tasks" class="section">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h6 class="mb-0">✅ Все задачи</h6>
+                    <h6 class="mb-0" id="tasks-title">✅ Все задачи</h6>
                     <div class="d-flex gap-2">
                         <div class="dropdown">
                             <button class="btn max-btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -217,6 +221,26 @@
                                 <li><a class="dropdown-item filter-tasks" href="#" data-filter="done"><i class="fas fa-check-circle text-success"></i> Завершено</a></li>
                             </ul>
                         </div>
+
+                        <!-- Добавляем вкладки приоритета -->
+                        <div class="btn-group priority-tabs" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-sm priority-tab active" data-priority="">
+                                Все
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm priority-tab" data-priority="low">
+                                Низкий
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm priority-tab" data-priority="medium">
+                                Средний
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm priority-tab" data-priority="high">
+                                Высокий
+                            </button>
+                            <button type="button" class="btn btn-outline-dark btn-sm priority-tab" data-priority="urgent">
+                                Срочный
+                            </button>
+                        </div>
+
                         <button class="btn max-btn-primary btn-sm" id="create-task-btn">
                             <i class="fas fa-plus"></i> Новая задача
                         </button>
@@ -302,6 +326,8 @@
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/counters.js"></script>
+    <script src="js/action-menu.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/projects.js"></script>
     <script src="js/tasks.js"></script>

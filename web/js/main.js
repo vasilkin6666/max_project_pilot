@@ -8,6 +8,9 @@ class App {
         // Инициализация пользователя
         await AuthManager.initializeUser();
 
+        // Инициализация дополнительных компонентов
+        this.initComponents();
+
         // Обработка присоединения к проекту
         await this.handleProjectJoin();
 
@@ -19,6 +22,27 @@ class App {
 
         Utils.log('App initialization completed');
         UI.isInitialized = true;
+    }
+
+    static initComponents() {
+        // Инициализация меню действий
+        ActionMenuManager.initTaskActionMenu();
+
+        // Инициализация счетчиков
+        CountersManager.init();
+
+        // Инициализация поиска
+        TasksManager.initSearch();
+        ProjectsManager.initSearch();
+
+        // Инициализация вкладок приоритета
+        TasksManager.initPriorityTabs();
+
+        // Инициализация обработчиков уведомлений
+        NotificationsManager.initNotificationHandlers();
+        NotificationsManager.initPersistentBadge();
+
+        Utils.log('All components initialized');
     }
 
     static async handleProjectJoin() {

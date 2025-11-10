@@ -9,6 +9,10 @@ class ProjectsManager {
             // ИСПРАВЛЕНО: Правильная обработка структуры ответа
             this.allProjects = data.projects || [];
             this.renderProjects(this.allProjects);
+
+            // Обновляем счетчики
+            CountersManager.updateCounters();
+
             Utils.log('Projects loaded successfully', { count: this.allProjects.length });
         } catch (error) {
             Utils.logError('Projects load error', error);
@@ -82,16 +86,85 @@ class ProjectsManager {
             </div>`;
     }
 
-    static async createProject() {
-        const title = prompt('Введите название проекта:');
+    static createProject() {
+        this.showCreateProjectModal();
+    }
+
+    static showCreateProjectModal() {
+        const modalHTML = `
+            <div class="modal fade" id="createProjectModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Создать новый проект</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="createProjectForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Название проекта *</label>
+                                    <input type="text" class="form-control" id="projectTitle" required
+                                           placeholder="Введите название проекта">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Описание</label>
+                                    <textarea class="form-control" id="projectDescription" rows="3"
+                                              placeholder="Введите описание проекта (необязательно)"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="projectIsPrivate" checked>
+                                        <label class="form-check-label" for="projectIsPrivate">
+                                            Приватный проект
+                                        </label>
+                                        <div class="form-text">Только приглашенные пользователи смогут увидеть проект</div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="projectRequiresApproval">
+                                        <label class="form-check-label" for="projectRequiresApproval">
+                                            Требовать одобрение для присоединения
+                                        </label>
+                                        <div class="form-text">Новые участники должны быть одобрены владельцем/админом</div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="button" class="btn max-btn-primary" onclick="ProjectsManager.submitCreateProjectForm()">
+                                <i class="fas fa-plus"></i> Создать проект
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+        const existingModal = document.getElementById('createProjectModal');
+        if (existingModal) existingModal.remove();
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modal = new bootstrap.Modal(document.getElementById('createProjectModal'));
+        modal.show();
+
+        // Фокус на поле названия
+        setTimeout(() => {
+            document.getElementById('projectTitle').focus();
+        }, 500);
+    }
+
+    static async submitCreateProjectForm() {
+        const title = document.getElementById('projectTitle').value.trim();
+        const description = document.getElementById('projectDescription').value.trim();
+        const isPrivate = document.getElementById('projectIsPrivate').checked;
+        const requiresApproval = document.getElementById('projectRequiresApproval').checked;
+
         if (!title) {
-            Utils.log('Project creation cancelled - no title');
+            ToastManager.showToast('Введите название проекта', 'warning');
+            document.getElementById('projectTitle').focus();
             return;
         }
-
-        const description = prompt('Введите описание проекта (необязательно):') || '';
-        const isPrivate = confirm('Сделать проект приватным?');
-        const requiresApproval = confirm('Требовать одобрение для присоединения?');
 
         try {
             Utils.log(`Creating project: "${title}"`);
@@ -109,11 +182,17 @@ class ProjectsManager {
                 ToastManager.showToast(`Проект "${result.project.title}" создан!`, 'success');
                 Utils.log('Project created successfully', result);
 
+                // Закрываем модальное окно
+                bootstrap.Modal.getInstance(document.getElementById('createProjectModal')).hide();
+
                 // Обновляем интерфейс
                 await this.loadProjects();
                 if (UI.currentSection === 'dashboard') {
                     await DashboardManager.loadDashboardData();
                 }
+
+                // Триггерим событие обновления
+                Utils.triggerEvent('projectUpdated');
             } else {
                 throw new Error('Не удалось создать проект');
             }
@@ -127,18 +206,19 @@ class ProjectsManager {
         try {
             Utils.log(`Opening project detail: ${projectHash}`);
             const projectData = await ApiService.apiGetProjectByHash(projectHash);
-            this.showProjectModal(projectData);
+            this.showProjectDetailModal(projectData);
         } catch (error) {
             Utils.logError('Error opening project detail', error);
             ToastManager.showToast('Ошибка загрузки проекта: ' + error.message, 'error');
         }
     }
 
-    static showProjectModal(projectData) {
+    static showProjectDetailModal(projectData) {
         const project = projectData.project || projectData;
         const members = project.members || [];
         const stats = project.stats || { tasks_count: 0, tasks_done: 0 };
-        const progress = stats.tasks_count > 0 ? Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+        const progress = stats.tasks_count > 0 ?
+            Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
 
         // Проверяем права пользователя
         const currentUserMember = members.find(m => m.user_id === AuthManager.getCurrentUserId());
@@ -146,77 +226,140 @@ class ProjectsManager {
         const isOwner = currentUserMember && currentUserMember.role === 'owner';
 
         const modalHTML = `
-            <div class="modal fade" id="projectModal" tabindex="-1">
-                <div class="modal-dialog modal-lg">
+            <div class="modal fade project-detail-modal" id="projectDetailModal" tabindex="-1">
+                <div class="modal-dialog modal-xl">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">${Utils.escapeHTML(project.title)}</h5>
+                            <h5 class="modal-title">
+                                <i class="fas fa-project-diagram me-2"></i>
+                                ${Utils.escapeHTML(project.title)}
+                            </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="mb-3">
-                                <h6>Описание</h6>
-                                <p class="text-muted">${Utils.escapeHTML(project.description || 'Без описания')}</p>
-                            </div>
+                            <div class="row">
+                                <!-- Левая колонка - основная информация -->
+                                <div class="col-md-8">
+                                    <div class="mb-4">
+                                        <h6>Описание проекта</h6>
+                                        <p class="text-muted">${Utils.escapeHTML(project.description || 'Описание отсутствует')}</p>
+                                    </div>
 
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <div class="stats-card">
-                                        <i class="fas fa-tasks fa-2x mb-2" style="color: var(--primary-color);"></i>
-                                        <h5>${stats.tasks_count || 0}</h5>
-                                        <p class="text-muted mb-0">Всего задач</p>
+                                    <div class="row mb-4">
+                                        <div class="col-6 col-sm-3">
+                                            <div class="stats-card text-center">
+                                                <i class="fas fa-tasks fa-2x mb-2" style="color: var(--primary-color);"></i>
+                                                <h5>${stats.tasks_count || 0}</h5>
+                                                <p class="text-muted mb-0">Всего задач</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-sm-3">
+                                            <div class="stats-card text-center">
+                                                <i class="fas fa-check-circle fa-2x mb-2" style="color: var(--success-color);"></i>
+                                                <h5>${stats.tasks_done || 0}</h5>
+                                                <p class="text-muted mb-0">Выполнено</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-sm-3">
+                                            <div class="stats-card text-center">
+                                                <i class="fas fa-users fa-2x mb-2" style="color: var(--info-color);"></i>
+                                                <h5>${members.length}</h5>
+                                                <p class="text-muted mb-0">Участников</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-sm-3">
+                                            <div class="stats-card text-center">
+                                                <i class="fas fa-chart-line fa-2x mb-2" style="color: var(--warning-color);"></i>
+                                                <h5>${progress}%</h5>
+                                                <p class="text-muted mb-0">Прогресс</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <h6>Прогресс выполнения</h6>
+                                        <div class="progress" style="height: 12px;">
+                                            <div class="progress-bar" style="width: ${progress}%"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-2">
+                                            <small class="text-muted">Начало: ${Utils.formatDate(project.created_at)}</small>
+                                            <small class="text-muted">${progress}% завершено</small>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-6">
-                                    <div class="stats-card">
-                                        <i class="fas fa-check-circle fa-2x mb-2" style="color: var(--success-color);"></i>
-                                        <h5>${progress}%</h5>
-                                        <p class="text-muted mb-0">Прогресс</p>
+
+                                <!-- Правая колонка - участники и действия -->
+                                <div class="col-md-4">
+                                    <div class="mb-4">
+                                        <h6>Участники проекта</h6>
+                                        <div class="members-list">
+                                            ${members.map(member => `
+                                                <div class="d-flex align-items-center mb-2 p-2 rounded member-item">
+                                                    <div class="user-avatar-small">
+                                                        ${(member.user?.full_name || 'U').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div class="ms-2 flex-grow-1">
+                                                        <div class="small fw-medium">${Utils.escapeHTML(member.user?.full_name || 'Неизвестный')}</div>
+                                                        <div class="text-muted extra-small">${member.role}</div>
+                                                    </div>
+                                                    ${member.role === 'owner' ? '<i class="fas fa-crown text-warning"></i>' : ''}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <div class="actions-section">
+                                        <h6>Действия</h6>
+                                        <div class="d-grid gap-2">
+                                            <button class="btn max-btn-primary" onclick="ProjectsManager.showProjectTasks('${project.hash}')">
+                                                <i class="fas fa-tasks me-2"></i>Просмотреть задачи
+                                            </button>
+                                            <button class="btn btn-outline-primary" onclick="ProjectsManager.showProjectInviteQR('${project.hash}')">
+                                                <i class="fas fa-share-alt me-2"></i>Пригласить участников
+                                            </button>
+                                            ${canManageRequests ? `
+                                                <button class="btn btn-outline-info" onclick="ProjectsManager.showJoinRequests('${project.hash}')">
+                                                    <i class="fas fa-user-plus me-2"></i>Запросы на присоединение
+                                                </button>
+                                            ` : ''}
+                                            ${isOwner ? `
+                                                <button class="btn btn-outline-warning" onclick="ProjectsManager.regenerateInviteHash('${project.hash}')">
+                                                    <i class="fas fa-refresh me-2"></i>Обновить ссылку
+                                                </button>
+                                            ` : ''}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <h6>Участники (${members.length})</h6>
-                                <div class="d-flex flex-wrap gap-2">
-                                    ${members.map(member => `
-                                        <span class="badge bg-light text-dark">
-                                            ${Utils.escapeHTML(member.user?.full_name || 'Неизвестный')}
-                                            ${member.role === 'owner' ? ' 👑' : member.role === 'admin' ? ' ⚡' : ''}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            </div>
-
-                            <div class="d-grid gap-2">
-                                <button class="btn max-btn-primary" onclick="ProjectsManager.showProjectTasks('${project.hash}')">
-                                    <i class="fas fa-tasks"></i> Просмотреть задачи
-                                </button>
-                                <button class="btn btn-outline-primary" onclick="ProjectsManager.showProjectInviteQR('${project.hash}')">
-                                    <i class="fas fa-share-alt"></i> Пригласить участников
-                                </button>
-                                ${canManageRequests ? `
-                                    <button class="btn btn-outline-info" onclick="ProjectsManager.showJoinRequests('${project.hash}')">
-                                        <i class="fas fa-user-plus"></i> Запросы на присоединение
-                                    </button>
-                                ` : ''}
-                                ${isOwner ? `
-                                    <button class="btn btn-outline-warning" onclick="ProjectsManager.regenerateInviteHash('${project.hash}')">
-                                        <i class="fas fa-refresh"></i> Обновить ссылку
-                                    </button>
-                                ` : ''}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>`;
 
-        const existingModal = document.getElementById('projectModal');
-        if (existingModal) existingModal.remove();
-
+        this.removeExistingModal('projectDetailModal');
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        const modal = new bootstrap.Modal(document.getElementById('projectModal'));
+
+        const modalElement = document.getElementById('projectDetailModal');
+        const modal = new bootstrap.Modal(modalElement);
+
+        // Добавляем обработчики для анимации
+        modalElement.addEventListener('show.bs.modal', () => {
+            modalElement.style.opacity = '0';
+        });
+
+        modalElement.addEventListener('shown.bs.modal', () => {
+            modalElement.style.transition = 'opacity 0.3s ease';
+            modalElement.style.opacity = '1';
+        });
+
         modal.show();
+    }
+
+    static removeExistingModal(modalId) {
+        const existingModal = document.getElementById(modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
     }
 
     static async showProjectTasks(projectHash) {
@@ -245,7 +388,7 @@ class ProjectsManager {
                                     <p>Задач пока нет</p>
                                 </div>
                             ` : tasks.map(task => `
-                                <div class="task-item task-${task.status} max-card mb-2" onclick="TasksManager.openTaskDetail(${task.id})">
+                                <div class="task-item task-${task.status} max-card mb-2" onclick="TasksManager.openTaskDetail('${task.id}')">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="flex-grow-1">
                                             <h6 class="mb-1">${Utils.escapeHTML(task.title)}</h6>
@@ -292,7 +435,7 @@ class ProjectsManager {
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
-                            <button class="btn max-btn-primary" onclick="ProjectsManager.shareProject('${project.hash}')">
+                            <button class="btn max-btn-primary" onclick="ProjectsManager.shareProject('${projectHash}')">
                                 <i class="fas fa-share"></i> Поделиться
                             </button>
                         </div>
@@ -358,7 +501,7 @@ class ProjectsManager {
             ToastManager.showToast('Ссылка приглашения обновлена', 'success');
 
             // Закрываем текущий модал и показываем новый с обновленной ссылкой
-            bootstrap.Modal.getInstance(document.getElementById('projectModal'))?.hide();
+            bootstrap.Modal.getInstance(document.getElementById('projectDetailModal'))?.hide();
             setTimeout(() => {
                 this.showProjectInviteQR(projectHash);
             }, 300);
@@ -466,8 +609,6 @@ class ProjectsManager {
             return;
         }
 
-        ToastManager.showToast(`Поиск проектов: "${query}"`, 'info');
-
         const searchResults = this.allProjects.filter(projectMember => {
             const project = projectMember.project;
             const searchLower = query.toLowerCase();
@@ -511,6 +652,16 @@ class ProjectsManager {
         const searchInput = document.getElementById('searchProjectsInput');
         searchInput.value = '';
         this.loadProjects();
+    }
+
+    static initSearch() {
+        const searchInput = document.getElementById('searchProjectsInput');
+
+        const debouncedSearch = Utils.debounce(() => {
+            this.searchProjects();
+        }, 300);
+
+        searchInput.addEventListener('input', debouncedSearch);
     }
 }
 

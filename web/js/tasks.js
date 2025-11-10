@@ -2,22 +2,31 @@ class TasksManager {
     static allTasks = [];
     static currentTaskFilter = null;
 
+    static filterTitles = {
+        '': '✅ Все задачи',
+        'todo': '⏳ К выполнению',
+        'in_progress': '⚡ В работе',
+        'done': '✅ Завершённые',
+        'high': '🔴 Высокий приоритет',
+        'medium': '🟡 Средний приоритет',
+        'low': '🟢 Низкий приоритет',
+        'urgent': '🚨 Срочные задачи'
+    };
+
     static async loadTasks(status = null) {
         Utils.log('Loading tasks from API', { status });
 
+        // Обновляем заголовок
+        this.updateTasksTitle(status);
+
         try {
             const data = await ApiService.apiGetAllTasks(status);
-            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
             this.allTasks = data.tasks || [];
-
-            // Отладочное логирование
-            console.log('Tasks loaded:', this.allTasks);
-            if (this.allTasks.length > 0) {
-                console.log('First task structure:', this.allTasks[0]);
-                console.log('Task ID:', this.allTasks[0].id, 'Type:', typeof this.allTasks[0].id);
-            }
-
             this.renderTasks(this.allTasks);
+
+            // Обновляем счетчики
+            CountersManager.updateCounters();
+
             Utils.log('Tasks loaded successfully', { count: this.allTasks.length });
         } catch (error) {
             Utils.logError('Tasks load error', error);
@@ -26,8 +35,16 @@ class TasksManager {
         }
     }
 
+    static updateTasksTitle(filter = null) {
+        const titleElement = document.getElementById('tasks-title');
+        if (titleElement) {
+            const filterKey = filter || '';
+            titleElement.textContent = this.filterTitles[filterKey] || '✅ Все задачи';
+        }
+    }
+
     static renderTasks(tasks) {
-        console.log('Rendering tasks:', tasks); // Отладочное логирование
+        console.log('Rendering tasks:', tasks);
 
         const container = document.getElementById('tasks-list');
 
@@ -36,23 +53,18 @@ class TasksManager {
             return;
         }
 
-        // Проверить структуру первой задачи
-        if (tasks[0]) {
-            console.log('First task structure:', tasks[0]);
-            console.log('Task ID:', tasks[0].id, 'Type:', typeof tasks[0].id);
-        }
-
         container.innerHTML = tasks.map((task, index) => this.renderTaskCard(task, index)).join('');
     }
 
     static renderTaskCard(task, index) {
-        // ИСПРАВЛЕНО: Используем task.id или временный идентификатор
         const taskIdentifier = task.id || `temp_${index}`;
         const statusColor = Utils.getStatusColor(task.status);
         const statusText = Utils.getStatusText(task.status);
+        const priorityClass = `task-priority-${task.priority}`;
 
         return `
-            <div class="task-item task-${task.status} max-card mb-3" onclick="TasksManager.openTaskDetail('${taskIdentifier}')">
+            <div class="task-item task-${task.status} ${priorityClass} max-card mb-3"
+                 onclick="TasksManager.openTaskDetail('${taskIdentifier}')">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
                         <h6 class="mb-1">${Utils.escapeHTML(task.title)}</h6>
@@ -65,15 +77,18 @@ class TasksManager {
                         </div>
                     </div>
                     <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation()">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle task-action-button"
+                                type="button" data-bs-toggle="dropdown"
+                                onclick="event.stopPropagation()"
+                                data-task-id="${taskIdentifier}">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus('${taskIdentifier}', 'todo')">К выполнению</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus('${taskIdentifier}', 'in_progress')">В работу</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="TasksManager.updateTaskStatus('${taskIdentifier}', 'done')">Завершить</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); TasksManager.updateTaskStatus('${taskIdentifier}', 'todo')">К выполнению</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); TasksManager.updateTaskStatus('${taskIdentifier}', 'in_progress')">В работу</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); TasksManager.updateTaskStatus('${taskIdentifier}', 'done')">Завершить</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="TasksManager.deleteTask('${taskIdentifier}')">Удалить</a></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); TasksManager.deleteTask('${taskIdentifier}')">Удалить</a></li>
                         </ul>
                     </div>
                 </div>
@@ -106,11 +121,11 @@ class TasksManager {
 
     static loadTasksWithFilter(status) {
         this.currentTaskFilter = status;
+        this.updateTasksTitle(status);
         UI.showSection('tasks');
     }
 
     static async updateTaskStatus(taskId, status) {
-        // ИСПРАВЛЕНО: Валидация ID
         if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
             Utils.logError('Invalid task ID', taskId);
             ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
@@ -126,6 +141,9 @@ class TasksManager {
             if (UI.currentSection === 'dashboard') {
                 await DashboardManager.loadDashboardData();
             }
+
+            // Триггерим событие обновления
+            Utils.triggerEvent('taskUpdated');
         } catch (error) {
             Utils.logError('Error updating task status', error);
             ToastManager.showToast('Ошибка обновления статуса: ' + error.message, 'error');
@@ -133,7 +151,6 @@ class TasksManager {
     }
 
     static async deleteTask(taskId) {
-        // ИСПРАВЛЕНО: Валидация ID
         if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
             Utils.logError('Invalid task ID for deletion', taskId);
             ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
@@ -153,6 +170,9 @@ class TasksManager {
             if (UI.currentSection === 'dashboard') {
                 await DashboardManager.loadDashboardData();
             }
+
+            // Триггерим событие обновления
+            Utils.triggerEvent('taskUpdated');
         } catch (error) {
             Utils.logError('Error deleting task', error);
             ToastManager.showToast('Ошибка удаления задачи: ' + error.message, 'error');
@@ -160,7 +180,6 @@ class TasksManager {
     }
 
     static async openTaskDetail(taskId) {
-        // ИСПРАВЛЕНО: Валидация ID
         if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
             Utils.logError('Invalid task ID for detail', taskId);
             ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
@@ -169,7 +188,6 @@ class TasksManager {
 
         try {
             const response = await ApiService.apiGetTaskById(taskId);
-            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
             const task = response.task || response;
             if (task) {
                 this.showTaskModal(task);
@@ -181,7 +199,6 @@ class TasksManager {
     }
 
     static showTaskModal(task) {
-        // ИСПРАВЛЕНО: Используем task.task если структура вложенная
         const taskData = task.task || task;
         const taskId = taskData.id;
 
@@ -391,6 +408,9 @@ class TasksManager {
                 if (UI.currentSection === 'dashboard') {
                     await DashboardManager.loadDashboardData();
                 }
+
+                // Триггерим событие обновления
+                Utils.triggerEvent('taskUpdated');
             }
         } catch (error) {
             Utils.logError('Error creating task', error);
@@ -399,7 +419,6 @@ class TasksManager {
     }
 
     static async showTaskDependencies(taskId) {
-        // ИСПРАВЛЕНО: Валидация ID
         if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
             Utils.logError('Invalid task ID for dependencies', taskId);
             ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
@@ -408,7 +427,6 @@ class TasksManager {
 
         try {
             const response = await ApiService.apiGetTaskDependencies(taskId);
-            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
             const dependencies = response.dependencies || [];
             const dependents = response.dependents || [];
             this.showDependenciesModal({ dependencies, dependents }, taskId);
@@ -478,7 +496,6 @@ class TasksManager {
     }
 
     static async addTaskDependency(taskId) {
-        // ИСПРАВЛЕНО: Валидация ID
         if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
             Utils.logError('Invalid task ID for adding dependency', taskId);
             ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
@@ -506,7 +523,6 @@ class TasksManager {
     }
 
     static async showTaskComments(taskId) {
-        // ИСПРАВЛЕНО: Валидация ID
         if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
             Utils.logError('Invalid task ID for comments', taskId);
             ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
@@ -515,7 +531,6 @@ class TasksManager {
 
         try {
             const response = await ApiService.apiGetTaskComments(taskId);
-            // ИСПРАВЛЕНО: Правильная обработка структуры ответа
             const comments = response.comments || [];
             this.showCommentsModal(comments, taskId);
         } catch (error) {
@@ -525,7 +540,6 @@ class TasksManager {
     }
 
     static showCommentsModal(comments, taskId) {
-        // ИСПРАВЛЕНО: Проверка что comments - массив
         const commentsArray = Array.isArray(comments) ? comments : [];
 
         const modalHTML = `
@@ -579,7 +593,6 @@ class TasksManager {
     }
 
     static async addTaskComment(taskId) {
-        // ИСПРАВЛЕНО: Валидация ID
         if (!taskId || taskId === 'undefined' || taskId.toString().startsWith('temp_')) {
             Utils.logError('Invalid task ID for adding comment', taskId);
             ToastManager.showToast('Ошибка: неверный ID задачи', 'error');
@@ -612,7 +625,7 @@ class TasksManager {
     // Поиск задач
     static searchTasks() {
         const searchInput = document.getElementById('searchTasksInput');
-        const query = searchInput.value.trim();
+        const query = searchInput.value.trim().toLowerCase();
 
         Utils.log(`Searching tasks with query: "${query}"`);
 
@@ -621,12 +634,12 @@ class TasksManager {
             return;
         }
 
-        ToastManager.showToast(`Поиск задач: "${query}"`, 'info');
-
         const searchResults = this.allTasks.filter(task =>
-            task.title.toLowerCase().includes(query.toLowerCase()) ||
-            (task.description && task.description.toLowerCase().includes(query.toLowerCase())) ||
-            (task.project && task.project.title.toLowerCase().includes(query.toLowerCase()))
+            task.title.toLowerCase().includes(query) ||
+            (task.description && task.description.toLowerCase().includes(query)) ||
+            (task.project && task.project.title.toLowerCase().includes(query)) ||
+            task.priority.toLowerCase().includes(query) ||
+            task.status.toLowerCase().includes(query)
         );
 
         this.displaySearchResults(searchResults, query);
@@ -663,6 +676,59 @@ class TasksManager {
         const searchInput = document.getElementById('searchTasksInput');
         searchInput.value = '';
         this.loadTasks(this.currentTaskFilter);
+    }
+
+    static initSearch() {
+        const searchInput = document.getElementById('searchTasksInput');
+
+        // Debounce поиска
+        const debouncedSearch = Utils.debounce(() => {
+            this.searchTasks();
+        }, 300);
+
+        searchInput.addEventListener('input', debouncedSearch);
+    }
+
+    static initPriorityTabs() {
+        document.querySelectorAll('.priority-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                // Убираем активный класс у всех вкладок
+                document.querySelectorAll('.priority-tab').forEach(t =>
+                    t.classList.remove('active')
+                );
+
+                // Добавляем активный класс текущей вкладке
+                tab.classList.add('active');
+
+                // Применяем фильтр по приоритету
+                const priority = tab.getAttribute('data-priority');
+                this.filterTasksByPriority(priority);
+            });
+        });
+    }
+
+    static filterTasksByPriority(priority) {
+        if (!priority) {
+            this.renderTasks(this.allTasks);
+            return;
+        }
+
+        const filteredTasks = this.allTasks.filter(task =>
+            task.priority === priority
+        );
+
+        this.renderTasks(filteredTasks);
+    }
+
+    static showEditTaskModal(task) {
+        // Реализация редактирования задачи
+        ToastManager.showToast('Функция редактирования в разработке', 'info');
+    }
+
+    static showStatusChangeModal(task) {
+        ActionMenuManager.showStatusChangeModal(task);
     }
 }
 

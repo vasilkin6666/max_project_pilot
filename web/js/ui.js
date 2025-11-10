@@ -12,7 +12,7 @@ class UI {
     static applyTheme() {
         const body = document.body;
         const icon = document.querySelector('#theme-toggle i');
-        
+
         if (this.currentTheme === 'dark') {
             body.classList.add('dark-theme');
             icon.classList.remove('fa-moon');
@@ -153,6 +153,20 @@ class UI {
         });
         document.getElementById('searchProjectsInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') ProjectsManager.searchProjects();
+        });
+
+        // Кликабельные статистические карточки
+        document.querySelectorAll('.clickable-stats').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const section = card.getAttribute('data-section');
+                const filter = card.getAttribute('data-filter');
+
+                if (section) {
+                    this.showSection(section);
+                } else if (filter) {
+                    TasksManager.loadTasksWithFilter(filter);
+                }
+            });
         });
     }
 

@@ -7,6 +7,10 @@ class NotificationsManager {
             const notifications = data.notifications || [];
             this.renderNotifications(notifications);
             this.updateNotificationsSummary(notifications);
+
+            // Обновляем счетчики
+            CountersManager.updateCounters();
+
             Utils.log('Notifications loaded successfully', { count: notifications.length });
         } catch (error) {
             Utils.logError('Notifications load error', error);
@@ -29,12 +33,21 @@ class NotificationsManager {
     static renderNotificationCard(notification) {
         const unreadClass = notification.is_read ? '' : 'fw-bold';
         const unreadIcon = notification.is_read ? '⚪' : '🔵';
+        const targetId = notification.linked_item_id || notification.target_element_id;
 
         return `
-            <div class="max-card mb-3 ${unreadClass}">
+            <div class="notification-item max-card mb-3 slide-in ${unreadClass}"
+                 data-notification-id="${notification.id}"
+                 ${targetId ? `data-target-id="${targetId}"` : ''}>
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h6 class="mb-0">${unreadIcon} ${Utils.escapeHTML(notification.title)}</h6>
-                    <small class="text-muted">${Utils.formatDate(notification.created_at)}</small>
+                    <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted">${Utils.formatDate(notification.created_at)}</small>
+                        <button class="btn btn-sm btn-outline-secondary notification-close"
+                                onclick="NotificationsManager.closeNotification('${notification.id}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 <p class="mb-0">${Utils.escapeHTML(notification.message)}</p>
             </div>`;
@@ -76,11 +89,23 @@ class NotificationsManager {
 
     static updateNotificationsBadge(count) {
         const badge = document.getElementById('notifications-badge');
+        const persistentBadge = document.getElementById('persistent-notification-badge');
+        const persistentCount = document.getElementById('persistent-notification-count');
+
+        // Обновляем бейдж в навигации
         if (count > 0) {
-            badge.textContent = count;
+            badge.textContent = count > 99 ? '99+' : count;
             badge.style.display = 'inline';
         } else {
             badge.style.display = 'none';
+        }
+
+        // Обновляем персистентный бейдж
+        if (count > 0) {
+            persistentCount.textContent = count > 99 ? '99+' : count;
+            persistentBadge.style.display = 'flex';
+        } else {
+            persistentBadge.style.display = 'none';
         }
     }
 
@@ -92,9 +117,104 @@ class NotificationsManager {
 
             // Обновляем интерфейс
             await this.loadNotifications();
+
+            // Триггерим событие обновления
+            Utils.triggerEvent('notificationUpdated');
         } catch (error) {
             Utils.logError('Error marking notifications as read', error);
             ToastManager.showToast('Ошибка обновления уведомлений', 'error');
+        }
+    }
+
+    static closeNotification(notificationId) {
+        const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+        if (notificationElement) {
+            notificationElement.classList.add('fade-out');
+
+            setTimeout(() => {
+                notificationElement.remove();
+                this.updateNotificationsCount();
+
+                // Триггерим событие обновления
+                Utils.triggerEvent('notificationUpdated');
+            }, 350);
+        }
+    }
+
+    static updateNotificationsCount() {
+        const notifications = document.querySelectorAll('.notification-item');
+        const unreadCount = Array.from(notifications).filter(n =>
+            !n.classList.contains('fw-bold')
+        ).length;
+
+        this.updateNotificationsBadge(unreadCount);
+    }
+
+    static initNotificationHandlers() {
+        document.addEventListener('click', (e) => {
+            const notificationItem = e.target.closest('.notification-item');
+            if (notificationItem && !e.target.classList.contains('notification-close')) {
+                const targetId = notificationItem.getAttribute('data-target-id');
+                if (targetId) {
+                    this.navigateToTarget(targetId, notificationItem);
+                }
+            }
+        });
+    }
+
+    static navigateToTarget(targetId, notificationElement) {
+        // Закрываем уведомление
+        this.closeNotification(
+            notificationElement.getAttribute('data-notification-id')
+        );
+
+        // Ищем целевой элемент
+        let targetElement = document.getElementById(targetId);
+        if (!targetElement) {
+            // Пробуем найти по data-id
+            targetElement = document.querySelector(`[data-id="${targetId}"]`);
+        }
+
+        if (targetElement) {
+            // Плавный скролл к элементу
+            targetElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+
+            // Подсветка элемента
+            this.highlightElement(targetElement);
+        } else {
+            ToastManager.showToast('Связанный элемент не найден', 'warning');
+        }
+    }
+
+    static highlightElement(element) {
+        // Сохраняем оригинальные стили
+        const originalTransition = element.style.transition;
+        const originalBoxShadow = element.style.boxShadow;
+
+        // Добавляем класс подсветки
+        element.classList.add('highlight-element');
+
+        // Убираем подсветку через 3 секунды
+        setTimeout(() => {
+            element.classList.remove('highlight-element');
+
+            // Восстанавливаем оригинальные стили
+            setTimeout(() => {
+                element.style.transition = originalTransition;
+                element.style.boxShadow = originalBoxShadow;
+            }, 1500);
+        }, 3000);
+    }
+
+    static initPersistentBadge() {
+        const persistentBadge = document.getElementById('persistent-notification-badge');
+        if (persistentBadge) {
+            persistentBadge.addEventListener('click', () => {
+                UI.showSection('notifications');
+            });
         }
     }
 }

@@ -15,6 +15,10 @@ class DashboardManager {
 
             this.updateStats(projects, tasks);
             this.renderDashboardProjects(projects);
+
+            // Обновляем счетчики
+            CountersManager.updateCounters();
+
             Utils.log('Dashboard data loaded successfully');
         } catch (error) {
             Utils.logError('Dashboard load error', error);
@@ -46,14 +50,15 @@ class DashboardManager {
             return;
         }
 
-        // Показываем только первые 3 проекта
-        const projectsToShow = projects.slice(0, 3);
+        // Получаем активные проекты с фильтрацией и сортировкой
+        const activeProjects = this.getActiveProjects(projects);
+        const projectsToShow = activeProjects.slice(0, 3);
 
         container.innerHTML = projectsToShow.map(project => {
-            // ИСПРАВЛЕНО: Универсальная обработка структуры проекта
             const projectObj = project.project || project;
             const stats = projectObj.stats || { tasks_count: 0, tasks_done: 0 };
-            const progress = stats.tasks_count > 0 ? Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+            const progress = stats.tasks_count > 0 ?
+                Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
             const role = project.role || 'member';
 
             return `
@@ -73,6 +78,33 @@ class DashboardManager {
                 </div>
             `;
         }).join('');
+    }
+
+    static getActiveProjects(projects) {
+        return projects
+            .filter(projectMember => {
+                const project = projectMember.project || projectMember;
+                const stats = project.stats || { tasks_count: 0, tasks_done: 0 };
+                const progress = stats.tasks_count > 0 ?
+                    Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+
+                // Фильтруем незавершенные проекты (progress < 100)
+                return progress < 100;
+            })
+            .sort((a, b) => {
+                const projectA = a.project || a;
+                const projectB = b.project || b;
+                const statsA = projectA.stats || { tasks_count: 0, tasks_done: 0 };
+                const statsB = projectB.stats || { tasks_count: 0, tasks_done: 0 };
+
+                const progressA = statsA.tasks_count > 0 ?
+                    Math.round((statsA.tasks_done / statsA.tasks_count) * 100) : 0;
+                const progressB = statsB.tasks_count > 0 ?
+                    Math.round((statsB.tasks_done / statsB.tasks_count) * 100) : 0;
+
+                // Сортируем по убыванию прогресса
+                return progressB - progressA;
+            });
     }
 
     static getEmptyStateHTML() {

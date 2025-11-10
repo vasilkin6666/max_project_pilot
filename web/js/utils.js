@@ -57,15 +57,17 @@ class Utils {
         return colors[priority] || 'secondary';
     }
 
-    static debounce(func, wait) {
+    static debounce(func, wait, immediate = false) {
         let timeout;
         return function executedFunction(...args) {
             const later = () => {
                 clearTimeout(timeout);
-                func(...args);
+                if (!immediate) func(...args);
             };
+            const callNow = immediate && !timeout;
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
+            if (callNow) func(...args);
         };
     }
 
@@ -81,6 +83,11 @@ class Utils {
 
     static logError(message, error = null) {
         console.error(`[ERROR] ${new Date().toISOString()} - ${message}`, error || '');
+    }
+
+    static triggerEvent(eventName, detail = {}) {
+        const event = new CustomEvent(eventName, { detail });
+        document.dispatchEvent(event);
     }
 }
 
