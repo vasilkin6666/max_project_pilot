@@ -18,6 +18,42 @@ body {
     padding-bottom: 20px;
 }
 
+/* MAX-specific стили */
+.max-header {
+    background: var(--max-card-bg);
+    border-bottom: 1px solid var(--max-border);
+    margin: -1rem -1rem 1rem -1rem;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Адаптация под дизайн-систему MAX */
+.nav-tabs-max {
+    border-bottom: 1px solid var(--max-border);
+}
+
+.nav-tabs-max .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6c757d;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.nav-tabs-max .nav-link.active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+}
+
+.nav-tabs-max .nav-link:hover {
+    background-color: rgba(67, 97, 238, 0.05);
+    color: var(--primary-color);
+}
+
 .navbar-brand {
     font-weight: 600;
     font-size: 1.5rem;
@@ -30,43 +66,56 @@ body {
 .max-card {
     background-color: var(--max-card-bg);
     border: 1px solid var(--max-border);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 15px;
     margin-bottom: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+
+.max-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
 }
 
 .max-btn-primary {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
     color: white;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.2s ease;
 }
 
 .max-btn-primary:hover {
     background-color: #3651d8;
     border-color: #3651d8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.3);
 }
 
-.nav-tabs-max .nav-link {
-    color: #6c757d;
-    border: 1px solid transparent;
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
-}
-
-.nav-tabs-max .nav-link.active {
-    color: var(--primary-color);
-    background-color: var(--max-card-bg);
-    border-color: var(--max-border) var(--max-border) var(--max-card-bg);
+.max-btn-primary:active {
+    transform: translateY(0);
 }
 
 .project-card, .task-item {
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
 .project-card:hover, .task-item:hover {
     background-color: rgba(67, 97, 238, 0.05);
+    border-color: var(--primary-color);
+}
+
+/* Тактильные элементы */
+.btn:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+}
+
+.project-card:active, .task-item:active {
+    transform: scale(0.98);
 }
 
 .task-item.todo { border-left: 4px solid var(--warning-color); }
@@ -77,23 +126,24 @@ body {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
     margin-right: 10px;
+    font-size: 1.1rem;
 }
 
 .loading {
     text-align: center;
-    padding: 20px;
+    padding: 40px;
     color: #6c757d;
 }
 
 .progress-bar {
-    background-color: var(--primary-color);
+    background: linear-gradient(90deg, var(--primary-color), var(--success-color));
 }
 
 /* Темная тема */
@@ -108,14 +158,28 @@ body.dark-theme {
     color: #e0e0e0;
 }
 
+.dark-theme .max-header {
+    background-color: #1e1e1e;
+    border-color: #444444;
+}
+
+.dark-theme .nav-tabs-max {
+    border-color: #444444;
+}
+
 .dark-theme .nav-tabs-max .nav-link {
     color: #b0b0b0;
 }
 
 .dark-theme .nav-tabs-max .nav-link.active {
     color: var(--primary-color);
-    background-color: #1e1e1e;
-    border-color: #444444 #444444 #1e1e1e;
+    background-color: transparent;
+    border-color: var(--primary-color);
+}
+
+.dark-theme .nav-tabs-max .nav-link:hover {
+    color: var(--primary-color);
+    background-color: rgba(67, 97, 238, 0.1);
 }
 
 .dark-theme .form-control, .dark-theme .form-select {
@@ -135,15 +199,21 @@ body.dark-theme {
     filter: invert(1);
 }
 
+.dark-theme .text-muted {
+    color: #8a8a8a !important;
+}
+
 /* Стили для поиска и уведомлений */
 mark {
     background-color: #ffeb3b;
     padding: 0.1em 0.2em;
     border-radius: 0.2em;
+    color: #000;
 }
 
 .toast {
     font-size: 0.875rem;
+    border-radius: 8px;
 }
 
 .search-highlight {
@@ -158,13 +228,138 @@ mark {
     border-left: none;
 }
 
-/* Адаптивность для мобильных устройств */
+/* Анимации для лучшего UX в мобильном MAX */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.section {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Responsive improvements для мобильных устройств */
 @media (max-width: 768px) {
+    .container {
+        padding: 0.5rem;
+    }
+
+    .max-header {
+        margin: -0.5rem -0.5rem 1rem -0.5rem;
+        padding: 0.75rem;
+    }
+
+    .max-header h4 {
+        font-size: 1.2rem;
+    }
+
+    .nav-tabs-max .nav-link span {
+        display: none;
+    }
+
+    .nav-tabs-max .nav-link {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .nav-tabs-max .nav-link i {
+        font-size: 1.1rem;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+
+    #user-name {
+        font-size: 0.9rem;
+    }
+
+    .max-card {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .btn-group {
+        flex-wrap: wrap;
+    }
+
+    .btn-group .btn {
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .row.mb-4 .col-md-3 {
+        margin-bottom: 10px;
+    }
+
+    .max-card.p-3 {
+        padding: 15px !important;
+    }
+
+    .max-card h5 {
+        font-size: 1.1rem;
+    }
+
     .input-group {
-        flex-wrap: nowrap;
+        flex-direction: column;
+    }
+
+    .input-group .form-control {
+        border-radius: 8px 8px 0 0;
+        margin-bottom: -1px;
     }
 
     .input-group .btn {
-        white-space: nowrap;
+        border-radius: 0 0 8px 8px;
+        margin: 0;
     }
+}
+
+/* Специфические стили для MAX мини-приложения */
+.max-mini-app {
+    min-height: 100vh;
+}
+
+/* Улучшения для touch интерфейса */
+.btn, .nav-link, .project-card, .task-item {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Плавные переходы для всех интерактивных элементов */
+* {
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Кастомный скроллбар */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--max-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
+}
+
+.dark-theme ::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.dark-theme ::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+}
+
+.dark-theme ::-webkit-scrollbar-thumb:hover {
+    background: #3651d8;
 }
