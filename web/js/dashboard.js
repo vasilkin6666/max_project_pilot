@@ -5,7 +5,7 @@ class DashboardManager {
         try {
             // Загружаем проекты и задачи параллельно
             const [projectsData, tasksData] = await Promise.all([
-                ApiService.apiGetUserProjects(AuthManager.getCurrentUserId()),
+                ApiService.apiGetUserProjects(),
                 ApiService.apiGetAllTasks()
             ]);
 
@@ -14,7 +14,7 @@ class DashboardManager {
             Utils.log('Dashboard data loaded successfully');
         } catch (error) {
             Utils.logError('Dashboard load error', error);
-            ToastManager.showToast('Ошибка загрузки дашборда', 'error');
+            ToastManager.showToast('Ошибка загрузки дашборда: ' + error.message, 'error');
             this.renderError();
         }
     }

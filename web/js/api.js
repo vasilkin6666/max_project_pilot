@@ -16,7 +16,9 @@ class ApiService {
                     queryParams.append(key, params[key]);
                 }
             }
-            url += `?${queryParams.toString()}`;
+            if (queryParams.toString()) {
+                url += `?${queryParams.toString()}`;
+            }
         }
 
         const headers = {
@@ -33,7 +35,7 @@ class ApiService {
         };
 
         // Добавляем body для POST/PUT запросов
-        if (data && (method === 'POST' || method === 'PUT')) {
+        if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
             config.body = JSON.stringify(data);
         }
 
@@ -59,7 +61,7 @@ class ApiService {
             // Обработка других ошибок
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || 'Unknown error'}`);
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || errorData.message || 'Unknown error'}`);
             }
 
             // Для DELETE запросов или 204 No Content
@@ -90,19 +92,19 @@ class ApiService {
     }
 
     static async apiUpdateCurrentUser(fullName, username) {
-        const params = {};
-        if (fullName) params.full_name = fullName;
-        if (username) params.username = username;
-
-        return await this.apiCall('/users/me', 'PUT', null, params);
+        return await this.apiCall('/users/me', 'PUT', {
+            full_name: fullName,
+            username: username
+        });
     }
 
     static async apiGetUserById(userId) {
         return await this.apiCall(`/users/${userId}`, 'GET');
     }
 
-    static async apiGetUserProjects(userId) {
-        return await this.apiCall(`/users/${userId}/projects`, 'GET');
+    // ИСПРАВЛЕНО: Правильный endpoint для проектов пользователя
+    static async apiGetUserProjects() {
+        return await this.apiCall('/users/me/projects', 'GET');
     }
 
     // 🏢 Проекты
@@ -147,6 +149,7 @@ class ApiService {
     }
 
     // ✅ Задачи
+    // ИСПРАВЛЕНО: Правильные endpoints для задач
     static async apiGetAllTasks(status = null, projectHash = null) {
         const params = {};
         if (status) params.status = status;
@@ -160,7 +163,7 @@ class ApiService {
     }
 
     static async apiGetProjectTasks(projectHash) {
-        return await this.apiCall(`/tasks/project/${projectHash}`, 'GET');
+        return await this.apiCall(`/projects/${projectHash}/tasks`, 'GET');
     }
 
     static async apiCreateTask(taskData) {
@@ -168,7 +171,7 @@ class ApiService {
     }
 
     static async apiUpdateTaskStatus(taskId, status) {
-        return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', null, { status });
+        return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', { status });
     }
 
     static async apiGetTaskDependencies(taskId) {
@@ -176,7 +179,7 @@ class ApiService {
     }
 
     static async apiAddTaskDependency(taskId, dependsOnId) {
-        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', null, { depends_on_id: dependsOnId });
+        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', { depends_on_id: dependsOnId });
     }
 
     static async apiGetTaskComments(taskId) {
@@ -184,7 +187,7 @@ class ApiService {
     }
 
     static async apiAddTaskComment(taskId, content) {
-        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', null, { content });
+        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', { content });
     }
 
     static async apiDeleteTask(taskId) {

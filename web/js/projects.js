@@ -5,13 +5,13 @@ class ProjectsManager {
         Utils.log('Loading projects from API');
 
         try {
-            const data = await ApiService.apiGetUserProjects(AuthManager.getCurrentUserId());
+            const data = await ApiService.apiGetUserProjects();
             this.allProjects = data.projects || [];
             this.renderProjects(this.allProjects);
             Utils.log('Projects loaded successfully', { count: this.allProjects.length });
         } catch (error) {
             Utils.logError('Projects load error', error);
-            ToastManager.showToast('Ошибка загрузки проектов', 'error');
+            ToastManager.showToast('Ошибка загрузки проектов: ' + error.message, 'error');
             this.renderError();
         }
     }
@@ -80,8 +80,6 @@ class ProjectsManager {
     }
 
     static async createProject() {
-        Utils.provideHapticFeedback('medium');
-
         const title = prompt('Введите название проекта:');
         if (!title) {
             Utils.log('Project creation cancelled - no title');
@@ -105,7 +103,6 @@ class ProjectsManager {
             const result = await ApiService.apiCreateProject(projectData);
 
             if (result && result.project) {
-                Utils.provideHapticFeedback('notification');
                 ToastManager.showToast(`Проект "${result.project.title}" создан!`, 'success');
                 Utils.log('Project created successfully', result);
 
@@ -130,7 +127,7 @@ class ProjectsManager {
             this.showProjectModal(projectData);
         } catch (error) {
             Utils.logError('Error opening project detail', error);
-            ToastManager.showToast('Ошибка загрузки проекта', 'error');
+            ToastManager.showToast('Ошибка загрузки проекта: ' + error.message, 'error');
         }
     }
 
@@ -225,7 +222,7 @@ class ProjectsManager {
             this.showTasksModal(tasksData.tasks || [], `Задачи проекта`);
         } catch (error) {
             Utils.logError('Error loading project tasks', error);
-            ToastManager.showToast('Ошибка загрузки задач проекта', 'error');
+            ToastManager.showToast('Ошибка загрузки задач проекта: ' + error.message, 'error');
         }
     }
 
@@ -292,7 +289,7 @@ class ProjectsManager {
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
-                            <button class="btn max-btn-primary" onclick="ProjectsManager.shareProject('${projectHash}')">
+                            <button class="btn max-btn-primary" onclick="ProjectsManager.shareProject('${project.hash}')">
                                 <i class="fas fa-share"></i> Поделиться
                             </button>
                         </div>
@@ -354,9 +351,7 @@ class ProjectsManager {
 
     static async regenerateInviteHash(projectHash) {
         try {
-            Utils.provideHapticFeedback('medium');
             const result = await ApiService.apiRegenerateProjectInvite(projectHash);
-            Utils.provideHapticFeedback('notification');
             ToastManager.showToast('Ссылка приглашения обновлена', 'success');
 
             // Закрываем текущий модал и показываем новый с обновленной ссылкой
@@ -366,7 +361,7 @@ class ProjectsManager {
             }, 300);
         } catch (error) {
             Utils.logError('Error regenerating invite hash', error);
-            ToastManager.showToast('Ошибка обновления ссылки', 'error');
+            ToastManager.showToast('Ошибка обновления ссылки: ' + error.message, 'error');
         }
     }
 
@@ -376,7 +371,7 @@ class ProjectsManager {
             this.showJoinRequestsModal(requests, projectHash);
         } catch (error) {
             Utils.logError('Error loading join requests', error);
-            ToastManager.showToast('Ошибка загрузки запросов на присоединение', 'error');
+            ToastManager.showToast('Ошибка загрузки запросов на присоединение: ' + error.message, 'error');
         }
     }
 
@@ -431,9 +426,7 @@ class ProjectsManager {
 
     static async approveJoinRequest(projectHash, requestId) {
         try {
-            Utils.provideHapticFeedback('medium');
             await ApiService.apiApproveJoinRequest(projectHash, requestId);
-            Utils.provideHapticFeedback('success');
             ToastManager.showToast('Запрос одобрен', 'success');
 
             // Закрываем модальное окно
@@ -443,22 +436,20 @@ class ProjectsManager {
             await this.loadProjects();
         } catch (error) {
             Utils.logError('Error approving join request', error);
-            ToastManager.showToast('Ошибка одобрения запроса', 'error');
+            ToastManager.showToast('Ошибка одобрения запроса: ' + error.message, 'error');
         }
     }
 
     static async rejectJoinRequest(projectHash, requestId) {
         try {
-            Utils.provideHapticFeedback('medium');
             await ApiService.apiRejectJoinRequest(projectHash, requestId);
-            Utils.provideHapticFeedback('success');
             ToastManager.showToast('Запрос отклонен', 'success');
 
             // Закрываем модальное окно
             bootstrap.Modal.getInstance(document.getElementById('joinRequestsModal'))?.hide();
         } catch (error) {
             Utils.logError('Error rejecting join request', error);
-            ToastManager.showToast('Ошибка отклонения запроса', 'error');
+            ToastManager.showToast('Ошибка отклонения запроса: ' + error.message, 'error');
         }
     }
 

@@ -69,24 +69,9 @@ class Utils {
         };
     }
 
+    // УБРАТЬ HAPTIC FEEDBACK - не поддерживается в MAX WebApp
     static provideHapticFeedback(style = 'light') {
-        if (window.WebApp && window.WebApp.HapticFeedback) {
-            try {
-                if (style === 'notification') {
-                    if (window.WebApp.HapticFeedback.notificationOccurred) {
-                        window.WebApp.HapticFeedback.notificationOccurred('success');
-                        return true;
-                    }
-                } else {
-                    if (window.WebApp.HapticFeedback.impactOccurred) {
-                        window.WebApp.HapticFeedback.impactOccurred(style);
-                        return true;
-                    }
-                }
-            } catch (error) {
-                console.log('Haptic feedback not available');
-            }
-        }
+        // MAX WebApp не поддерживает haptic feedback, поэтому просто возвращаем false
         return false;
     }
 

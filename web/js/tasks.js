@@ -12,7 +12,7 @@ class TasksManager {
             Utils.log('Tasks loaded successfully', { count: this.allTasks.length });
         } catch (error) {
             Utils.logError('Tasks load error', error);
-            ToastManager.showToast('Ошибка загрузки задач', 'error');
+            ToastManager.showToast('Ошибка загрузки задач: ' + error.message, 'error');
             this.renderError();
         }
     }
@@ -92,7 +92,6 @@ class TasksManager {
 
     static async updateTaskStatus(taskId, status) {
         try {
-            Utils.provideHapticFeedback('medium');
             await ApiService.apiUpdateTaskStatus(taskId, status);
             ToastManager.showToast(`Статус задачи обновлен на: ${Utils.getStatusText(status)}`, 'success');
 
@@ -103,7 +102,7 @@ class TasksManager {
             }
         } catch (error) {
             Utils.logError('Error updating task status', error);
-            ToastManager.showToast('Ошибка обновления статуса', 'error');
+            ToastManager.showToast('Ошибка обновления статуса: ' + error.message, 'error');
         }
     }
 
@@ -113,7 +112,6 @@ class TasksManager {
         }
 
         try {
-            Utils.provideHapticFeedback('medium');
             await ApiService.apiDeleteTask(taskId);
             ToastManager.showToast('Задача удалена', 'success');
 
@@ -124,7 +122,7 @@ class TasksManager {
             }
         } catch (error) {
             Utils.logError('Error deleting task', error);
-            ToastManager.showToast('Ошибка удаления задачи', 'error');
+            ToastManager.showToast('Ошибка удаления задачи: ' + error.message, 'error');
         }
     }
 
@@ -136,7 +134,7 @@ class TasksManager {
             }
         } catch (error) {
             Utils.logError('Error opening task detail', error);
-            ToastManager.showToast('Ошибка загрузки задачи', 'error');
+            ToastManager.showToast('Ошибка загрузки задачи: ' + error.message, 'error');
         }
     }
 
@@ -232,7 +230,7 @@ class TasksManager {
         return new Date(dueDate) < new Date();
     }
 
-    static async createTaskModal() {
+    static createTaskModal() {
         if (!ProjectsManager.allProjects || ProjectsManager.allProjects.length === 0) {
             ToastManager.showToast('Сначала создайте проект', 'warning');
             UI.showSection('projects');
