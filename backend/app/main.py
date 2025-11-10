@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.projects import router as projects_router
-from app.api.tasks import router as tasks_router
+from app.api.tasks import router as tasks_router  # ← УЖЕ ПРАВИЛЬНО!
 from app.api.notifications import router as notifications_router
 from app.models import Base
 from app.database import engine
@@ -24,7 +24,7 @@ app.add_middleware(
         "https://vasilkin6666.github.io",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://powerfully-exotic-chamois.cloudpub.ru"  # Добавьте ваш домен бэкенда если нужно
+        "https://powerfully-exotic-chamois.cloudpub.ru"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -58,7 +58,7 @@ async def api_health_check():
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(projects_router, prefix="/api")
-app.include_router(tasks_router, prefix="/api")
+app.include_router(tasks_router, prefix="/api")  # ← ПОДКЛЮЧАЕТСЯ ПРАВИЛЬНО!
 app.include_router(notifications_router, prefix="/api")
 
 # Root endpoint

@@ -19,7 +19,6 @@ async def read_users_me(
 ):
     """Получить данные текущего аутентифицированного пользователя"""
     logger.info(f"Fetching current user data for: {current_user.max_id}")
-
     try:
         return {
             "id": current_user.id,
@@ -44,7 +43,6 @@ async def get_user(
 ):
     """Получить данные пользователя по ID"""
     try:
-        # Защита от использования 'me' в этом эндпоинте
         if user_id == "me":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -53,12 +51,10 @@ async def get_user(
 
         logger.info(f"Fetching user data for user_id: {user_id}")
 
-        # Проверка прав доступа - можно просматривать только свой профиль
+        # КРИТИЧЕСКАЯ ПРОВЕРКА ДОСТУПА
         if user_id != current_user.max_id:
-            logger.warning(
-                f"User {current_user.max_id} attempted to access profile of {user_id}"
-            )
-            raise ForbiddenException("Access denied - can only view own profile")
+            logger.warning(f"User {current_user.max_id} attempted to access profile of {user_id}")
+            raise HTTPException(status_code=403, detail="Access denied - can only view own profile")
 
         result = await db.execute(select(User).where(User.max_id == user_id))
         user = result.scalar_one_or_none()
@@ -78,7 +74,6 @@ async def get_user(
         }
 
     except HTTPException:
-        # Пробрасываем известные HTTP исключения
         raise
     except Exception as e:
         logger.error(f"Error fetching user {user_id}: {str(e)}")
@@ -95,16 +90,12 @@ async def get_user_projects(
 ):
     """Получить проекты пользователя"""
     try:
-        # Проверка прав доступа
         if current_user.max_id != user_id:
-            logger.warning(
-                f"User {current_user.max_id} attempted to access projects of {user_id}"
-            )
-            raise ForbiddenException("Not authorized to view this user's projects")
+            logger.warning(f"User {current_user.max_id} attempted to access projects of {user_id}")
+            raise HTTPException(status_code=403, detail="Not authorized to view this user's projects")
 
         logger.info(f"Fetching projects for user: {user_id}")
 
-        # Получаем членства в проектах
         result = await db.execute(
             select(ProjectMember)
             .where(ProjectMember.user_id == current_user.id)
@@ -117,7 +108,6 @@ async def get_user_projects(
         for member in memberships:
             project = member.member_project
 
-            # Оптимизированные запросы для статистики
             total_result = await db.execute(
                 select(func.count(Task.id)).where(Task.project_id == project.id)
             )
@@ -147,7 +137,6 @@ async def get_user_projects(
                 "tasks_todo": todo_result.scalar() or 0
             }
 
-            # Получаем информацию о членах проекта
             members_result = await db.execute(
                 select(ProjectMember)
                 .where(ProjectMember.project_id == project.id)
@@ -219,7 +208,6 @@ async def update_current_user(
                 detail="No data provided for update"
             )
 
-        # Обновляем поля
         for field, value in update_data.items():
             setattr(current_user, field, value)
 

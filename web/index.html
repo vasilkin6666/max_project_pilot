@@ -7,7 +7,7 @@
     <script src="https://st.max.ru/js/max-web-app.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-light">
     <!-- Loading Overlay -->
@@ -37,13 +37,15 @@
                     <p class="mb-0 small opacity-85">Управление проектами в MAX</p>
                 </div>
                 <div class="col-auto">
-                    <div id="user-info" class="d-flex align-items-center">
-                        <div class="user-avatar" id="user-avatar">U</div>
-                        <div id="user-name">Гость</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div id="user-info" class="d-flex align-items-center">
+                            <div class="user-avatar" id="user-avatar">U</div>
+                            <div id="user-name" class="ms-2 d-none d-sm-block">Гость</div>
+                        </div>
+                        <button id="theme-toggle" class="btn btn-sm btn-outline-secondary theme-toggle-btn">
+                            <i class="fas fa-moon"></i>
+                        </button>
                     </div>
-                    <button id="theme-toggle" class="btn btn-sm btn-outline-secondary ms-2">
-                        <i class="fas fa-moon"></i>
-                    </button>
                 </div>
             </div>
         </header>
@@ -53,26 +55,26 @@
             <!-- Навигация -->
             <ul class="nav nav-tabs nav-tabs-max nav-justified mb-4">
                 <li class="nav-item">
-                    <a class="nav-link active" href="#" onclick="showSection('dashboard')">
+                    <a class="nav-link active" href="#" data-section="dashboard">
                         <i class="fas fa-home"></i>
                         <span class="d-none d-md-inline"> Главная</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="showSection('projects')">
+                    <a class="nav-link" href="#" data-section="projects">
                         <i class="fas fa-project-diagram"></i>
                         <span class="d-none d-md-inline"> Проекты</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="showSection('tasks')">
+                    <a class="nav-link" href="#" data-section="tasks">
                         <i class="fas fa-tasks"></i>
                         <span class="d-none d-md-inline"> Задачи</span>
                         <span class="badge bg-primary ms-1" id="tasks-badge" style="display: none;">0</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="showSection('notifications')">
+                    <a class="nav-link" href="#" data-section="notifications">
                         <i class="fas fa-bell"></i>
                         <span class="d-none d-md-inline"> Уведомления</span>
                         <span class="badge bg-danger ms-1" id="notifications-badge" style="display: none;">0</span>
@@ -84,31 +86,35 @@
             <div id="dashboard" class="section active">
                 <div class="row mb-4">
                     <div class="col-6 col-md-3 mb-3">
-                        <div class="stats-card">
+                        <div class="stats-card clickable-stats" data-section="projects">
                             <i class="fas fa-project-diagram fa-2x mb-2" style="color: var(--primary-color);"></i>
                             <h5 id="projects-count">0</h5>
                             <p class="text-muted mb-0">Проектов</p>
+                            <div class="stats-hover-effect"></div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3 mb-3">
-                        <div class="stats-card">
+                        <div class="stats-card clickable-stats" data-filter="todo">
                             <i class="fas fa-hourglass-start fa-2x mb-2" style="color: var(--warning-color);"></i>
                             <h5 id="tasks-todo-count">0</h5>
                             <p class="text-muted mb-0">К выполнению</p>
+                            <div class="stats-hover-effect"></div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3 mb-3">
-                        <div class="stats-card">
+                        <div class="stats-card clickable-stats" data-filter="in_progress">
                             <i class="fas fa-cogs fa-2x mb-2" style="color: var(--info-color);"></i>
                             <h5 id="tasks-progress-count">0</h5>
                             <p class="text-muted mb-0">В работе</p>
+                            <div class="stats-hover-effect"></div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3 mb-3">
-                        <div class="stats-card">
+                        <div class="stats-card clickable-stats" data-filter="done">
                             <i class="fas fa-check-circle fa-2x mb-2" style="color: var(--success-color);"></i>
                             <h5 id="tasks-done-count">0</h5>
                             <p class="text-muted mb-0">Выполнено</p>
+                            <div class="stats-hover-effect"></div>
                         </div>
                     </div>
                 </div>
@@ -116,12 +122,15 @@
                 <div class="max-card p-4 mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="mb-0">📊 Активные проекты</h6>
-                        <button class="btn max-btn-primary btn-sm" onclick="showSection('projects')">
+                        <button class="btn max-btn-primary btn-sm" data-section="projects">
                             <i class="fas fa-eye"></i> Все проекты
                         </button>
                     </div>
                     <div id="dashboard-projects-list">
-                        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка проектов...</div>
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-project-diagram fa-3x mb-3 opacity-50"></i>
+                            <p>Загружаем ваши проекты...</p>
+                        </div>
                     </div>
                 </div>
 
@@ -131,22 +140,22 @@
                     </div>
                     <div class="row g-2">
                         <div class="col-12 col-sm-6 col-md-3">
-                            <button class="btn max-btn-primary w-100" onclick="createProject()">
+                            <button class="btn max-btn-primary w-100" id="create-project-btn">
                                 <i class="fas fa-plus"></i> Новый проект
                             </button>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
-                            <button class="btn btn-outline-primary w-100" onclick="showSection('tasks')">
+                            <button class="btn btn-outline-primary w-100" data-section="tasks">
                                 <i class="fas fa-tasks"></i> Все задачи
                             </button>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
-                            <button class="btn btn-outline-info w-100" onclick="loadTasks('todo')">
+                            <button class="btn btn-outline-info w-100" data-filter="todo">
                                 <i class="fas fa-hourglass-start"></i> К выполнению
                             </button>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
-                            <button class="btn btn-outline-success w-100" onclick="loadNotifications()">
+                            <button class="btn btn-outline-success w-100" data-section="notifications">
                                 <i class="fas fa-bell"></i> Уведомления
                             </button>
                         </div>
@@ -159,7 +168,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h6 class="mb-0">📂 Мои проекты</h6>
                     <div>
-                        <button class="btn max-btn-primary btn-sm" onclick="createProject()">
+                        <button class="btn max-btn-primary btn-sm" id="create-project-btn-2">
                             <i class="fas fa-plus"></i> Новый проект
                         </button>
                     </div>
@@ -168,11 +177,11 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="input-group">
-                            <input type="text" id="searchProjectsInput" class="form-control" placeholder="Поиск проектов..." onkeypress="handleProjectSearchKeyPress(event)">
-                            <button class="btn btn-outline-secondary" type="button" onclick="searchProjects()">
+                            <input type="text" id="searchProjectsInput" class="form-control" placeholder="Поиск проектов...">
+                            <button class="btn btn-outline-secondary" type="button" id="search-projects-btn">
                                 <i class="fas fa-search"></i>
                             </button>
-                            <button class="btn btn-outline-secondary" type="button" onclick="clearProjectSearch()" title="Очистить поиск">
+                            <button class="btn btn-outline-secondary" type="button" id="clear-project-search-btn" title="Очистить поиск">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -180,7 +189,14 @@
                 </div>
 
                 <div id="projects-list">
-                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка проектов...</div>
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
+                        <h6>Проектов пока нет</h6>
+                        <p class="text-muted">Создайте свой первый проект!</p>
+                        <button class="btn max-btn-primary" id="create-project-btn-3">
+                            <i class="fas fa-plus"></i> Создать проект
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -194,14 +210,14 @@
                                 <i class="fas fa-filter"></i> Фильтр
                             </button>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#" onclick="loadTasks()">Все задачи</a></li>
+                                <li><a class="dropdown-item filter-tasks" href="#" data-filter="">Все задачи</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#" onclick="loadTasks('todo')"><i class="fas fa-hourglass-start text-warning"></i> К выполнению</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="loadTasks('in_progress')"><i class="fas fa-cogs text-info"></i> В работе</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="loadTasks('done')"><i class="fas fa-check-circle text-success"></i> Завершено</a></li>
+                                <li><a class="dropdown-item filter-tasks" href="#" data-filter="todo"><i class="fas fa-hourglass-start text-warning"></i> К выполнению</a></li>
+                                <li><a class="dropdown-item filter-tasks" href="#" data-filter="in_progress"><i class="fas fa-cogs text-info"></i> В работе</a></li>
+                                <li><a class="dropdown-item filter-tasks" href="#" data-filter="done"><i class="fas fa-check-circle text-success"></i> Завершено</a></li>
                             </ul>
                         </div>
-                        <button class="btn max-btn-primary btn-sm" onclick="createTaskModal()">
+                        <button class="btn max-btn-primary btn-sm" id="create-task-btn">
                             <i class="fas fa-plus"></i> Новая задача
                         </button>
                     </div>
@@ -210,27 +226,26 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="input-group">
-                            <input type="text" id="searchTasksInput" class="form-control" placeholder="Поиск задач по названию, описанию, проекту..." onkeypress="handleSearchKeyPress(event)">
-                            <button class="btn btn-outline-secondary" type="button" onclick="searchTasks()">
+                            <input type="text" id="searchTasksInput" class="form-control" placeholder="Поиск задач по названию, описанию, проекту...">
+                            <button class="btn btn-outline-secondary" type="button" id="search-tasks-btn">
                                 <i class="fas fa-search"></i> Поиск
                             </button>
-                            <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()" title="Очистить поиск">
+                            <button class="btn btn-outline-secondary" type="button" id="clear-search-btn" title="Очистить поиск">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="d-flex flex-wrap gap-2" id="tasks-filter-tags">
-                            <!-- Фильтры будут добавляться динамически -->
-                        </div>
-                    </div>
-                </div>
-
                 <div id="tasks-list">
-                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка задач...</div>
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-tasks fa-3x mb-3 opacity-50"></i>
+                        <h6>Задач пока нет</h6>
+                        <p class="text-muted">Создайте проект и добавьте задачи!</p>
+                        <button class="btn max-btn-primary" data-section="projects">
+                            <i class="fas fa-project-diagram"></i> Перейти к проектам
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -239,10 +254,10 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h6 class="mb-0">🔔 Уведомления</h6>
                     <div>
-                        <button class="btn btn-outline-secondary btn-sm me-2" onclick="loadNotifications()">
+                        <button class="btn btn-outline-secondary btn-sm me-2" id="refresh-notifications-btn">
                             <i class="fas fa-sync-alt"></i> Обновить
                         </button>
-                        <button class="btn max-btn-primary btn-sm" onclick="markAllNotificationsRead()">
+                        <button class="btn max-btn-primary btn-sm" id="mark-all-read-btn">
                             <i class="fas fa-check-double"></i> Прочитать все
                         </button>
                     </div>
@@ -254,7 +269,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="mb-1">Статус уведомлений</h6>
-                                    <p class="text-muted mb-0" id="notifications-summary">Загрузка...</p>
+                                    <p class="text-muted mb-0" id="notifications-summary">Всего: 0, Прочитано: 0, Непрочитано: 0</p>
                                 </div>
                                 <div class="text-end">
                                     <div class="h4 mb-0" id="unread-notifications-count">0</div>
@@ -266,18 +281,30 @@
                 </div>
 
                 <div id="notifications-list">
-                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка уведомлений...</div>
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-bell fa-3x mb-3 opacity-50"></i>
+                        <h6>Уведомлений нет</h6>
+                        <p class="text-muted">Новые уведомления появятся здесь</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Модальные окна будут добавляться динамически -->
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.6.2/fuse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="js/config.js"></script>
+
+    <!-- Подключаем модули -->
     <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/projects.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/notifications.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

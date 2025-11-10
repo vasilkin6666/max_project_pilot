@@ -1,236 +1,215 @@
-// web/js/api.js - Полная интеграция со всеми API endpoints
+// Конфигурация API
+const CONFIG = {
+    API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
+};
 
-// Базовый API вызов
-async function apiCall(endpoint, method = 'GET', data = null, params = null) {
-    const token = localStorage.getItem('access_token');
+class ApiService {
+    static async apiCall(endpoint, method = 'GET', data = null, params = null) {
+        const token = localStorage.getItem('access_token');
+        let url = `${CONFIG.API_BASE_URL}${endpoint}`;
 
-    let url = `${CONFIG.API_BASE_URL}${endpoint}`;
-
-    // Для POST/PUT с query параметрами (согласно документации API)
-    if (params && (method === 'POST' || method === 'PUT')) {
-        const queryParams = new URLSearchParams();
-        for (const key in params) {
-            if (params[key] !== null && params[key] !== undefined) {
-                if (Array.isArray(params[key])) {
-                    params[key].forEach(value => queryParams.append(key, value));
-                } else {
+        // Обработка query параметров для GET запросов
+        if (params && method === 'GET') {
+            const queryParams = new URLSearchParams();
+            for (const key in params) {
+                if (params[key] !== null && params[key] !== undefined) {
                     queryParams.append(key, params[key]);
                 }
             }
+            url += `?${queryParams.toString()}`;
         }
-        url += `?${queryParams.toString()}`;
-    }
-    // Для GET с query параметрами
-    else if (params && method === 'GET') {
-        const queryParams = new URLSearchParams();
-        for (const key in params) {
-            if (params[key] !== null && params[key] !== undefined) {
-                queryParams.append(key, params[key]);
+
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const config = {
+            method,
+            headers,
+        };
+
+        // Добавляем body для POST/PUT запросов
+        if (data && (method === 'POST' || method === 'PUT')) {
+            config.body = JSON.stringify(data);
+        }
+
+        Utils.log(`API call: ${method} ${url}`, { hasToken: !!token, data, params });
+
+        try {
+            const response = await fetch(url, config);
+
+            // Обработка ошибки аутентификации
+            if (response.status === 401) {
+                localStorage.removeItem('access_token');
+                ToastManager.showToast('Сессия истекла. Пожалуйста, обновите страницу.', 'warning');
+                throw new Error('Authentication required');
             }
+
+            // Обработка ошибок валидации
+            if (response.status === 422) {
+                const errorData = await response.json();
+                Utils.logError('Validation error:', errorData);
+                throw new Error(`Validation error: ${errorData.detail || 'Invalid data'}`);
+            }
+
+            // Обработка других ошибок
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || 'Unknown error'}`);
+            }
+
+            // Для DELETE запросов или 204 No Content
+            if (response.status === 204 || method === 'DELETE') {
+                return { status: 'success' };
+            }
+
+            const responseData = await response.json();
+            return responseData;
+        } catch (error) {
+            Utils.logError(`API Error: ${method} ${url}`, error);
+            throw error;
         }
-        url += `?${queryParams.toString()}`;
     }
 
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    // 🔐 Аутентификация
+    static async apiGetAuthToken(maxId, fullName, username = '') {
+        return await this.apiCall('/auth/token', 'POST', {
+            max_id: maxId,
+            full_name: fullName,
+            username: username
+        });
     }
 
-    const config = {
-        method,
-        headers,
-    };
-
-    // Для POST/PUT с данными в body (если не query params)
-    if (data && method !== 'GET' && !params) {
-        config.body = JSON.stringify(data);
+    // 👤 Пользователи
+    static async apiGetCurrentUser() {
+        return await this.apiCall('/users/me', 'GET');
     }
 
-    console.log(`API call: ${method} ${url}`, { hasToken: !!token, data, params });
+    static async apiUpdateCurrentUser(fullName, username) {
+        const params = {};
+        if (fullName) params.full_name = fullName;
+        if (username) params.username = username;
 
-    try {
-        const response = await fetch(url, config);
+        return await this.apiCall('/users/me', 'PUT', null, params);
+    }
 
-        if (response.status === 401) {
-            localStorage.removeItem('access_token');
-            showToast('Сессия истекла. Пожалуйста, обновите страницу.', 'warning');
-            throw new Error('Authentication required');
-        }
+    static async apiGetUserById(userId) {
+        return await this.apiCall(`/users/${userId}`, 'GET');
+    }
 
-        if (response.status === 422) {
-            const errorData = await response.json();
-            console.error('Validation error:', errorData);
-            throw new Error(`Validation error: ${errorData.detail?.[0]?.msg || 'Invalid data'}`);
-        }
+    static async apiGetUserProjects(userId) {
+        return await this.apiCall(`/users/${userId}/projects`, 'GET');
+    }
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || errorData.message || 'Unknown error'}`);
-        }
+    // 🏢 Проекты
+    static async apiCreateProject(projectData) {
+        return await this.apiCall('/projects/', 'POST', projectData);
+    }
 
-        if (response.status === 204 || method === 'DELETE') {
-            return { status: 'success' };
-        }
+    static async apiGetProjectByHash(projectHash) {
+        return await this.apiCall(`/projects/${projectHash}`, 'GET');
+    }
 
-        const responseData = await response.json();
-        return responseData;
-    } catch (error) {
-        console.error(`API Error: ${method} ${url}`, error);
-        throw error;
+    static async apiGetProjectSummary(projectHash) {
+        return await this.apiCall(`/projects/${projectHash}/summary`, 'GET');
+    }
+
+    static async apiJoinProject(projectHash) {
+        return await this.apiCall(`/projects/${projectHash}/join`, 'POST');
+    }
+
+    static async apiGetProjectJoinRequests(projectHash) {
+        return await this.apiCall(`/projects/${projectHash}/join-requests`, 'GET');
+    }
+
+    static async apiApproveJoinRequest(projectHash, requestId) {
+        return await this.apiCall(`/projects/${projectHash}/join-requests/${requestId}/approve`, 'POST');
+    }
+
+    static async apiRejectJoinRequest(projectHash, requestId) {
+        return await this.apiCall(`/projects/${projectHash}/join-requests/${requestId}/reject`, 'POST');
+    }
+
+    static async apiRegenerateProjectInvite(projectHash) {
+        return await this.apiCall(`/projects/${projectHash}/regenerate-invite`, 'POST');
+    }
+
+    static async apiUpdateProject(projectHash, updateData) {
+        return await this.apiCall(`/projects/${projectHash}`, 'PUT', updateData);
+    }
+
+    static async apiDeleteProject(projectHash) {
+        return await this.apiCall(`/projects/${projectHash}`, 'DELETE');
+    }
+
+    // ✅ Задачи
+    static async apiGetAllTasks(status = null, projectHash = null) {
+        const params = {};
+        if (status) params.status = status;
+        if (projectHash) params.project_hash = projectHash;
+
+        return await this.apiCall('/tasks/', 'GET', null, params);
+    }
+
+    static async apiGetTaskById(taskId) {
+        return await this.apiCall(`/tasks/${taskId}`, 'GET');
+    }
+
+    static async apiGetProjectTasks(projectHash) {
+        return await this.apiCall(`/tasks/project/${projectHash}`, 'GET');
+    }
+
+    static async apiCreateTask(taskData) {
+        return await this.apiCall('/tasks/', 'POST', taskData);
+    }
+
+    static async apiUpdateTaskStatus(taskId, status) {
+        return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', null, { status });
+    }
+
+    static async apiGetTaskDependencies(taskId) {
+        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'GET');
+    }
+
+    static async apiAddTaskDependency(taskId, dependsOnId) {
+        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', null, { depends_on_id: dependsOnId });
+    }
+
+    static async apiGetTaskComments(taskId) {
+        return await this.apiCall(`/tasks/${taskId}/comments`, 'GET');
+    }
+
+    static async apiAddTaskComment(taskId, content) {
+        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', null, { content });
+    }
+
+    static async apiDeleteTask(taskId) {
+        return await this.apiCall(`/tasks/${taskId}`, 'DELETE');
+    }
+
+    // 🔔 Уведомления
+    static async apiGetNotifications() {
+        return await this.apiCall('/notifications/', 'GET');
+    }
+
+    static async apiMarkAllNotificationsRead() {
+        return await this.apiCall('/notifications/mark_all_read', 'PUT');
+    }
+
+    // 🩺 Health Checks
+    static async apiCheckAppHealth() {
+        return await this.apiCall('/health', 'GET');
+    }
+
+    static async apiCheckApiHealth() {
+        return await this.apiCall('/api/health', 'GET');
     }
 }
 
-// 🔐 Аутентификация
-async function apiGetAuthToken(maxId, fullName, username = '') {
-    return await apiCall('/auth/token', 'POST', {
-        max_id: maxId,
-        full_name: fullName,
-        username: username
-    });
-}
-
-// 👤 Пользователи
-async function apiGetCurrentUser() {
-    return await apiCall('/users/me', 'GET');
-}
-
-async function apiGetUserById(userId) {
-    return await apiCall(`/users/${userId}`, 'GET');
-}
-
-async function apiGetUserProjects(userId) {
-    return await apiCall(`/users/${userId}/projects`, 'GET');
-}
-
-// 🏢 Проекты
-async function apiCreateProject(title, description = '', isPrivate = true, requiresApproval = false) {
-    const params = {
-        title: title,
-        description: description,
-        is_private: isPrivate,
-        requires_approval: requiresApproval
-    };
-    return await apiCall('/projects/', 'POST', null, params);
-}
-
-async function apiGetProjectByHash(projectHash) {
-    return await apiCall(`/projects/${projectHash}`, 'GET');
-}
-
-async function apiJoinProject(projectHash) {
-    return await apiCall(`/projects/${projectHash}/join`, 'POST');
-}
-
-async function apiGetProjectJoinRequests(projectHash) {
-    return await apiCall(`/projects/${projectHash}/join-requests`, 'GET');
-}
-
-async function apiApproveJoinRequest(projectHash, requestId) {
-    return await apiCall(`/projects/${projectHash}/join-requests/${requestId}/approve`, 'POST');
-}
-
-async function apiRejectJoinRequest(projectHash, requestId) {
-    return await apiCall(`/projects/${projectHash}/join-requests/${requestId}/reject`, 'POST');
-}
-
-async function apiRegenerateProjectInvite(projectHash) {
-    return await apiCall(`/projects/${projectHash}/regenerate-invite`, 'POST');
-}
-
-async function apiGetProjectSummary(projectHash) {
-    return await apiCall(`/projects/${projectHash}/summary`, 'GET');
-}
-
-// ✅ Задачи
-async function apiGetAllTasks(status = null, projectHash = null) {
-    const params = {};
-    if (status) params.status = status;
-    if (projectHash) params.project_hash = projectHash;
-
-    return await apiCall('/tasks/', 'GET', null, params);
-}
-
-async function apiGetProjectTasks(projectHash) {
-    return await apiCall(`/tasks/project/${projectHash}`, 'GET');
-}
-
-async function apiCreateTask(taskData) {
-    // Согласно документации - все параметры через query
-    return await apiCall('/tasks/', 'POST', null, taskData);
-}
-
-async function apiUpdateTaskStatus(taskId, status) {
-    return await apiCall(`/tasks/${taskId}/status`, 'PUT', null, { status });
-}
-
-async function apiGetTaskDependencies(taskId) {
-    return await apiCall(`/tasks/${taskId}/dependencies`, 'GET');
-}
-
-async function apiAddTaskDependency(taskId, dependsOnId) {
-    return await apiCall(`/tasks/${taskId}/dependencies`, 'POST', null, { depends_on_id: dependsOnId });
-}
-
-async function apiGetTaskComments(taskId) {
-    return await apiCall(`/tasks/${taskId}/comments`, 'GET');
-}
-
-async function apiAddTaskComment(taskId, content) {
-    return await apiCall(`/tasks/${taskId}/comments`, 'POST', null, { content });
-}
-
-async function apiDeleteTask(taskId) {
-    return await apiCall(`/tasks/${taskId}`, 'DELETE');
-}
-
-// 🔔 Уведомления
-async function apiGetNotifications() {
-    return await apiCall('/notifications/', 'GET');
-}
-
-async function apiMarkAllNotificationsRead() {
-    return await apiCall('/notifications/mark_all_read', 'PUT');
-}
-
-// 🩺 Health Checks
-async function apiCheckAppHealth() {
-    return await apiCall('/health', 'GET');
-}
-
-async function apiCheckApiHealth() {
-    return await apiCall('/api/health', 'GET');
-}
-
-// 🏢 Проекты - Управление запросами на присоединение
-async function apiGetProjectJoinRequests(projectHash) {
-    return await apiCall(`/projects/${projectHash}/join-requests`, 'GET');
-}
-
-async function apiApproveJoinRequest(projectHash, requestId) {
-    return await apiCall(`/projects/${projectHash}/join-requests/${requestId}/approve`, 'POST');
-}
-
-async function apiRejectJoinRequest(projectHash, requestId) {
-    return await apiCall(`/projects/${projectHash}/join-requests/${requestId}/reject`, 'POST');
-}
-
-// ✅ Задачи - Зависимости
-async function apiGetTaskDependencies(taskId) {
-    return await apiCall(`/tasks/${taskId}/dependencies`, 'GET');
-}
-
-async function apiAddTaskDependency(taskId, dependsOnId) {
-    return await apiCall(`/tasks/${taskId}/dependencies`, 'POST', null, { depends_on_id: dependsOnId });
-}
-
-// ✅ Задачи - Комментарии
-async function apiGetTaskComments(taskId) {
-    return await apiCall(`/tasks/${taskId}/comments`, 'GET');
-}
-
-async function apiAddTaskComment(taskId, content) {
-    return await apiCall(`/tasks/${taskId}/comments`, 'POST', null, { content });
-}
+// Глобальные экспорты
+window.ApiService = ApiService;
+window.CONFIG = CONFIG;
