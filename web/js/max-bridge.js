@@ -5,7 +5,7 @@ class MaxBridgeIntegration {
         this.init();
     }
 
-    init() {
+    async init() {
         if (!this.isMaxEnvironment) {
             console.log('MAX Bridge: Running in standalone mode');
             return;
@@ -13,70 +13,68 @@ class MaxBridgeIntegration {
 
         console.log('MAX Bridge: Initializing in MAX environment');
 
-        // Инициализация MAX Bridge
-        this.setupBackButton();
-        this.setupClosingConfirmation();
-        this.setupUserData();
+        try {
+            // Инициализация MAX Bridge
+            await this.setupBackButton();
+            this.setupClosingConfirmation();
 
-        // Сообщаем MAX, что приложение готово
-        window.WebApp.ready();
+            // Сообщаем MAX, что приложение готово
+            if (window.WebApp.ready) {
+                window.WebApp.ready();
+            }
+
+            console.log('MAX Bridge initialized successfully');
+        } catch (error) {
+            console.error('MAX Bridge initialization error:', error);
+        }
     }
 
-    setupBackButton() {
-        if (!this.isMaxEnvironment) return;
+    async setupBackButton() {
+        if (!this.isMaxEnvironment || !window.WebApp.BackButton) return;
 
         const backButton = document.getElementById('back-button');
 
-        window.WebApp.BackButton.onClick(() => {
-            this.handleBackButton();
-        });
+        try {
+            if (window.WebApp.BackButton.onClick) {
+                window.WebApp.BackButton.onClick(() => {
+                    this.handleBackButton();
+                });
+            }
 
-        // Показываем кнопку назад когда нужно
-        window.WebApp.BackButton.show();
-        backButton.classList.remove('d-none');
+            // Показываем кнопку назад когда нужно
+            if (window.WebApp.BackButton.show) {
+                window.WebApp.BackButton.show();
+            }
+            backButton.classList.remove('d-none');
 
-        backButton.addEventListener('click', () => {
-            this.handleBackButton();
-        });
+            backButton.addEventListener('click', () => {
+                this.handleBackButton();
+            });
+        } catch (error) {
+            console.error('Back button setup error:', error);
+        }
     }
 
     setupClosingConfirmation() {
         if (!this.isMaxEnvironment) return;
 
-        // Включаем подтверждение закрытия при изменении данных
-        window.WebApp.enableClosingConfirmation();
-    }
-
-    setupUserData() {
-        if (!this.isMaxEnvironment) return;
-
-        const initData = window.WebApp.initDataUnsafe;
-
-        if (initData && initData.user) {
-            this.updateUserInterface(initData.user);
-        }
-    }
-
-    updateUserInterface(userData) {
-        const userNameElement = document.getElementById('user-name');
-        const userAvatarElement = document.getElementById('user-avatar');
-
-        if (userData.first_name || userData.last_name) {
-            const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-            userNameElement.textContent = fullName || 'Пользователь MAX';
-            userAvatarElement.textContent = fullName.charAt(0).toUpperCase() || 'U';
-        }
-
-        if (userData.username) {
-            // Можно использовать username для дополнительной информации
-            console.log('MAX user:', userData.username);
+        try {
+            // Включаем подтверждение закрытия при изменении данных
+            if (window.WebApp.enableClosingConfirmation) {
+                window.WebApp.enableClosingConfirmation();
+            }
+        } catch (error) {
+            console.error('Closing confirmation setup error:', error);
         }
     }
 
     handleBackButton() {
         // Логика кнопки "Назад"
         const sections = ['dashboard', 'projects', 'tasks', 'notifications'];
-        const currentSection = document.querySelector('.section.active').id;
+        const currentSection = document.querySelector('.section.active')?.id;
+
+        if (!currentSection) return;
+
         const currentIndex = sections.indexOf(currentSection);
 
         if (currentIndex > 0) {
@@ -94,7 +92,10 @@ class MaxBridgeIntegration {
             section.classList.remove('active');
         });
 
-        document.getElementById(sectionName).classList.add('active');
+        const sectionElement = document.getElementById(sectionName);
+        if (sectionElement) {
+            sectionElement.classList.add('active');
+        }
 
         // Обновляем навигацию
         document.querySelectorAll('.nav-link').forEach(link => {
@@ -102,14 +103,22 @@ class MaxBridgeIntegration {
         });
 
         // В MAX среде используем тактильную обратную связь
-        if (this.isMaxEnvironment) {
-            window.WebApp.HapticFeedback.impactOccurred('light');
+        if (this.isMaxEnvironment && window.WebApp.HapticFeedback) {
+            try {
+                window.WebApp.HapticFeedback.impactOccurred('light');
+            } catch (error) {
+                console.error('Haptic feedback error:', error);
+            }
         }
     }
 
     closeApp() {
-        if (this.isMaxEnvironment) {
-            window.WebApp.close();
+        if (this.isMaxEnvironment && window.WebApp.close) {
+            try {
+                window.WebApp.close();
+            } catch (error) {
+                console.error('App close error:', error);
+            }
         } else {
             console.log('MAX Bridge: App close requested');
         }
@@ -117,8 +126,12 @@ class MaxBridgeIntegration {
 
     // Методы для работы с MAX API
     shareContent(text, link) {
-        if (this.isMaxEnvironment) {
-            window.WebApp.shareContent(text, link);
+        if (this.isMaxEnvironment && window.WebApp.shareContent) {
+            try {
+                window.WebApp.shareContent(text, link);
+            } catch (error) {
+                console.error('Share content error:', error);
+            }
         } else {
             // Fallback для обычного браузера
             if (navigator.share) {
@@ -135,34 +148,14 @@ class MaxBridgeIntegration {
     }
 
     openLink(url) {
-        if (this.isMaxEnvironment) {
-            window.WebApp.openLink(url);
+        if (this.isMaxEnvironment && window.WebApp.openLink) {
+            try {
+                window.WebApp.openLink(url);
+            } catch (error) {
+                console.error('Open link error:', error);
+            }
         } else {
             window.open(url, '_blank');
-        }
-    }
-
-    // Биометрическая аутентификация
-    async setupBiometricAuth() {
-        if (!this.isMaxEnvironment || !window.WebApp.BiometricManager) {
-            return false;
-        }
-
-        try {
-            const biometricManager = window.WebApp.BiometricManager;
-
-            if (!biometricManager.isInited) {
-                await biometricManager.init();
-            }
-
-            if (biometricManager.isBiometricAvailable && !biometricManager.isAccessGranted) {
-                await biometricManager.requestAccess();
-            }
-
-            return biometricManager.isAccessGranted;
-        } catch (error) {
-            console.error('Biometric auth setup failed:', error);
-            return false;
         }
     }
 }

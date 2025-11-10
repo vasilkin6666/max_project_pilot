@@ -1,17 +1,22 @@
+# bot/app/bot.py
 import asyncio
-from maxapi import Bot, Dispatcher, F
-from maxapi.types import MessageCreated, MessageCallback
+import logging
+from maxapi import Bot, Dispatcher
+from maxapi.types import MessageCreated, MessageCallback, CallbackButton
+from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from maxapi.filters.command import Command
+
 from app.config import settings
 from app.handlers import (
     cmd_start, cmd_help, cmd_create_project, cmd_join_project,
-    handle_callback_create_project_start,
     handle_callback_projects,
     handle_callback_project_summary,
     handle_callback_project_invite,
     handle_callback_project_requests,
     handle_callback_notifications
 )
+
+logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=settings.BOT_TOKEN)
 dp = Dispatcher()
@@ -51,10 +56,6 @@ async def handle_project_requests_callback(event: MessageCallback):
 @dp.message_callback(F.callback.payload.startswith("notifications"))
 async def handle_notifications_callback(event: MessageCallback):
     await handle_callback_notifications(event)
-
-@dp.message_callback(F.callback.payload.startswith("create_project_start"))
-async def handle_create_start_callback(event: MessageCallback):
-    await handle_callback_create_project_start(event)
 
 async def main():
     await dp.start_polling(bot)
