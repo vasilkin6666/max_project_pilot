@@ -54,7 +54,11 @@ async def get_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(Project).where(Project.hash == project_hash))
+    result = await db.execute(
+        select(Project)
+        .where(Project.hash == project_hash)
+        .options(selectinload(Project.project_owner))
+    )
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -71,7 +75,15 @@ async def get_project(
     if project.is_private and not member:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # ИСПРАВЛЕННЫЙ подсчет статистики - отдельные запросы
+    # Получаем информацию о членах проекта
+    members_result = await db.execute(
+        select(ProjectMember)
+        .where(ProjectMember.project_id == project.id)
+        .options(selectinload(ProjectMember.member_user))
+    )
+    project_members = members_result.scalars().all()
+
+    # Подсчет статистики
     total_result = await db.execute(
         select(func.count(Task.id)).where(Task.project_id == project.id)
     )
@@ -101,11 +113,46 @@ async def get_project(
         "tasks_todo": todo_result.scalar() or 0
     }
 
-    return {
-        "project": project,
-        "members": project.members,
-        "stats": stats
+    # Формируем ответ с упрощенными данными
+    response_data = {
+        "project": {
+            "id": project.id,
+            "title": project.title,
+            "description": project.description,
+            "hash": project.hash,
+            "is_private": project.is_private,
+            "requires_approval": project.requires_approval,
+            "created_by": project.created_by,
+            "created_at": project.created_at,
+            "updated_at": project.updated_at,
+            "owner": {
+                "id": project.project_owner.id,
+                "max_id": project.project_owner.max_id,
+                "full_name": project.project_owner.full_name,
+                "username": project.project_owner.username
+            } if project.project_owner else None
+        },
+        "members": [
+            {
+                "id": m.id,
+                "project_id": m.project_id,
+                "user_id": m.user_id,
+                "role": m.role,
+                "joined_at": m.joined_at,
+                "user": {
+                    "id": m.member_user.id,
+                    "max_id": m.member_user.max_id,
+                    "full_name": m.member_user.full_name,
+                    "username": m.member_user.username
+                } if m.member_user else None
+            } for m in project_members
+        ],
+        "stats": stats,
+        "current_user_role": member.role if member else None,
+        "has_access": bool(member) or not project.is_private
     }
+
+    return response_data
 
 @router.post("/{project_hash}/join")
 async def join_project_request(
@@ -177,10 +224,30 @@ async def get_join_requests(
     result = await db.execute(
         select(JoinRequest)
         .where(JoinRequest.project_id == project.id)
-        .options(selectinload(JoinRequest.user))
+        .options(selectinload(JoinRequest.join_request_user))
     )
     requests = result.scalars().all()
-    return {"requests": requests}
+
+    # Форматируем ответ
+    formatted_requests = []
+    for req in requests:
+        formatted_requests.append({
+            "id": req.id,
+            "project_id": req.project_id,
+            "user_id": req.user_id,
+            "status": req.status,
+            "requested_at": req.requested_at,
+            "processed_by_id": req.processed_by_id,
+            "processed_at": req.processed_at,
+            "user": {
+                "id": req.join_request_user.id,
+                "max_id": req.join_request_user.max_id,
+                "full_name": req.join_request_user.full_name,
+                "username": req.join_request_user.username
+            } if req.join_request_user else None
+        })
+
+    return {"requests": formatted_requests}
 
 @router.post("/{project_hash}/join-requests/{request_id}/approve")
 async def approve_join_request(
@@ -323,7 +390,7 @@ async def get_project_summary(
     )
     members_count = members_count_result.scalar()
 
-    # ИСПРАВЛЕННЫЙ подсчет статистики задач - отдельные запросы
+    # Подсчет статистики задач
     total_result = await db.execute(
         select(func.count(Task.id)).where(Task.project_id == project.id)
     )

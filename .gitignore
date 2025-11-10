@@ -45,3 +45,6 @@ web/dist/
 # OS
 .DS_Store
 Thumbs.db
+backend/app/folder_structure.txt
+bot/folder_structure.txt
+web/folder_structure.txt

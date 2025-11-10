@@ -1,3 +1,4 @@
+
 # backend/app/models/task.py
 from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -18,44 +19,34 @@ class Task(Base):
     assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
     parent_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
-    depends_on_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    project = relationship("Project", back_populates="tasks")
-    creator = relationship("User", foreign_keys=[created_by])
-    assignee = relationship("User", foreign_keys=[assigned_to_id])
+    # Используем backref
+    assignees = relationship("TaskAssignee", backref="assignee_task", cascade="all, delete-orphan")
+    comments = relationship("Comment", backref="comment_task", cascade="all, delete-orphan")
 
     # Отношение для родительской задачи и подзадач
     parent_task = relationship(
         "Task",
         remote_side=[id],
-        back_populates="subtasks",
-        foreign_keys=[parent_task_id],
-        post_update=True
-    )
-    subtasks = relationship(
-        "Task",
-        back_populates="parent_task",
-        cascade="all, delete-orphan",
-        foreign_keys=[parent_task_id],
-        post_update=True
+        backref="subtasks",
+        foreign_keys=[parent_task_id]
     )
 
     # Отношение для зависимостей задач
     dependencies = relationship(
-        "Task",
-        secondary="task_dependencies",
-        primaryjoin="Task.id==task_dependencies.c.task_id",
-        secondaryjoin="Task.id==task_dependencies.c.depends_on_id",
-        backref="dependents"
+        "TaskDependency",
+        foreign_keys="TaskDependency.task_id",
+        backref="dependency_task"
+    )
+    dependents = relationship(
+        "TaskDependency",
+        foreign_keys="TaskDependency.depends_on_id",
+        backref="dependent_task"
     )
 
-    assignees = relationship("TaskAssignee", back_populates="task", cascade="all, delete-orphan")
-    comments = relationship("Comment", back_populates="task", cascade="all, delete-orphan")
-
-# Таблица для отношений зависимостей между задачами
 class TaskDependency(Base):
     __tablename__ = "task_dependencies"
 
@@ -72,9 +63,6 @@ class TaskAssignee(Base):
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    task = relationship("Task", back_populates="assignees")
-    user = relationship("User")
-
     __table_args__ = (UniqueConstraint('task_id', 'user_id', name='unique_task_assignee'),)
 
 class Comment(Base):
@@ -85,6 +73,3 @@ class Comment(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    task = relationship("Task", back_populates="comments")
-    user = relationship("User")

@@ -10,6 +10,19 @@
     <link href="css/style.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка приложения...</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
     <div class="container py-4">
         <!-- MAX Header с кнопкой назад -->
         <header class="max-header mb-4">
@@ -26,7 +39,7 @@
                 <div class="col-auto">
                     <div id="user-info" class="d-flex align-items-center">
                         <div class="user-avatar" id="user-avatar">U</div>
-                        <div id="user-name">Загрузка...</div>
+                        <div id="user-name">Гость</div>
                     </div>
                     <button id="theme-toggle" class="btn btn-sm btn-outline-secondary ms-2">
                         <i class="fas fa-moon"></i>
@@ -40,61 +53,132 @@
             <!-- Навигация -->
             <ul class="nav nav-tabs nav-tabs-max nav-justified mb-4">
                 <li class="nav-item">
-                    <a class="nav-link active" href="#" onclick="showSection('dashboard')"><i class="fas fa-home"></i><span class="d-none d-md-inline"> Главная</span></a>
+                    <a class="nav-link active" href="#" onclick="showSection('dashboard')">
+                        <i class="fas fa-home"></i>
+                        <span class="d-none d-md-inline"> Главная</span>
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="showSection('projects')"><i class="fas fa-project-diagram"></i><span class="d-none d-md-inline"> Проекты</span></a>
+                    <a class="nav-link" href="#" onclick="showSection('projects')">
+                        <i class="fas fa-project-diagram"></i>
+                        <span class="d-none d-md-inline"> Проекты</span>
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="showSection('tasks')"><i class="fas fa-tasks"></i><span class="d-none d-md-inline"> Задачи</span></a>
+                    <a class="nav-link" href="#" onclick="showSection('tasks')">
+                        <i class="fas fa-tasks"></i>
+                        <span class="d-none d-md-inline"> Задачи</span>
+                        <span class="badge bg-primary ms-1" id="tasks-badge" style="display: none;">0</span>
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="showSection('notifications')"><i class="fas fa-bell"></i><span class="d-none d-md-inline"> Уведомления</span></a>
+                    <a class="nav-link" href="#" onclick="showSection('notifications')">
+                        <i class="fas fa-bell"></i>
+                        <span class="d-none d-md-inline"> Уведомления</span>
+                        <span class="badge bg-danger ms-1" id="notifications-badge" style="display: none;">0</span>
+                    </a>
                 </li>
             </ul>
 
             <!-- Секция: Главная -->
             <div id="dashboard" class="section active">
                 <div class="row mb-4">
-                    <div class="col-md-3">
-                        <div class="max-card p-3 text-center">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="stats-card">
+                            <i class="fas fa-project-diagram fa-2x mb-2" style="color: var(--primary-color);"></i>
                             <h5 id="projects-count">0</h5>
                             <p class="text-muted mb-0">Проектов</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="max-card p-3 text-center">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="stats-card">
+                            <i class="fas fa-hourglass-start fa-2x mb-2" style="color: var(--warning-color);"></i>
                             <h5 id="tasks-todo-count">0</h5>
                             <p class="text-muted mb-0">К выполнению</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="max-card p-3 text-center">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="stats-card">
+                            <i class="fas fa-cogs fa-2x mb-2" style="color: var(--info-color);"></i>
                             <h5 id="tasks-progress-count">0</h5>
                             <p class="text-muted mb-0">В работе</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="max-card p-3 text-center">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="stats-card">
+                            <i class="fas fa-check-circle fa-2x mb-2" style="color: var(--success-color);"></i>
                             <h5 id="tasks-done-count">0</h5>
                             <p class="text-muted mb-0">Выполнено</p>
                         </div>
                     </div>
                 </div>
-                <div class="max-card p-4">
-                    <h6 class="mb-3">📊 Статистика проектов</h6>
+
+                <div class="max-card p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">📊 Активные проекты</h6>
+                        <button class="btn max-btn-primary btn-sm" onclick="showSection('projects')">
+                            <i class="fas fa-eye"></i> Все проекты
+                        </button>
+                    </div>
                     <div id="dashboard-projects-list">
-                        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка данных...</div>
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка проектов...</div>
+                    </div>
+                </div>
+
+                <div class="max-card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">🚀 Быстрые действия</h6>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <button class="btn max-btn-primary w-100" onclick="createProject()">
+                                <i class="fas fa-plus"></i> Новый проект
+                            </button>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <button class="btn btn-outline-primary w-100" onclick="showSection('tasks')">
+                                <i class="fas fa-tasks"></i> Все задачи
+                            </button>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <button class="btn btn-outline-info w-100" onclick="loadTasks('todo')">
+                                <i class="fas fa-hourglass-start"></i> К выполнению
+                            </button>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <button class="btn btn-outline-success w-100" onclick="loadNotifications()">
+                                <i class="fas fa-bell"></i> Уведомления
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Секция: Проекты -->
             <div id="projects" class="section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">Мои проекты</h6>
-                    <button class="btn max-btn-primary btn-sm" onclick="createProject()"><i class="fas fa-plus"></i> Новый</button>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="mb-0">📂 Мои проекты</h6>
+                    <div>
+                        <button class="btn max-btn-primary btn-sm" onclick="createProject()">
+                            <i class="fas fa-plus"></i> Новый проект
+                        </button>
+                    </div>
                 </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="input-group">
+                            <input type="text" id="searchProjectsInput" class="form-control" placeholder="Поиск проектов..." onkeypress="handleProjectSearchKeyPress(event)">
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchProjects()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearProjectSearch()" title="Очистить поиск">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="projects-list">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка проектов...</div>
                 </div>
@@ -102,19 +186,49 @@
 
             <!-- Секция: Задачи -->
             <div id="tasks" class="section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">Все задачи</h6>
-                    <div>
-                        <button class="btn max-btn-primary btn-sm me-2" onclick="loadTasks('todo')"><i class="fas fa-hourglass-start"></i> К выполнению</button>
-                        <button class="btn max-btn-primary btn-sm me-2" onclick="loadTasks('in_progress')"><i class="fas fa-cogs"></i> В работе</button>
-                        <button class="btn max-btn-primary btn-sm" onclick="loadTasks('done')"><i class="fas fa-check-circle"></i> Завершено</button>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="mb-0">✅ Все задачи</h6>
+                    <div class="d-flex gap-2">
+                        <div class="dropdown">
+                            <button class="btn max-btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-filter"></i> Фильтр
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="loadTasks()">Все задачи</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="loadTasks('todo')"><i class="fas fa-hourglass-start text-warning"></i> К выполнению</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="loadTasks('in_progress')"><i class="fas fa-cogs text-info"></i> В работе</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="loadTasks('done')"><i class="fas fa-check-circle text-success"></i> Завершено</a></li>
+                            </ul>
+                        </div>
+                        <button class="btn max-btn-primary btn-sm" onclick="createTaskModal()">
+                            <i class="fas fa-plus"></i> Новая задача
+                        </button>
                     </div>
                 </div>
-                <div class="input-group mb-3">
-                    <input type="text" id="searchTasksInput" class="form-control" placeholder="Поиск задач по названию, описанию, проекту..." onkeypress="handleSearchKeyPress(event)">
-                    <button class="btn btn-outline-secondary" type="button" onclick="searchTasks()"><i class="fas fa-search"></i> Поиск</button>
-                    <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()" title="Очистить поиск"><i class="fas fa-times"></i></button>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="input-group">
+                            <input type="text" id="searchTasksInput" class="form-control" placeholder="Поиск задач по названию, описанию, проекту..." onkeypress="handleSearchKeyPress(event)">
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchTasks()">
+                                <i class="fas fa-search"></i> Поиск
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()" title="Очистить поиск">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="d-flex flex-wrap gap-2" id="tasks-filter-tags">
+                            <!-- Фильтры будут добавляться динамически -->
+                        </div>
+                    </div>
+                </div>
+
                 <div id="tasks-list">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка задач...</div>
                 </div>
@@ -122,68 +236,37 @@
 
             <!-- Секция: Уведомления -->
             <div id="notifications" class="section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">Уведомления</h6>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="markAllNotificationsRead()"><i class="fas fa-check-double"></i> Прочитать все</button>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="mb-0">🔔 Уведомления</h6>
+                    <div>
+                        <button class="btn btn-outline-secondary btn-sm me-2" onclick="loadNotifications()">
+                            <i class="fas fa-sync-alt"></i> Обновить
+                        </button>
+                        <button class="btn max-btn-primary btn-sm" onclick="markAllNotificationsRead()">
+                            <i class="fas fa-check-double"></i> Прочитать все
+                        </button>
+                    </div>
                 </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="max-card p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Статус уведомлений</h6>
+                                    <p class="text-muted mb-0" id="notifications-summary">Загрузка...</p>
+                                </div>
+                                <div class="text-end">
+                                    <div class="h4 mb-0" id="unread-notifications-count">0</div>
+                                    <small class="text-muted">непрочитанных</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="notifications-list">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка уведомлений...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модальное окно для задачи -->
-        <div class="modal fade" id="taskModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="taskModalTitle">Задача</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <h6 id="taskModalProjectTitle"></h6>
-                        <p id="taskModalDescription" contenteditable="true" oninput="debounceSaveTaskDescription()"></p>
-                        <div class="mb-3">
-                            <label class="form-label">Статус</label>
-                            <select id="taskModalStatus" class="form-select">
-                                <option value="todo">К выполнению</option>
-                                <option value="in_progress">В работе</option>
-                                <option value="done">Завершено</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Исполнители</label>
-                            <select multiple class="form-select" id="taskModalAssignees"></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Подзадачи</label>
-                            <div id="taskModalSubtasks">
-                                <!-- Динамически добавляются -->
-                            </div>
-                            <button class="btn btn-sm btn-outline-secondary mt-1" onclick="addSubtask()">+ Добавить подзадачу</button>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Комментарии</label>
-                            <div id="taskModalComments">
-                                <!-- Динамически добавляются -->
-                            </div>
-                            <div class="input-group mt-2">
-                                <textarea id="newCommentText" class="form-control" placeholder="Написать комментарий..."></textarea>
-                                <button class="btn btn-primary" onclick="addComment()">Отправить</button>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Файлы</label>
-                            <div id="taskModalFiles">
-                                <!-- Ссылки на файлы -->
-                            </div>
-                            <input type="file" id="fileUploadInput" class="form-control" multiple>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                        <button type="button" class="btn btn-primary" onclick="updateTask()">Сохранить</button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -192,8 +275,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.6.2/fuse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="js/api.js"></script>
+    <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

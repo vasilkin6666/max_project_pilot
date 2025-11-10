@@ -18,10 +18,10 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    owner = relationship("User", back_populates="owned_projects", foreign_keys=[created_by])
-    members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
-    tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
-    join_requests = relationship("JoinRequest", back_populates="project", cascade="all, delete-orphan")
+    # Упрощенные отношения
+    members = relationship("ProjectMember", backref="member_project")
+    tasks = relationship("Task", backref="task_project")
+    join_requests = relationship("JoinRequest", backref="join_request_project")
 
 class ProjectMember(Base):
     __tablename__ = "project_members"
@@ -31,9 +31,6 @@ class ProjectMember(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     role = Column(String, default=ProjectRole.MEMBER)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    project = relationship("Project", back_populates="members")
-    user = relationship("User", back_populates="projects")
 
     __table_args__ = (UniqueConstraint('project_id', 'user_id', name='unique_project_user'),)
 
@@ -47,15 +44,3 @@ class JoinRequest(Base):
     requested_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     processed_at = Column(DateTime(timezone=True), nullable=True)
-
-    project = relationship("Project", back_populates="join_requests")
-    user = relationship(
-        "User",
-        back_populates="join_requests",
-        foreign_keys=[user_id]
-    )
-    processor = relationship(
-        "User",
-        back_populates="processed_join_requests",
-        foreign_keys=[processed_by_id]
-    )
