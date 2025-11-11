@@ -1,4 +1,4 @@
-# backend/app/api/projects.py
+# В начале файла добавьте правильные импорты
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
@@ -8,17 +8,30 @@ from app.models import User, Project, ProjectMember, JoinRequest, Task
 from app.api.deps import get_current_user
 from app.models.enums import ProjectRole
 from pydantic import BaseModel
+from typing import Optional, List
 import secrets
 import string
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
-# Добавьте Pydantic модель для создания проекта
+# Pydantic модели
 class ProjectCreate(BaseModel):
     title: str
     description: str = ""
     is_private: bool = True
     requires_approval: bool = False
+
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    is_private: Optional[bool] = None
+    requires_approval: Optional[bool] = None
+
+class MemberRoleUpdate(BaseModel):
+    role: ProjectRole
 
 def generate_invite_hash():
     return ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(12))
@@ -29,29 +42,122 @@ async def create_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    invite_hash = generate_invite_hash()
-    project = Project(
-        title=project_data.title,
-        description=project_data.description,
-        hash=invite_hash,
-        is_private=project_data.is_private,
-        requires_approval=project_data.requires_approval,
-        created_by=current_user.id
-    )
-    db.add(project)
-    await db.commit()
-    await db.refresh(project)
+    """Создание проекта"""
+    try:
+        logger.info(f"Creating project for user: {current_user.max_id}")
 
-    # Сделать создателя владельцем
-    member = ProjectMember(
-        project_id=project.id,
-        user_id=current_user.id,
-        role=ProjectRole.OWNER
-    )
-    db.add(member)
-    await db.commit()
+        invite_hash = generate_invite_hash()
+        project = Project(
+            title=project_data.title,
+            description=project_data.description,
+            hash=invite_hash,
+            is_private=project_data.is_private,
+            requires_approval=project_data.requires_approval,
+            created_by=current_user.id
+        )
+        db.add(project)
+        await db.commit()
+        await db.refresh(project)
 
-    return {"project": project}
+        # Сделать создателя владельцем
+        member = ProjectMember(
+            project_id=project.id,
+            user_id=current_user.id,
+            role=ProjectRole.OWNER
+        )
+        db.add(member)
+        await db.commit()
+        await db.refresh(project)
+
+        logger.info(f"Project created successfully with hash: {project.hash}")
+        return {"project": project}
+
+    except Exception as e:
+        logger.error(f"Error creating project: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+@router.get("/")
+async def get_user_projects(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получить все проекты пользователя с базовой статистикой"""
+    try:
+        result = await db.execute(
+            select(ProjectMember)
+            .where(ProjectMember.user_id == current_user.id)
+            .options(selectinload(ProjectMember.member_project))
+        )
+        memberships = result.scalars().all()
+
+        projects_with_stats = []
+
+        for member in memberships:
+            project = member.member_project
+
+            # Подсчет статистики задач
+            total_result = await db.execute(
+                select(func.count(Task.id)).where(Task.project_id == project.id)
+            )
+            done_result = await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == project.id,
+                    Task.status == 'done'
+                )
+            )
+            in_progress_result = await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == project.id,
+                    Task.status == 'in_progress'
+                )
+            )
+            todo_result = await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id == project.id,
+                    Task.status == 'todo'
+                )
+            )
+
+            # Подсчет участников
+            members_count_result = await db.execute(
+                select(func.count(ProjectMember.id)).where(ProjectMember.project_id == project.id)
+            )
+
+            stats = {
+                "tasks_count": total_result.scalar() or 0,
+                "tasks_done": done_result.scalar() or 0,
+                "tasks_in_progress": in_progress_result.scalar() or 0,
+                "tasks_todo": todo_result.scalar() or 0,
+                "members_count": members_count_result.scalar() or 0
+            }
+
+            project_data = {
+                "id": project.id,
+                "title": project.title,
+                "description": project.description,
+                "hash": project.hash,
+                "is_private": project.is_private,
+                "requires_approval": project.requires_approval,
+                "created_by": project.created_by,
+                "created_at": project.created_at,
+                "updated_at": project.updated_at,
+                "stats": stats,
+                "user_role": member.role
+            }
+            projects_with_stats.append(project_data)
+
+        return {"projects": projects_with_stats}
+
+    except Exception as e:
+        logger.error(f"Error fetching user projects: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
 
 @router.get("/{project_hash}")
 async def get_project(
@@ -159,6 +265,217 @@ async def get_project(
 
     return response_data
 
+@router.put("/{project_hash}")
+async def update_project(
+    project_hash: str,
+    project_data: ProjectUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Обновление проекта"""
+    result = await db.execute(select(Project).where(Project.hash == project_hash))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Проверка прав доступа
+    membership = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == current_user.id
+        )
+    )
+    member = membership.scalar_one_or_none()
+    if not member or member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Обновление полей
+    update_fields = {}
+    if project_data.title is not None:
+        update_fields["title"] = project_data.title
+    if project_data.description is not None:
+        update_fields["description"] = project_data.description
+    if project_data.is_private is not None:
+        update_fields["is_private"] = project_data.is_private
+    if project_data.requires_approval is not None:
+        update_fields["requires_approval"] = project_data.requires_approval
+
+    for field, value in update_fields.items():
+        setattr(project, field, value)
+
+    await db.commit()
+    await db.refresh(project)
+
+    return {"project": project}
+
+@router.delete("/{project_hash}")
+async def delete_project(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Удаление проекта"""
+    result = await db.execute(select(Project).where(Project.hash == project_hash))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Проверка прав доступа - только владелец
+    membership = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == current_user.id,
+            ProjectMember.role == ProjectRole.OWNER
+        )
+    )
+    member = membership.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=403, detail="Only project owner can delete project")
+
+    # Удаление проекта (каскадное удаление настроено в моделях)
+    await db.delete(project)
+    await db.commit()
+
+    return {"status": "success", "message": "Project deleted successfully"}
+
+@router.get("/{project_hash}/members")
+async def get_project_members(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получить участников проекта"""
+    result = await db.execute(select(Project).where(Project.hash == project_hash))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Проверка доступа
+    membership = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == current_user.id
+        )
+    )
+    current_user_member = membership.scalar_one_or_none()
+    if not current_user_member:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Получаем участников
+    members_result = await db.execute(
+        select(ProjectMember)
+        .where(ProjectMember.project_id == project.id)
+        .options(selectinload(ProjectMember.member_user))
+    )
+    project_members = members_result.scalars().all()
+
+    members_data = [
+        {
+            "id": m.id,
+            "project_id": m.project_id,
+            "user_id": m.user_id,
+            "role": m.role,
+            "joined_at": m.joined_at,
+            "user": {
+                "id": m.member_user.id,
+                "max_id": m.member_user.max_id,
+                "full_name": m.member_user.full_name,
+                "username": m.member_user.username
+            } if m.member_user else None,
+            "can_manage": current_user_member.role in [ProjectRole.OWNER, ProjectRole.ADMIN]
+        } for m in project_members
+    ]
+
+    return {"members": members_data}
+
+@router.delete("/{project_hash}/members/{user_id}")
+async def remove_project_member(
+    project_hash: str,
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Удалить участника из проекта"""
+    result = await db.execute(select(Project).where(Project.hash == project_hash))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Проверка прав доступа
+    membership = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == current_user.id
+        )
+    )
+    current_user_member = membership.scalar_one_or_none()
+    if not current_user_member or current_user_member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Нельзя удалить владельца
+    if user_id == project.created_by:
+        raise HTTPException(status_code=400, detail="Cannot remove project owner")
+
+    # Найти участника для удаления
+    member_to_remove = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user_id
+        )
+    )
+    member = member_to_remove.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    await db.delete(member)
+    await db.commit()
+
+    return {"status": "success", "message": "Member removed from project"}
+
+@router.put("/{project_hash}/members/{user_id}")
+async def update_member_role(
+    project_hash: str,
+    user_id: int,
+    role_data: MemberRoleUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Изменить роль участника"""
+    result = await db.execute(select(Project).where(Project.hash == project_hash))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Проверка прав доступа - только владелец
+    membership = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == current_user.id,
+            ProjectMember.role == ProjectRole.OWNER
+        )
+    )
+    current_user_member = membership.scalar_one_or_none()
+    if not current_user_member:
+        raise HTTPException(status_code=403, detail="Only project owner can change roles")
+
+    # Найти участника для изменения роли
+    member_to_update = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user_id
+        )
+    )
+    member = member_to_update.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    # Обновление роли
+    member.role = role_data.role
+    await db.commit()
+    await db.refresh(member)
+
+    return {"status": "success", "message": "Member role updated", "member": member}
+
 @router.post("/{project_hash}/join")
 async def join_project_request(
     project_hash: str,
@@ -197,7 +514,7 @@ async def join_project_request(
             )
         )
         if existing_request.scalar_one_or_none():
-             raise HTTPException(status_code=400, detail="Join request already pending")
+            raise HTTPException(status_code=400, detail="Join request already pending")
 
         # Создание запроса на присоединение
         join_request = JoinRequest(project_id=project.id, user_id=current_user.id)

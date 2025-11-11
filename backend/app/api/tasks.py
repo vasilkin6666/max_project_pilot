@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
-# Добавьте Pydantic модель для создания задачи
+# Pydantic модели
 class TaskCreate(BaseModel):
     title: str
     project_hash: str
@@ -26,6 +26,15 @@ class TaskCreate(BaseModel):
     assigned_to_ids: List[int] = []
     parent_task_id: Optional[int] = None
     depends_on_ids: List[int] = []
+    due_date: Optional[str] = None
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[TaskStatus] = None
+    priority: Optional[TaskPriority] = None
+    assigned_to_ids: Optional[List[int]] = None
+    parent_task_id: Optional[int] = None
     due_date: Optional[str] = None
 
 async def check_project_access(project_id: int, user_id: int, db: AsyncSession) -> bool:
@@ -148,6 +157,74 @@ async def create_task(
 
     except Exception as e:
         logger.error(f"Error creating task: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+@router.put("/{task_id}")
+async def update_task(
+    task_id: int,
+    task_data: TaskUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Полное обновление задачи"""
+    try:
+        result = await db.execute(select(Task).where(Task.id == task_id))
+        task = result.scalar_one_or_none()
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        has_access = await check_project_access(task.project_id, current_user.id, db)
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Проверка прав на редактирование
+        can_edit = await check_project_manage_access(task.project_id, current_user.id, db)
+        if not can_edit and task.created_by != current_user.id:
+            raise HTTPException(status_code=403, detail="No permission to edit this task")
+
+        # Обновление полей
+        update_fields = {}
+        if task_data.title is not None:
+            update_fields["title"] = task_data.title
+        if task_data.description is not None:
+            update_fields["description"] = task_data.description
+        if task_data.status is not None:
+            update_fields["status"] = task_data.status
+        if task_data.priority is not None:
+            update_fields["priority"] = task_data.priority
+        if task_data.parent_task_id is not None:
+            # Проверка родительской задачи
+            if task_data.parent_task_id:
+                parent_task = await db.get(Task, task_data.parent_task_id)
+                if not parent_task or parent_task.project_id != task.project_id:
+                    raise HTTPException(status_code=400, detail="Invalid parent task")
+            update_fields["parent_task_id"] = task_data.parent_task_id
+        if task_data.due_date is not None:
+            update_fields["due_date"] = datetime.fromisoformat(task_data.due_date.replace('Z', '+00:00'))
+
+        for field, value in update_fields.items():
+            setattr(task, field, value)
+
+        # Обновление исполнителей
+        if task_data.assigned_to_ids is not None:
+            # Удалить старых исполнителей
+            await db.execute(TaskAssignee.__table__.delete().where(TaskAssignee.task_id == task_id))
+            # Добавить новых
+            for user_id in task_data.assigned_to_ids:
+                assignee = TaskAssignee(task_id=task.id, user_id=user_id)
+                db.add(assignee)
+
+        await db.commit()
+        await db.refresh(task)
+
+        logger.info(f"Task {task_id} updated successfully")
+        return {"task": task}
+
+    except Exception as e:
+        logger.error(f"Error updating task: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
@@ -422,7 +499,9 @@ async def get_task(
     try:
         result = await db.execute(select(Task).where(Task.id == task_id))
         task = result.scalar_one_or_none()
+
         if not task:
+            logger.warning(f"Task not found: {task_id}")
             raise HTTPException(status_code=404, detail="Task not found")
 
         has_access = await check_project_access(task.project_id, current_user.id, db)
@@ -432,8 +511,10 @@ async def get_task(
         logger.info(f"Fetched task {task_id}")
         return {"task": task}
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching task: {str(e)}")
+        logger.error(f"Error fetching task {task_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

@@ -24,8 +24,6 @@ class AuthManager {
             const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
             const username = userData.username || '';
 
-            Utils.log(`MAX user authentication: ${fullName} (${maxId})`);
-
             const tokenData = await ApiService.apiGetAuthToken(maxId, fullName, username);
 
             if (tokenData && tokenData.access_token) {
@@ -36,12 +34,7 @@ class AuthManager {
                 this.displayUserInfo(this.currentUser);
                 UI.showMainInterface();
 
-                Utils.log('MAX user authenticated successfully');
-
-                // Загружаем данные пользователя с сервера для актуальности
                 await this.loadCurrentUserData();
-            } else {
-                throw new Error('No access token received');
             }
         } catch (error) {
             Utils.logError('MAX user authentication failed', error);
@@ -51,8 +44,6 @@ class AuthManager {
 
     static async handleUrlUserAuth(userId) {
         try {
-            Utils.log(`URL user authentication: ${userId}`);
-
             const tokenData = await ApiService.apiGetAuthToken(userId, 'Пользователь', '');
 
             if (tokenData && tokenData.access_token) {
@@ -62,8 +53,6 @@ class AuthManager {
 
                 this.displayUserInfo(this.currentUser);
                 UI.showMainInterface();
-
-                Utils.log('URL user authenticated successfully');
 
                 await this.loadCurrentUserData();
             }
@@ -86,9 +75,7 @@ class AuthManager {
                 this.displayUserInfo(this.currentUser);
                 UI.showMainInterface();
 
-                Utils.log('Test user authenticated successfully');
                 ToastManager.showToast('Режим разработки: тестовый пользователь', 'info');
-
                 await this.loadCurrentUserData();
             }
         } catch (error) {
@@ -109,19 +96,9 @@ class AuthManager {
     }
 
     static displayUserInfo(user) {
-        const userNameElement = document.getElementById('user-name');
         const userAvatarElement = document.getElementById('user-avatar');
-
-        if (userNameElement) {
-            userNameElement.textContent = user.full_name || 'Гость';
-        }
-
         if (userAvatarElement) {
             userAvatarElement.textContent = (user.full_name || 'Г').charAt(0).toUpperCase();
-        }
-
-        if (user.full_name) {
-            localStorage.setItem('user_name', user.full_name);
         }
     }
 
@@ -135,14 +112,6 @@ class AuthManager {
 
     static isAuthenticated() {
         return !!this.currentUserId && !!localStorage.getItem('access_token');
-    }
-
-    static logout() {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_name');
-        this.currentUser = null;
-        this.currentUserId = null;
-        window.location.reload();
     }
 }
 

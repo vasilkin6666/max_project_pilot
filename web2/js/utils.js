@@ -1,4 +1,3 @@
-// Утилитарные функции
 class Utils {
     static escapeHTML(text) {
         if (!text) return '';
@@ -47,36 +46,6 @@ class Utils {
         return texts[status] || status;
     }
 
-    static getPriorityColor(priority) {
-        const colors = {
-            'low': 'success',
-            'medium': 'warning',
-            'high': 'danger',
-            'urgent': 'danger'
-        };
-        return colors[priority] || 'secondary';
-    }
-
-    static debounce(func, wait, immediate = false) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                if (!immediate) func(...args);
-            };
-            const callNow = immediate && !timeout;
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-            if (callNow) func(...args);
-        };
-    }
-
-    // УБРАТЬ HAPTIC FEEDBACK - не поддерживается в MAX WebApp
-    static provideHapticFeedback(style = 'light') {
-        // MAX WebApp не поддерживает haptic feedback, поэтому просто возвращаем false
-        return false;
-    }
-
     static log(message, data = null) {
         console.log(`[LOG] ${new Date().toISOString()} - ${message}`, data || '');
     }
@@ -84,14 +53,8 @@ class Utils {
     static logError(message, error = null) {
         console.error(`[ERROR] ${new Date().toISOString()} - ${message}`, error || '');
     }
-
-    static triggerEvent(eventName, detail = {}) {
-        const event = new CustomEvent(eventName, { detail });
-        document.dispatchEvent(event);
-    }
 }
 
-// Toast уведомления
 class ToastManager {
     static showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toast-container') || this.createToastContainer();
@@ -127,11 +90,7 @@ class ToastManager {
         toast.show();
 
         toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.style.transition = 'opacity 0.3s ease';
-            toastElement.style.opacity = '0';
-            setTimeout(() => {
-                toastElement.remove();
-            }, 300);
+            toastElement.remove();
         });
     }
 
@@ -145,6 +104,5 @@ class ToastManager {
     }
 }
 
-// Глобальные экспорты
 window.Utils = Utils;
 window.ToastManager = ToastManager;

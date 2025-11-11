@@ -1,23 +1,19 @@
-# docker-compose.yml
 services:
   db:
     image: postgres:15
     container_name: max_pilot_db
+    env_file:
+      - .env
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      # Используем именованный том, определённый внизу
       - postgres_data:/var/lib/postgresql/data
-      # Если нужно, можно также монтировать локальную директорию (не рекомендуется для production без контроля прав)
-      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Пример для инициализации
     ports:
-      # Открываем порт 5432 только для отладки. В продакшене НЕ открывать!
-      # Убедитесь, что он не конфликтует с локальным PostgreSQL.
-      - "5432:5432"
+      - '5432:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,37 +21,39 @@ services:
   backend:
     build: ./backend
     container_name: max_pilot_backend
+    env_file:
+      - .env
     ports:
-      - "${BACKEND_PORT}:8000"
+      - '8000:8000'
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB} # Используем имя сервиса 'db'
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=${ALGORITHM}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
       - SITE_URL=${SITE_URL}
-      - BACKEND_API_URL=${BACKEND_API_URL} # Убедитесь, что это публичный URL для бота
+      - BACKEND_API_URL=${BACKEND_API_URL}
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
-    # Важно: backend не должен зависеть от bot
-    # depends_on не ждёт готовности bot, только запуска.
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   bot:
     build: ./bot
     container_name: max_pilot_bot
+    env_file:
+      - .env
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
-      - BACKEND_API_URL=https://powerfully-exotic-chamois.cloudpub.ru/api  # Публичный URL
+      - BACKEND_API_URL=${BACKEND_API_URL}
     depends_on:
       - backend
     restart: unless-stopped
 
-# Определение томов
 volumes:
-  postgres_data: # Именованный том для данных PostgreSQL
-    # driver: local # Необязательно, по умолчанию local
-    # driver_opts: # Необязательно, можно указать опции драйвера
-    #   type: none
-    #   o: bind
-    #   device: /host/path/directory # Только для типа 'bind'
+  postgres_data:

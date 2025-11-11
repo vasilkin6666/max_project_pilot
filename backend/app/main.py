@@ -3,8 +3,9 @@ from fastapi import FastAPI
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.projects import router as projects_router
-from app.api.tasks import router as tasks_router  # ← УЖЕ ПРАВИЛЬНО!
+from app.api.tasks import router as tasks_router
 from app.api.notifications import router as notifications_router
+from app.api.dashboard import router as dashboard_router  # Добавлен новый роутер
 from app.models import Base
 from app.database import engine
 import logging
@@ -58,8 +59,9 @@ async def api_health_check():
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(projects_router, prefix="/api")
-app.include_router(tasks_router, prefix="/api")  # ← ПОДКЛЮЧАЕТСЯ ПРАВИЛЬНО!
+app.include_router(tasks_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")  # Добавлен новый роутер
 
 # Root endpoint
 @app.get("/")

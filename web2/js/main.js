@@ -18,29 +18,18 @@ class App {
         UI.hideLoadingOverlay();
 
         // Загружаем начальные данные
-        await DashboardManager.loadDashboardData();
+        await ProjectsManager.loadProjects();
 
         Utils.log('App initialization completed');
         UI.isInitialized = true;
     }
 
     static initComponents() {
-        // Инициализация меню действий
-        ActionMenuManager.initTaskActionMenu();
-
-        // Инициализация счетчиков
-        CountersManager.init();
-
-        // Инициализация поиска
-        TasksManager.initSearch();
-        ProjectsManager.initSearch();
-
-        // Инициализация вкладок приоритета
-        TasksManager.initPriorityTabs();
+        // Инициализация свайпов
+        SwipeManager.init();
 
         // Инициализация обработчиков уведомлений
         NotificationsManager.initNotificationHandlers();
-        NotificationsManager.initPersistentBadge();
 
         Utils.log('All components initialized');
     }
@@ -58,6 +47,9 @@ class App {
                 // Убираем параметр из URL
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
+
+                // Обновляем список проектов
+                await ProjectsManager.loadProjects();
             } catch (error) {
                 Utils.logError('Error joining project', error);
                 ToastManager.showToast('Ошибка присоединения к проекту: ' + error.message, 'error');
@@ -69,23 +61,4 @@ class App {
 // Инициализация при загрузке страницы
 window.addEventListener('load', async () => {
     await App.init();
-});
-
-// Глобальные обработчики для фильтров задач
-document.addEventListener('DOMContentLoaded', function() {
-    // Обработчики для фильтрации задач из dropdown
-    document.querySelectorAll('.filter-tasks').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const filter = this.getAttribute('data-filter');
-            TasksManager.loadTasks(filter);
-        });
-    });
-
-    // Обработчик для пустой кнопки создания проекта
-    document.addEventListener('click', function(e) {
-        if (e.target.id === 'create-project-btn-empty') {
-            ProjectsManager.createProject();
-        }
-    });
 });

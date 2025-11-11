@@ -1,4 +1,3 @@
-
 # backend/app/models/task.py
 from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -23,15 +22,22 @@ class Task(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Используем backref
-    assignees = relationship("TaskAssignee", backref="assignee_task", cascade="all, delete-orphan")
-    comments = relationship("Comment", backref="comment_task", cascade="all, delete-orphan")
+    # Используем back_populates
+    task_project = relationship("Project", back_populates="tasks")
+    task_creator = relationship("User", foreign_keys=[created_by], back_populates="created_tasks")
+    assignees = relationship("TaskAssignee", back_populates="assignee_task", cascade="all, delete-orphan")
+    comments = relationship("Comment", back_populates="comment_task", cascade="all, delete-orphan")
 
     # Отношение для родительской задачи и подзадач
     parent_task = relationship(
         "Task",
         remote_side=[id],
-        backref="subtasks",
+        back_populates="subtasks",
+        foreign_keys=[parent_task_id]
+    )
+    subtasks = relationship(
+        "Task",
+        back_populates="parent_task",
         foreign_keys=[parent_task_id]
     )
 
@@ -39,12 +45,12 @@ class Task(Base):
     dependencies = relationship(
         "TaskDependency",
         foreign_keys="TaskDependency.task_id",
-        backref="dependency_task"
+        back_populates="dependency_task"
     )
     dependents = relationship(
         "TaskDependency",
         foreign_keys="TaskDependency.depends_on_id",
-        backref="dependent_task"
+        back_populates="dependent_task"
     )
 
 class TaskDependency(Base):
@@ -56,6 +62,9 @@ class TaskDependency(Base):
 
     __table_args__ = (UniqueConstraint('task_id', 'depends_on_id', name='unique_task_dependency'),)
 
+    dependency_task = relationship("Task", foreign_keys=[task_id], back_populates="dependencies")
+    dependent_task = relationship("Task", foreign_keys=[depends_on_id], back_populates="dependents")
+
 class TaskAssignee(Base):
     __tablename__ = "task_assignees"
 
@@ -65,6 +74,9 @@ class TaskAssignee(Base):
 
     __table_args__ = (UniqueConstraint('task_id', 'user_id', name='unique_task_assignee'),)
 
+    assignee_task = relationship("Task", back_populates="assignees")
+    assignee_user = relationship("User", foreign_keys=[user_id], back_populates="assigned_tasks")
+
 class Comment(Base):
     __tablename__ = "comments"
 
@@ -73,3 +85,6 @@ class Comment(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    comment_task = relationship("Task", back_populates="comments")
+    comment_user = relationship("User", foreign_keys=[user_id], back_populates="comments")

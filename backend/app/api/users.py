@@ -4,32 +4,237 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from app.database import get_db
-from app.models import User, ProjectMember, Project, Task
+from app.models import User, ProjectMember, Project, Task, UserSettings
 from app.api.deps import get_current_user
 from app.core.exceptions import NotFoundException, ForbiddenException
+from pydantic import BaseModel
+from typing import Optional, Dict, Any, List
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+# Pydantic модели
+class UserPreferences(BaseModel):
+    theme: Optional[str] = None
+    language: Optional[str] = None
+    notifications_enabled: Optional[bool] = None
+    email_notifications: Optional[bool] = None
+    push_notifications: Optional[bool] = None
+    compact_view: Optional[bool] = None
+    show_completed_tasks: Optional[bool] = None
+    default_project_view: Optional[str] = None
+    timezone: Optional[str] = None
+    date_format: Optional[str] = None
+    time_format: Optional[str] = None
+    items_per_page: Optional[int] = None
+    custom_settings: Optional[Dict[str, Any]] = None
+
+class UserPreferencesResponse(BaseModel):
+    id: int
+    user_id: int
+    theme: str
+    language: str
+    notifications_enabled: bool
+    email_notifications: bool
+    push_notifications: bool
+    compact_view: bool
+    show_completed_tasks: bool
+    default_project_view: str
+    timezone: str
+    date_format: str
+    time_format: str
+    items_per_page: int
+    custom_settings: Dict[str, Any]
+    created_at: str
+    updated_at: Optional[str] = None
+
+async def get_or_create_user_settings(user_id: int, db: AsyncSession) -> UserSettings:
+    """Получить или создать настройки пользователя"""
+    try:
+        result = await db.execute(
+            select(UserSettings).where(UserSettings.user_id == user_id)
+        )
+        settings = result.scalar_one_or_none()
+
+        if not settings:
+            settings = UserSettings(user_id=user_id)
+            db.add(settings)
+            await db.commit()
+            await db.refresh(settings)
+
+        return settings
+    except Exception as e:
+        logger.error(f"Error in get_or_create_user_settings: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error accessing user settings"
+        )
+
 @router.get("/me")
 async def read_users_me(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """Получить данные текущего аутентифицированного пользователя"""
     logger.info(f"Fetching current user data for: {current_user.max_id}")
     try:
+        # Загружаем настройки пользователя
+        settings = await get_or_create_user_settings(current_user.id, db)
+
         return {
             "id": current_user.id,
             "max_id": current_user.max_id,
             "full_name": current_user.full_name,
             "username": current_user.username,
             "is_active": current_user.is_active,
-            "created_at": current_user.created_at.isoformat() if current_user.created_at else None
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None,
+            "settings": settings.to_dict() if settings else None
         }
     except Exception as e:
         logger.error(f"Error fetching current user data: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+@router.get("/me/preferences", response_model=UserPreferencesResponse)
+async def get_user_preferences(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получить настройки пользователя"""
+    try:
+        logger.info(f"Fetching preferences for user: {current_user.max_id}")
+
+        # Получаем или создаем настройки
+        settings = await get_or_create_user_settings(current_user.id, db)
+
+        return settings.to_dict()
+
+    except Exception as e:
+        logger.error(f"Error fetching user preferences: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+@router.put("/me/preferences", response_model=UserPreferencesResponse)
+async def update_user_preferences(
+    preferences: UserPreferences,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Обновить настройки пользователя"""
+    try:
+        logger.info(f"Updating preferences for user: {current_user.max_id}")
+
+        # Получаем или создаем настройки
+        settings = await get_or_create_user_settings(current_user.id, db)
+
+        # Обновляем только переданные поля
+        update_fields = preferences.dict(exclude_unset=True)
+
+        for field, value in update_fields.items():
+            if hasattr(settings, field):
+                if field == 'custom_settings' and value is not None:
+                    # Для кастомных настроек мержим с существующими
+                    current_custom = settings.get_custom_settings()
+                    current_custom.update(value)
+                    settings.set_custom_settings(current_custom)
+                else:
+                    setattr(settings, field, value)
+
+        await db.commit()
+        await db.refresh(settings)
+
+        logger.info(f"Successfully updated preferences for user: {current_user.max_id}")
+        return settings.to_dict()
+
+    except Exception as e:
+        logger.error(f"Error updating user preferences: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+@router.patch("/me/preferences", response_model=UserPreferencesResponse)
+async def patch_user_preferences(
+    preferences: UserPreferences,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Частичное обновление настроек пользователя"""
+    try:
+        logger.info(f"Patching preferences for user: {current_user.max_id}")
+
+        # Получаем или создаем настройки
+        settings = await get_or_create_user_settings(current_user.id, db)
+
+        # Обновляем только переданные поля
+        update_fields = preferences.dict(exclude_unset=True, exclude_none=True)
+
+        for field, value in update_fields.items():
+            if hasattr(settings, field):
+                if field == 'custom_settings' and value is not None:
+                    # Для кастомных настроек мержим с существующими
+                    current_custom = settings.get_custom_settings()
+                    current_custom.update(value)
+                    settings.set_custom_settings(current_custom)
+                else:
+                    setattr(settings, field, value)
+
+        await db.commit()
+        await db.refresh(settings)
+
+        logger.info(f"Successfully patched preferences for user: {current_user.max_id}")
+        return settings.to_dict()
+
+    except Exception as e:
+        logger.error(f"Error patching user preferences: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+@router.put("/me/preferences/reset")
+async def reset_user_preferences(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Сбросить настройки пользователя к значениям по умолчанию"""
+    try:
+        logger.info(f"Resetting preferences for user: {current_user.max_id}")
+
+        # Получаем настройки
+        result = await db.execute(
+            select(UserSettings).where(UserSettings.user_id == current_user.id)
+        )
+        settings = result.scalar_one_or_none()
+
+        if settings:
+            # Удаляем текущие настройки
+            await db.delete(settings)
+            await db.commit()
+
+        # Создаем новые настройки по умолчанию
+        new_settings = await get_or_create_user_settings(current_user.id, db)
+
+        logger.info(f"Successfully reset preferences for user: {current_user.max_id}")
+        return {
+            "status": "success",
+            "message": "Preferences reset to default",
+            "preferences": new_settings.to_dict()
+        }
+
+    except Exception as e:
+        logger.error(f"Error resetting user preferences: {str(e)}")
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

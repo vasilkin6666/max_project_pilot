@@ -15,45 +15,48 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Упрощенные отношения
+    # Упрощенные отношения - убираем конфликтующие backref
     owned_projects = relationship(
         "Project",
         foreign_keys="Project.created_by",
-        backref="project_owner",
-        cascade="all, delete-orphan"
+        back_populates="project_owner"
     )
 
     project_memberships = relationship(
         "ProjectMember",
-        backref="member_user",
-        cascade="all, delete-orphan"
+        back_populates="member_user"
     )
 
     join_requests = relationship(
         "JoinRequest",
         foreign_keys="JoinRequest.user_id",
-        backref="join_request_user",
-        cascade="all, delete-orphan"
+        back_populates="join_request_user"
     )
 
     # Задачи, созданные пользователем
     created_tasks = relationship(
         "Task",
         foreign_keys="Task.created_by",
-        backref="task_creator"
+        back_populates="task_creator"
     )
 
     # Задачи, назначенные пользователю
     assigned_tasks = relationship(
         "TaskAssignee",
-        backref="assignee_user",
-        cascade="all, delete-orphan"
+        back_populates="assignee_user"
     )
 
     # Комментарии пользователя
     comments = relationship(
         "Comment",
-        backref="comment_user",
+        back_populates="comment_user"
+    )
+
+    # Настройки пользователя
+    settings = relationship(
+        "UserSettings",
+        back_populates="user",
+        uselist=False,
         cascade="all, delete-orphan"
     )
 
@@ -71,3 +74,27 @@ class User(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
+
+    async def get_or_create_settings(self, db):
+        """Получить или создать настройки пользователя"""
+        from app.models import UserSettings
+
+        if self.settings:
+            return self.settings
+
+        # Проверяем, есть ли уже настройки
+        from sqlalchemy import select
+        result = await db.execute(
+            select(UserSettings).where(UserSettings.user_id == self.id)
+        )
+        existing_settings = result.scalar_one_or_none()
+
+        if existing_settings:
+            return existing_settings
+
+        # Создаем настройки по умолчанию
+        settings = UserSettings(user_id=self.id)
+        db.add(settings)
+        await db.commit()
+        await db.refresh(settings)
+        return settings
