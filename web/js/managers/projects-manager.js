@@ -3,19 +3,15 @@ class ProjectsManager {
     static async loadProjects() {
         try {
             StateManager.setLoading(true);
-
             const data = await CacheManager.getWithCache(
                 'projects',
                 () => ApiService.getProjects(),
                 'projects'
             );
-
             const projects = data.projects || [];
             StateManager.setState('projects', projects);
-
             EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
             Utils.log('Projects loaded successfully', { count: projects.length });
-
             return projects;
         } catch (error) {
             Utils.logError('Projects load error:', error);
@@ -34,19 +30,17 @@ class ProjectsManager {
                 <form id="create-project-form">
                     <div class="form-group">
                         <label for="project-title" class="form-label">Название проекта *</label>
-                        <input type="text" class="form-control" id="project-title" required
+                        <input type="text" class="form-control" id="project-title" name="title" required
                                placeholder="Введите название проекта">
                     </div>
-
                     <div class="form-group">
                         <label for="project-description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="project-description" rows="3"
+                        <textarea class="form-control" id="project-description" name="description" rows="3"
                                   placeholder="Опишите ваш проект (необязательно)"></textarea>
                     </div>
-
                     <div class="form-group">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="project-private" checked>
+                            <input class="form-check-input" type="checkbox" id="project-private" name="is_private" checked>
                             <label class="form-check-label" for="project-private">
                                 Приватный проект
                             </label>
@@ -55,10 +49,9 @@ class ProjectsManager {
                             </div>
                         </div>
                     </div>
-
                     <div class="form-group">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="project-approval">
+                            <input class="form-check-input" type="checkbox" id="project-approval" name="requires_approval">
                             <label class="form-check-label" for="project-approval">
                                 Требовать одобрение для присоединения
                             </label>
@@ -81,7 +74,17 @@ class ProjectsManager {
                     action: 'submit',
                     onClick: () => this.handleCreateProjectSubmit()
                 }
-            ]
+            ],
+            onShow: () => {
+                // Привязываем submit к форме при открытии модалки
+                const form = document.getElementById('create-project-form');
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault(); // КРИТИЧНО: предотвращаем перезагрузку
+                        this.handleCreateProjectSubmit();
+                    });
+                }
+            }
         });
     }
 
@@ -90,16 +93,22 @@ class ProjectsManager {
         if (!form) return;
 
         const formData = new FormData(form);
-        const title = formData.get('project-title')?.toString().trim();
-        const description = formData.get('project-description')?.toString().trim();
-        const isPrivate = document.getElementById('project-private').checked;
-        const requiresApproval = document.getElementById('project-approval').checked;
+        const title = formData.get('title')?.toString().trim();
+        const description = formData.get('description')?.toString().trim();
+        const isPrivate = formData.get('is_private') === 'on';
+        const requiresApproval = formData.get('requires_approval') === 'on';
 
         if (!title) {
             ToastManager.error('Введите название проекта');
-            document.getElementById('project-title').focus();
+            document.getElementById('project-title')?.focus();
             return;
         }
+
+        // Блокируем кнопку
+        const submitBtn = ModalManager.getCurrentModal().querySelector('[data-action="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание...';
 
         try {
             const projectData = {
@@ -114,24 +123,29 @@ class ProjectsManager {
             if (result && result.project) {
                 ToastManager.success(`Проект "${result.project.title}" создан!`);
                 HapticManager.projectCreated();
-
-                // Инвалидируем кэш
                 CacheManager.invalidate('projects');
                 CacheManager.invalidate('dashboard');
-
-                // Перезагружаем данные
                 await this.loadProjects();
-
                 EventManager.emit(APP_EVENTS.PROJECT_CREATED, result.project);
-
                 ModalManager.closeCurrentModal();
+                form.reset();
+            } else {
+                throw new Error('Неожиданный ответ сервера');
             }
         } catch (error) {
             Utils.logError('Project creation error:', error);
-            ToastManager.error('Ошибка при создании проекта: ' + error.message);
+            ToastManager.error('Ошибка при создании проекта: ' + (error.message || 'неизвестная ошибка'));
             HapticManager.error();
+        } finally {
+            // Разблокируем кнопку
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         }
     }
+
+    // === Остальные методы без изменений (оставлены как есть) ===
 
     static async openProjectDetail(projectHash) {
         try {
@@ -140,7 +154,6 @@ class ProjectsManager {
                 () => ApiService.getProject(projectHash),
                 'projects'
             );
-
             this.showProjectDetailModal(projectData);
         } catch (error) {
             Utils.logError('Error opening project detail:', error);
@@ -153,7 +166,6 @@ class ProjectsManager {
         const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
         const currentUserRole = currentUserMember?.role || 'member';
         const canManage = ['owner', 'admin'].includes(currentUserRole);
-
         ModalManager.showModal('project-detail', {
             title: project.title,
             size: 'large',
@@ -161,7 +173,6 @@ class ProjectsManager {
                 <div class="project-detail">
                     <div class="project-info">
                         <p class="project-description">${Utils.escapeHTML(project.description || 'Без описания')}</p>
-
                         <div class="project-meta">
                             <div class="meta-item">
                                 <strong>Статус:</strong> ${UIComponents.getProjectStatus(project)}
@@ -173,7 +184,6 @@ class ProjectsManager {
                                 <strong>Ваша роль:</strong> ${UIComponents.getRoleText(currentUserRole)}
                             </div>
                         </div>
-
                         ${canManage ? `
                             <div class="project-actions">
                                 <button class="btn btn-outline-primary" onclick="ProjectsManager.showMembersManagement('${project.hash}')">
@@ -185,7 +195,6 @@ class ProjectsManager {
                             </div>
                         ` : ''}
                     </div>
-
                     <div class="project-tasks">
                         <div class="tasks-header">
                             <h3>Задачи проекта</h3>
@@ -202,8 +211,6 @@ class ProjectsManager {
                 </div>
             `
         });
-
-        // Загружаем задачи проекта
         this.loadProjectTasks(project.hash);
     }
 
@@ -224,17 +231,13 @@ class ProjectsManager {
     static renderProjectTasks(tasks) {
         const container = document.getElementById('project-tasks-list');
         if (!container) return;
-
         if (tasks.length === 0) {
             container.innerHTML = '<p class="text-muted">Задач пока нет</p>';
             return;
         }
-
         container.innerHTML = tasks.map(task =>
             UIComponents.createTaskCard(task)
         ).join('');
-
-        // Инициализируем свайпы для задач
         SwipeManager.setupTaskSwipes();
     }
 
@@ -250,7 +253,6 @@ class ProjectsManager {
 
     static showEditProjectModal(projectData) {
         const project = projectData.project || projectData;
-
         ModalManager.showModal('edit-project', {
             title: 'Редактирование проекта',
             size: 'medium',
@@ -258,27 +260,24 @@ class ProjectsManager {
                 <form id="edit-project-form">
                     <div class="form-group">
                         <label for="edit-project-title" class="form-label">Название проекта *</label>
-                        <input type="text" class="form-control" id="edit-project-title" required
+                        <input type="text" class="form-control" id="edit-project-title" name="title" required
                                value="${Utils.escapeHTML(project.title)}">
                     </div>
-
                     <div class="form-group">
                         <label for="edit-project-description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="edit-project-description" rows="3">${Utils.escapeHTML(project.description || '')}</textarea>
+                        <textarea class="form-control" id="edit-project-description" name="description" rows="3">${Utils.escapeHTML(project.description || '')}</textarea>
                     </div>
-
                     <div class="form-group">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="edit-project-private" ${project.is_private ? 'checked' : ''}>
+                            <input class="form-check-input" type="checkbox" id="edit-project-private" name="is_private" ${project.is_private ? 'checked' : ''}>
                             <label class="form-check-label" for="edit-project-private">
                                 Приватный проект
                             </label>
                         </div>
                     </div>
-
                     <div class="form-group">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="edit-project-approval" ${project.requires_approval ? 'checked' : ''}>
+                            <input class="form-check-input" type="checkbox" id="edit-project-approval" name="requires_approval" ${project.requires_approval ? 'checked' : ''}>
                             <label class="form-check-label" for="edit-project-approval">
                                 Требовать одобрение для присоединения
                             </label>
@@ -298,23 +297,37 @@ class ProjectsManager {
                     action: 'submit',
                     onClick: () => this.handleEditProjectSubmit(project.hash)
                 }
-            ]
+            ],
+            onShow: () => {
+                const form = document.getElementById('edit-project-form');
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.handleEditProjectSubmit(project.hash);
+                    });
+                }
+            }
         });
     }
 
     static async handleEditProjectSubmit(projectHash) {
         const form = document.getElementById('edit-project-form');
         if (!form) return;
-
-        const title = document.getElementById('edit-project-title').value.trim();
-        const description = document.getElementById('edit-project-description').value.trim();
-        const isPrivate = document.getElementById('edit-project-private').checked;
-        const requiresApproval = document.getElementById('edit-project-approval').checked;
+        const formData = new FormData(form);
+        const title = formData.get('title')?.toString().trim();
+        const description = formData.get('description')?.toString().trim();
+        const isPrivate = formData.get('is_private') === 'on';
+        const requiresApproval = formData.get('requires_approval') === 'on';
 
         if (!title) {
             ToastManager.error('Введите название проекта');
             return;
         }
+
+        const submitBtn = ModalManager.getCurrentModal().querySelector('[data-action="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
 
         try {
             const updateData = {
@@ -323,35 +336,30 @@ class ProjectsManager {
                 is_private: isPrivate,
                 requires_approval: requiresApproval
             };
-
             await ApiService.updateProject(projectHash, updateData);
-
             ToastManager.success('Проект обновлен!');
             HapticManager.success();
-
-            // Инвалидируем кэш
             CacheManager.invalidate('projects');
             CacheManager.invalidate(`project-${projectHash}`);
-
-            // Перезагружаем данные
             await this.loadProjects();
-
             EventManager.emit(APP_EVENTS.PROJECT_UPDATED, { hash: projectHash, ...updateData });
-
             ModalManager.closeCurrentModal();
         } catch (error) {
             Utils.logError('Project update error:', error);
             ToastManager.error('Ошибка при обновлении проекта: ' + error.message);
             HapticManager.error();
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         }
     }
 
     static deleteProjectWithConfirmation(projectHash) {
         const project = StateManager.getProjectByHash(projectHash);
         if (!project) return;
-
         const projectData = project.project || project;
-
         ModalManager.showConfirmation({
             title: 'Удаление проекта',
             message: `Вы уверены, что хотите удалить проект "${projectData.title}"? Все связанные задачи также будут удалены.`,
@@ -365,19 +373,12 @@ class ProjectsManager {
     static async deleteProject(projectHash) {
         try {
             await ApiService.deleteProject(projectHash);
-
             ToastManager.success('Проект удален');
             HapticManager.projectDeleted();
-
-            // Инвалидируем кэш
             CacheManager.invalidate('projects');
             CacheManager.invalidate('dashboard');
-
-            // Обновляем состояние
             StateManager.removeProject(projectHash);
-
             EventManager.emit(APP_EVENTS.PROJECT_DELETED, projectHash);
-
         } catch (error) {
             Utils.logError('Project deletion error:', error);
             ToastManager.error('Ошибка при удалении проекта: ' + error.message);
@@ -387,7 +388,6 @@ class ProjectsManager {
 
     static showInviteDialog(projectHash) {
         const inviteUrl = `${window.location.origin}${window.location.pathname}?join=${projectHash}`;
-
         if (navigator.share) {
             navigator.share({
                 title: 'Присоединяйтесь к моему проекту в Project Pilot!',
@@ -428,7 +428,6 @@ class ProjectsManager {
         const project = projectData.project || projectData;
         const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
         const isOwner = currentUserMember?.role === 'owner';
-
         ModalManager.showModal('members-management', {
             title: 'Участники проекта',
             size: 'medium',
@@ -459,7 +458,6 @@ class ProjectsManager {
                             </div>
                         `).join('') || '<p class="text-muted">Участников нет</p>'}
                     </div>
-
                     ${isOwner ? `
                         <div class="invite-section">
                             <button class="btn btn-primary" onclick="ProjectsManager.showInviteDialog('${project.hash}')">
@@ -505,19 +503,12 @@ class ProjectsManager {
 
     static async updateMemberRole(projectHash, userId) {
         const newRole = document.getElementById('member-role-select').value;
-
         try {
             await ApiService.updateMemberRole(projectHash, userId, newRole);
-
             ToastManager.success('Роль участника изменена');
             HapticManager.success();
-
-            // Закрываем модальные окна
             ModalManager.closeCurrentModal();
-
-            // Обновляем данные
             await this.showMembersManagement(projectHash);
-
         } catch (error) {
             Utils.logError('Error updating member role:', error);
             ToastManager.error('Ошибка изменения роли');
@@ -537,7 +528,6 @@ class ProjectsManager {
 
     static showSettingsModal(projectData) {
         const project = projectData.project || projectData;
-
         ModalManager.showModal('project-settings', {
             title: 'Настройки проекта',
             size: 'medium',
