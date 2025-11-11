@@ -5,8 +5,51 @@ class UIComponents {
         this.initTheme();
         this.initSearch();
         this.initEventListeners();
+        this.loadTemplates(); // Добавляем загрузку шаблонов
 
         Utils.log('UI components initialized');
+    }
+
+    static templates = new Map();
+
+    static async loadTemplates() {
+        try {
+            const templateElements = document.querySelectorAll('script[type="text/template"]');
+
+            for (const element of templateElements) {
+                const id = element.id;
+                const content = element.innerHTML;
+                this.templates.set(id, content);
+            }
+
+            Utils.log('Templates loaded', { count: this.templates.size });
+        } catch (error) {
+            Utils.logError('Error loading templates:', error);
+        }
+    }
+
+    static renderTemplate(templateId, data) {
+        const template = this.templates.get(templateId);
+        if (!template) {
+            Utils.logError(`Template not found: ${templateId}`);
+            return '';
+        }
+
+        try {
+            return template.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+                const value = this.getNestedValue(data, key.trim());
+                return value !== undefined ? Utils.escapeHTML(value) : '';
+            });
+        } catch (error) {
+            Utils.logError(`Error rendering template ${templateId}:`, error);
+            return '';
+        }
+    }
+
+    static getNestedValue(obj, path) {
+        return path.split('.').reduce((current, key) => {
+            return current && current[key] !== undefined ? current[key] : '';
+        }, obj);
     }
 
     static initNavigation() {
@@ -23,7 +66,9 @@ class UIComponents {
                 navItems.forEach(nav => nav.classList.remove('active'));
                 item.classList.add('active');
 
-                HapticManager.light();
+                if (typeof HapticManager !== 'undefined') {
+                    HapticManager.light();
+                }
             });
         });
 
@@ -31,7 +76,9 @@ class UIComponents {
         const createProjectBtn = document.getElementById('create-project-btn');
         if (createProjectBtn) {
             createProjectBtn.addEventListener('click', () => {
-                ProjectsManager.showCreateProjectModal();
+                if (typeof ProjectsManager !== 'undefined') {
+                    ProjectsManager.showCreateProjectModal();
+                }
             });
         }
 
@@ -40,6 +87,37 @@ class UIComponents {
         if (userMenuBtn) {
             userMenuBtn.addEventListener('click', () => {
                 this.showUserMenu();
+            });
+        }
+
+        // Кнопка выхода
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                App.logout();
+            });
+        }
+
+        // Кнопка экспорта данных
+        const exportBtn = document.getElementById('export-data-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                if (typeof PersistenceManager !== 'undefined') {
+                    PersistenceManager.exportData();
+                }
+            });
+        }
+
+        // Кнопка очистки кэша
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        if (clearCacheBtn) {
+            clearCacheBtn.addEventListener('click', () => {
+                if (typeof CacheManager !== 'undefined') {
+                    CacheManager.clear();
+                }
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.success('Кэш очищен');
+                }
             });
         }
     }
@@ -55,7 +133,9 @@ class UIComponents {
             themeSwitch.checked = currentTheme === 'dark';
             themeSwitch.addEventListener('change', (e) => {
                 const newTheme = App.toggleTheme();
-                ToastManager.info(`Тема изменена на ${newTheme === 'dark' ? 'тёмную' : 'светлую'}`);
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.info(`Тема изменена на ${newTheme === 'dark' ? 'тёмную' : 'светлую'}`);
+                }
             });
         }
     }
@@ -81,7 +161,9 @@ class UIComponents {
         if (searchInput) {
             // Поиск с debounce
             const performSearch = Utils.debounce((query) => {
-                SearchManager.performSearch(query);
+                if (typeof SearchManager !== 'undefined') {
+                    SearchManager.performSearch(query);
+                }
             }, 300);
 
             searchInput.addEventListener('input', (e) => {
@@ -91,7 +173,9 @@ class UIComponents {
             // Обработка клавиши Enter
             searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    SearchManager.performSearch(e.target.value.trim());
+                    if (typeof SearchManager !== 'undefined') {
+                        SearchManager.performSearch(e.target.value.trim());
+                    }
                 }
             });
         }
@@ -122,7 +206,9 @@ class UIComponents {
         const markAllReadBtn = document.getElementById('mark-all-read-btn');
         if (markAllReadBtn) {
             markAllReadBtn.addEventListener('click', () => {
-                NotificationsManager.markAllNotificationsRead();
+                if (typeof NotificationsManager !== 'undefined') {
+                    NotificationsManager.markAllNotificationsRead();
+                }
             });
         }
 
@@ -149,7 +235,9 @@ class UIComponents {
         const targetView = document.getElementById(viewName);
         if (targetView) {
             targetView.classList.add('active');
-            StateManager.setCurrentView(viewName);
+            if (typeof StateManager !== 'undefined') {
+                StateManager.setCurrentView(viewName);
+            }
 
             // Загружаем данные для вью, если необходимо
             this.loadViewData(viewName);
@@ -161,10 +249,14 @@ class UIComponents {
     static loadViewData(viewName) {
         switch (viewName) {
             case 'dashboard-view':
-                DashboardManager.loadDashboard();
+                if (typeof DashboardManager !== 'undefined') {
+                    DashboardManager.loadDashboard();
+                }
                 break;
             case 'notifications-view':
-                NotificationsManager.loadNotifications();
+                if (typeof NotificationsManager !== 'undefined') {
+                    NotificationsManager.loadNotifications();
+                }
                 break;
             case 'settings-view':
                 // Данные настроек загружаются автоматически
@@ -179,7 +271,9 @@ class UIComponents {
         if (searchOverlay && searchInput) {
             searchOverlay.classList.add('active');
             searchInput.focus();
-            StateManager.updateState('ui.search', { active: true });
+            if (typeof StateManager !== 'undefined') {
+                StateManager.updateState('ui.search', { active: true });
+            }
 
             EventManager.emit(APP_EVENTS.MODAL_OPENED, 'search');
         }
@@ -192,11 +286,13 @@ class UIComponents {
         if (searchOverlay && searchInput) {
             searchOverlay.classList.remove('active');
             searchInput.value = '';
-            StateManager.updateState('ui.search', {
-                active: false,
-                query: '',
-                results: []
-            });
+            if (typeof StateManager !== 'undefined') {
+                StateManager.updateState('ui.search', {
+                    active: false,
+                    query: '',
+                    results: []
+                });
+            }
 
             EventManager.emit(APP_EVENTS.MODAL_CLOSED, 'search');
         }
@@ -266,16 +362,23 @@ class UIComponents {
             }
         ];
 
-        ModalManager.showContextMenu({
-            title: user.full_name || 'Пользователь',
-            items: menuItems,
-            position: 'bottom-end'
-        });
+        if (typeof ModalManager !== 'undefined') {
+            ModalManager.showContextMenu({
+                title: user.full_name || 'Пользователь',
+                items: menuItems,
+                position: 'bottom-end'
+            });
+        }
     }
 
     static showUserProfile() {
         const user = AuthManager.getCurrentUser();
         if (!user) return;
+
+        if (typeof ModalManager === 'undefined') {
+            console.error('ModalManager not available');
+            return;
+        }
 
         ModalManager.showModal('user-profile', {
             title: 'Мой профиль',
@@ -515,49 +618,6 @@ class UIComponents {
             </div>
         `;
     }
-}
-
-    static templates = new Map();
-
-    static async loadTemplates() {
-        try {
-            const templateElements = document.querySelectorAll('script[type="text/template"]');
-
-            for (const element of templateElements) {
-                const id = element.id;
-                const content = element.innerHTML;
-                this.templates.set(id, content);
-            }
-
-            Utils.log('Templates loaded', { count: this.templates.size });
-        } catch (error) {
-            Utils.logError('Error loading templates:', error);
-        }
-    }
-
-    static renderTemplate(templateId, data) {
-        const template = this.templates.get(templateId);
-        if (!template) {
-            Utils.logError(`Template not found: ${templateId}`);
-            return '';
-        }
-
-        try {
-            return template.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-                const value = this.getNestedValue(data, key.trim());
-                return value !== undefined ? Utils.escapeHTML(value) : '';
-            });
-        } catch (error) {
-            Utils.logError(`Error rendering template ${templateId}:`, error);
-            return '';
-        }
-    }
-
-    static getNestedValue(obj, path) {
-        return path.split('.').reduce((current, key) => {
-            return current && current[key] !== undefined ? current[key] : '';
-        }, obj);
-    }
 
     // Специфичные методы рендеринга с шаблонами
     static renderProjectCardWithTemplate(projectData) {
@@ -610,7 +670,8 @@ class UIComponents {
 
     static renderNotificationWithTemplate(notification) {
         const isJoinRequest = notification.type && notification.type.includes('join');
-        const projectHash = NotificationsManager.extractProjectHashFromNotification(notification);
+        const projectHash = typeof NotificationsManager !== 'undefined' ?
+            NotificationsManager.extractProjectHashFromNotification(notification) : '';
 
         const templateData = {
             id: notification.id,
@@ -627,8 +688,5 @@ class UIComponents {
         return this.renderTemplate('notification-item-template', templateData);
     }
 }
-
-// Загрузка шаблонов при инициализации
-UIComponents.loadTemplates();
 
 window.UIComponents = UIComponents;

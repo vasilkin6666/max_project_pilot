@@ -13,8 +13,12 @@ class App {
             // Аутентификация пользователя
             await AuthManager.initializeUser();
 
-            // Инициализация UI компонентов
-            UIComponents.init();
+            // Инициализация UI компонентов (теперь после auth)
+            if (typeof UIComponents !== 'undefined') {
+                UIComponents.init();
+            } else {
+                throw new Error('UIComponents not loaded');
+            }
 
             // Загрузка начальных данных
             await this.loadInitialData();
@@ -38,19 +42,29 @@ class App {
 
     static async initializeCore() {
         // Инициализация State Manager
-        StateManager.init();
+        if (typeof StateManager !== 'undefined') {
+            StateManager.init();
+        }
 
         // Инициализация Cache Manager
-        CacheManager.init();
+        if (typeof CacheManager !== 'undefined') {
+            CacheManager.init();
+        }
 
         // Инициализация Swipe Manager
-        SwipeManager.init();
+        if (typeof SwipeManager !== 'undefined') {
+            SwipeManager.init();
+        }
 
         // Инициализация Haptic Manager
-        HapticManager.init();
+        if (typeof HapticManager !== 'undefined') {
+            HapticManager.init();
+        }
 
         // Инициализация Search Manager
-        SearchManager.buildSearchIndex();
+        if (typeof SearchManager !== 'undefined') {
+            SearchManager.buildSearchIndex();
+        }
 
         // Настройка обработчиков ошибок
         this.setupErrorHandling();
@@ -65,13 +79,17 @@ class App {
         // Глобальный обработчик ошибок
         window.addEventListener('error', (event) => {
             Utils.logError('Global error:', event.error);
-            HapticManager.error();
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.error();
+            }
         });
 
         // Обработчик необработанных promise rejections
         window.addEventListener('unhandledrejection', (event) => {
             Utils.logError('Unhandled promise rejection:', event.reason);
-            HapticManager.error();
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.error();
+            }
             event.preventDefault();
         });
     }
@@ -84,22 +102,32 @@ class App {
 
         // Обработка ошибок загрузки данных
         EventManager.on(APP_EVENTS.DATA_ERROR, (error) => {
-            ToastManager.error('Ошибка загрузки данных');
-            HapticManager.error();
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.error('Ошибка загрузки данных');
+            }
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.error();
+            }
         });
 
         // Обработка успешной загрузки данных
         EventManager.on(APP_EVENTS.DATA_LOADED, () => {
-            HapticManager.success();
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.success();
+            }
         });
 
         // Обновление поискового индекса при изменении данных
         EventManager.on(APP_EVENTS.PROJECTS_LOADED, () => {
-            SearchManager.buildSearchIndex();
+            if (typeof SearchManager !== 'undefined') {
+                SearchManager.buildSearchIndex();
+            }
         });
 
         EventManager.on(APP_EVENTS.TASKS_LOADED, () => {
-            SearchManager.buildSearchIndex();
+            if (typeof SearchManager !== 'undefined') {
+                SearchManager.buildSearchIndex();
+            }
         });
 
         // Обработка присоединения к проекту по ссылке
@@ -107,13 +135,26 @@ class App {
     }
 
     static async loadInitialData() {
-        const loaders = [
-            DashboardManager.loadDashboard(),
-            NotificationsManager.loadNotifications()
-        ];
+        try {
+            const loaders = [];
 
-        await Promise.all(loaders);
-        Utils.log('Initial data loaded');
+            if (typeof DashboardManager !== 'undefined') {
+                loaders.push(DashboardManager.loadDashboard());
+            }
+
+            if (typeof NotificationsManager !== 'undefined') {
+                loaders.push(NotificationsManager.loadNotifications());
+            }
+
+            if (loaders.length > 0) {
+                await Promise.all(loaders);
+            }
+
+            Utils.log('Initial data loaded');
+        } catch (error) {
+            Utils.logError('Error loading initial data:', error);
+            // Не прерываем инициализацию из-за ошибок загрузки данных
+        }
     }
 
     static startBackgroundProcesses() {
@@ -124,13 +165,19 @@ class App {
 
         // Обновление уведомлений
         setInterval(() => {
-            NotificationsManager.loadNotifications();
+            if (typeof NotificationsManager !== 'undefined') {
+                NotificationsManager.loadNotifications();
+            }
         }, 60 * 1000); // Каждую минуту
 
         // Очистка старого кэша
         setInterval(() => {
-            CacheManager.cleanup();
-            PersistenceManager.cleanupOldData();
+            if (typeof CacheManager !== 'undefined') {
+                CacheManager.cleanup();
+            }
+            if (typeof PersistenceManager !== 'undefined') {
+                PersistenceManager.cleanupOldData();
+            }
         }, 5 * 60 * 1000); // Каждые 5 минут
 
         Utils.log('Background processes started');
@@ -140,11 +187,23 @@ class App {
         try {
             EventManager.emit(APP_EVENTS.SYNC_STARTED);
 
-            await Promise.all([
-                DashboardManager.loadDashboard(),
-                ProjectsManager.loadProjects(),
-                NotificationsManager.loadNotifications()
-            ]);
+            const syncTasks = [];
+
+            if (typeof DashboardManager !== 'undefined') {
+                syncTasks.push(DashboardManager.loadDashboard());
+            }
+
+            if (typeof ProjectsManager !== 'undefined') {
+                syncTasks.push(ProjectsManager.loadProjects());
+            }
+
+            if (typeof NotificationsManager !== 'undefined') {
+                syncTasks.push(NotificationsManager.loadNotifications());
+            }
+
+            if (syncTasks.length > 0) {
+                await Promise.all(syncTasks);
+            }
 
             EventManager.emit(APP_EVENTS.SYNC_COMPLETED);
             Utils.log('Data sync completed');
@@ -163,20 +222,30 @@ class App {
                 Utils.log(`Attempting to join project: ${projectHash}`);
                 await ApiService.joinProject(projectHash);
 
-                ToastManager.success('Вы успешно присоединились к проекту!');
-                HapticManager.success();
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.success('Вы успешно присоединились к проекту!');
+                }
+                if (typeof HapticManager !== 'undefined') {
+                    HapticManager.success();
+                }
 
                 // Убираем параметр из URL
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
 
                 // Обновляем список проектов
-                await ProjectsManager.loadProjects();
+                if (typeof ProjectsManager !== 'undefined') {
+                    await ProjectsManager.loadProjects();
+                }
 
             } catch (error) {
                 Utils.logError('Error joining project:', error);
-                ToastManager.error('Ошибка присоединения к проекту: ' + error.message);
-                HapticManager.error();
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.error('Ошибка присоединения к проекту: ' + error.message);
+                }
+                if (typeof HapticManager !== 'undefined') {
+                    HapticManager.error();
+                }
             }
         }
     }
@@ -206,29 +275,38 @@ class App {
         const appContainer = document.getElementById('app');
         if (appContainer) {
             appContainer.innerHTML = `
-                <div class="error-container">
-                    <div class="error-icon">
+                <div class="error-container" style="padding: 2rem; text-align: center;">
+                    <div class="error-icon" style="font-size: 4rem; color: var(--danger-color); margin-bottom: 1rem;">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
-                    <h2>Ошибка загрузки приложения</h2>
-                    <p>Не удалось инициализировать приложение. Пожалуйста, попробуйте позже.</p>
-                    <div class="error-actions">
-                        <button class="btn btn-primary" onclick="location.reload()">
+                    <h2 style="color: var(--text-primary); margin-bottom: 1rem;">Ошибка загрузки приложения</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Не удалось инициализировать приложение. Пожалуйста, попробуйте позже.</p>
+                    <div class="error-actions" style="display: flex; gap: 1rem; justify-content: center;">
+                        <button class="btn btn-primary" onclick="location.reload()" style="padding: 0.5rem 1rem;">
                             <i class="fas fa-refresh"></i> Перезагрузить
-                        </button>
-                        <button class="btn btn-outline" onclick="App.showErrorDetails('${Utils.escapeHTML(error.message)}')">
-                            <i class="fas fa-info-circle"></i> Подробности
                         </button>
                     </div>
                 </div>
             `;
         }
 
-        ToastManager.error('Ошибка загрузки приложения');
-        HapticManager.error();
+        // Показываем toast только если ToastManager доступен
+        if (typeof ToastManager !== 'undefined') {
+            ToastManager.error('Ошибка загрузки приложения');
+        }
+
+        // Haptic feedback только если доступен
+        if (typeof HapticManager !== 'undefined') {
+            HapticManager.error();
+        }
     }
 
     static showErrorDetails(errorMessage) {
+        if (typeof ModalManager === 'undefined') {
+            console.error('ModalManager not available');
+            return;
+        }
+
         ModalManager.showModal('error-details', {
             title: 'Подробности ошибки',
             size: 'medium',
@@ -254,7 +332,9 @@ class App {
                     type: 'primary',
                     action: 'custom',
                     onClick: () => {
-                        PersistenceManager.clearAll();
+                        if (typeof PersistenceManager !== 'undefined') {
+                            PersistenceManager.clearAll();
+                        }
                         location.reload();
                     }
                 }
@@ -267,12 +347,12 @@ class App {
         const darkTheme = document.getElementById('theme-dark');
 
         if (theme === 'dark') {
-            lightTheme.disabled = true;
-            darkTheme.disabled = false;
+            if (lightTheme) lightTheme.disabled = true;
+            if (darkTheme) darkTheme.disabled = false;
             document.body.setAttribute('data-theme', 'dark');
         } else {
-            lightTheme.disabled = false;
-            darkTheme.disabled = true;
+            if (lightTheme) lightTheme.disabled = false;
+            if (darkTheme) darkTheme.disabled = true;
             document.body.removeAttribute('data-theme');
         }
 
@@ -302,14 +382,22 @@ class App {
 
     static setupNetworkHandler() {
         window.addEventListener('online', () => {
-            ToastManager.success('Соединение восстановлено');
-            HapticManager.success();
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.success('Соединение восстановлено');
+            }
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.success();
+            }
             this.syncData();
         });
 
         window.addEventListener('offline', () => {
-            ToastManager.warning('Отсутствует соединение с интернетом');
-            HapticManager.warning();
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.warning('Отсутствует соединение с интернетом');
+            }
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.warning();
+            }
         });
     }
 
@@ -318,7 +406,9 @@ class App {
             await AuthManager.logout();
             EventManager.emit(APP_EVENTS.USER_LOGOUT);
 
-            ToastManager.success('Вы вышли из системы');
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.success('Вы вышли из системы');
+            }
 
             // Перезагружаем страницу для очистки состояния
             setTimeout(() => {
@@ -327,15 +417,22 @@ class App {
 
         } catch (error) {
             Utils.logError('Logout error:', error);
-            ToastManager.error('Ошибка при выходе');
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.error('Ошибка при выходе');
+            }
         }
     }
 
     // Методы для разработки и отладки
     static showDebugInfo() {
-        const state = StateManager.getState();
-        const cacheStats = CacheManager.getStats();
-        const storageInfo = PersistenceManager.getStorageInfo();
+        if (typeof ModalManager === 'undefined') {
+            console.error('ModalManager not available');
+            return;
+        }
+
+        const state = typeof StateManager !== 'undefined' ? StateManager.getState() : {};
+        const cacheStats = typeof CacheManager !== 'undefined' ? CacheManager.getStats() : {};
+        const storageInfo = typeof PersistenceManager !== 'undefined' ? PersistenceManager.getStorageInfo() : {};
 
         ModalManager.showModal('debug-info', {
             title: 'Информация для разработки',
@@ -368,16 +465,26 @@ class App {
                     text: 'Экспорт данных',
                     type: 'primary',
                     action: 'custom',
-                    onClick: () => PersistenceManager.exportData()
+                    onClick: () => {
+                        if (typeof PersistenceManager !== 'undefined') {
+                            PersistenceManager.exportData();
+                        }
+                    }
                 },
                 {
                     text: 'Очистить кэш',
                     type: 'danger',
                     action: 'custom',
                     onClick: () => {
-                        CacheManager.clear();
-                        ToastManager.success('Кэш очищен');
-                        ModalManager.closeCurrentModal();
+                        if (typeof CacheManager !== 'undefined') {
+                            CacheManager.clear();
+                        }
+                        if (typeof ToastManager !== 'undefined') {
+                            ToastManager.success('Кэш очищен');
+                        }
+                        if (typeof ModalManager !== 'undefined') {
+                            ModalManager.closeCurrentModal();
+                        }
                     }
                 }
             ]
