@@ -1,4 +1,4 @@
-// Основной класс приложения (обновленная версия)
+// Основной класс приложения (полная исправленная версия)
 class App {
     static async init() {
         try {
@@ -6,6 +6,9 @@ class App {
 
             // Показываем loading screen
             this.showLoadingOverlay();
+
+            // Проверяем системные требования
+            await this.checkSystemRequirements();
 
             // Инициализация ядра
             await this.initializeCore();
@@ -40,30 +43,75 @@ class App {
         }
     }
 
+    static async checkSystemRequirements() {
+        const requirements = [
+            { name: 'Local Storage', check: () => !!window.localStorage },
+            { name: 'Fetch API', check: () => !!window.fetch },
+            { name: 'Promise', check: () => !!window.Promise },
+            { name: 'ES6 Support', check: () => !!window.Map && !!window.Set }
+        ];
+
+        const failed = requirements.filter(req => !req.check());
+
+        if (failed.length > 0) {
+            throw new Error(`System requirements not met: ${failed.map(f => f.name).join(', ')}`);
+        }
+
+        Utils.log('System requirements check passed');
+    }
+
     static async initializeCore() {
-        // Инициализация State Manager
+        // Проверка обязательных зависимостей
+        const requiredClasses = ['CONFIG', 'Utils', 'EventManager', 'APP_EVENTS', 'ApiService'];
+        const missing = requiredClasses.filter(cls => typeof window[cls] === 'undefined');
+
+        if (missing.length > 0) {
+            throw new Error(`Missing required classes: ${missing.join(', ')}`);
+        }
+
+        Utils.log('Starting core systems initialization...');
+
+        // 1. State Manager
         if (typeof StateManager !== 'undefined') {
             StateManager.init();
+            Utils.log('State manager initialized');
+        } else {
+            throw new Error('StateManager not loaded');
         }
 
-        // Инициализация Cache Manager
+        // 2. Cache Manager
         if (typeof CacheManager !== 'undefined') {
             CacheManager.init();
+            Utils.log('Cache manager initialized');
         }
 
-        // Инициализация Swipe Manager
+        // 3. Persistence Manager
+        if (typeof PersistenceManager !== 'undefined') {
+            Utils.log('Persistence manager available');
+        }
+
+        // 4. Swipe Manager
         if (typeof SwipeManager !== 'undefined') {
             SwipeManager.init();
+            Utils.log('Swipe manager initialized');
         }
 
-        // Инициализация Haptic Manager
+        // 5. Haptic Manager
         if (typeof HapticManager !== 'undefined') {
             HapticManager.init();
+            Utils.log('Haptic manager initialized');
         }
 
-        // Инициализация Search Manager
+        // 6. Users Manager
+        if (typeof UsersManager !== 'undefined') {
+            UsersManager.init();
+            Utils.log('Users manager initialized');
+        }
+
+        // 7. Search Manager
         if (typeof SearchManager !== 'undefined') {
             SearchManager.buildSearchIndex();
+            Utils.log('Search manager initialized');
         }
 
         // Настройка обработчиков ошибок
@@ -72,7 +120,10 @@ class App {
         // Настройка обработчиков событий
         this.setupEventHandlers();
 
-        Utils.log('Core systems initialized');
+        // Настройка сетевого обработчика
+        this.setupNetworkHandler();
+
+        Utils.log('All core systems initialized successfully');
     }
 
     static setupErrorHandling() {
@@ -82,6 +133,12 @@ class App {
             if (typeof HapticManager !== 'undefined') {
                 HapticManager.error();
             }
+
+            // Показываем пользовательское сообщение только для критических ошибок
+            if (!event.error?.message?.includes('Loading') &&
+                !event.error?.message?.includes('Chunk')) {
+                this.showErrorToast('Произошла непредвиденная ошибка');
+            }
         });
 
         // Обработчик необработанных promise rejections
@@ -90,24 +147,38 @@ class App {
             if (typeof HapticManager !== 'undefined') {
                 HapticManager.error();
             }
+
+            this.showErrorToast('Ошибка выполнения операции');
             event.preventDefault();
         });
+
+        Utils.log('Error handlers setup completed');
+    }
+
+    static showErrorToast(message) {
+        if (typeof ToastManager !== 'undefined') {
+            ToastManager.error(message);
+        } else {
+            console.error('Error:', message);
+        }
     }
 
     static setupEventHandlers() {
         // Обработка изменения темы
         EventManager.on(APP_EVENTS.THEME_CHANGED, (theme) => {
             this.applyTheme(theme);
+
+            // Сохраняем тему в настройках пользователя, если доступен UsersManager
+            if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
+                UsersManager.patchUserPreferences({ theme }).catch(() => {
+                    // Игнорируем ошибки сохранения темы
+                });
+            }
         });
 
         // Обработка ошибок загрузки данных
         EventManager.on(APP_EVENTS.DATA_ERROR, (error) => {
-            if (typeof ToastManager !== 'undefined') {
-                ToastManager.error('Ошибка загрузки данных');
-            }
-            if (typeof HapticManager !== 'undefined') {
-                HapticManager.error();
-            }
+            this.showErrorToast('Ошибка загрузки данных');
         });
 
         // Обработка успешной загрузки данных
@@ -118,39 +189,125 @@ class App {
         });
 
         // Обновление поискового индекса при изменении данных
-        EventManager.on(APP_EVENTS.PROJECTS_LOADED, () => {
+        EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
             if (typeof SearchManager !== 'undefined') {
                 SearchManager.buildSearchIndex();
             }
+
+            // Обновляем статистику в StateManager
+            StateManager.setState('projects', projects);
         });
 
-        EventManager.on(APP_EVENTS.TASKS_LOADED, () => {
+        EventManager.on(APP_EVENTS.TASKS_LOADED, (tasks) => {
             if (typeof SearchManager !== 'undefined') {
                 SearchManager.buildSearchIndex();
             }
+
+            StateManager.setState('tasks', tasks);
+        });
+
+        EventManager.on(APP_EVENTS.NOTIFICATIONS_LOADED, (notifications) => {
+            StateManager.setState('notifications', notifications);
         });
 
         // Обработка присоединения к проекту по ссылке
         this.handleProjectJoinFromUrl();
+
+        // Обработка изменения онлайн-статуса
+        EventManager.on(APP_EVENTS.NETWORK_STATUS_CHANGED, (status) => {
+            this.handleNetworkStatusChange(status);
+        });
+
+        Utils.log('Event handlers setup completed');
+    }
+
+    static setupNetworkHandler() {
+        window.addEventListener('online', () => {
+            EventManager.emit(APP_EVENTS.NETWORK_STATUS_CHANGED, 'online');
+
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.success('Соединение восстановлено');
+            }
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.success();
+            }
+
+            // Автоматическая синхронизация при восстановлении соединения
+            this.syncData();
+        });
+
+        window.addEventListener('offline', () => {
+            EventManager.emit(APP_EVENTS.NETWORK_STATUS_CHANGED, 'offline');
+
+            if (typeof ToastManager !== 'undefined') {
+                ToastManager.warning('Отсутствует соединение с интернетом');
+            }
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.warning();
+            }
+        });
+
+        Utils.log('Network handler setup completed');
+    }
+
+    static handleNetworkStatusChange(status) {
+        const appElement = document.getElementById('app');
+        if (appElement) {
+            if (status === 'offline') {
+                appElement.classList.add('offline');
+            } else {
+                appElement.classList.remove('offline');
+            }
+        }
     }
 
     static async loadInitialData() {
         try {
             const loaders = [];
 
-            if (typeof DashboardManager !== 'undefined') {
-                loaders.push(DashboardManager.loadDashboard());
-            }
+            // Загружаем дашборд если пользователь аутентифицирован
+            if (AuthManager.isUserAuthenticated()) {
+                if (typeof DashboardManager !== 'undefined') {
+                    loaders.push(DashboardManager.loadDashboard());
+                }
 
-            if (typeof NotificationsManager !== 'undefined') {
-                loaders.push(NotificationsManager.loadNotifications());
+                if (typeof NotificationsManager !== 'undefined') {
+                    loaders.push(NotificationsManager.loadNotifications());
+                }
+
+                // Загружаем настройки пользователя
+                if (typeof UsersManager !== 'undefined') {
+                    loaders.push(UsersManager.loadUserPreferences().then(prefs => {
+                        // Применяем сохраненную тему
+                        if (prefs.theme && prefs.theme !== this.getCurrentTheme()) {
+                            this.applyTheme(prefs.theme);
+                        }
+                        return prefs;
+                    }));
+                }
+
+                // Предзагрузка проектов и задач
+                if (typeof ProjectsManager !== 'undefined') {
+                    loaders.push(ProjectsManager.loadProjects().catch(error => {
+                        Utils.logError('Projects preload failed:', error);
+                        return []; // Возвращаем пустой массив в случае ошибки
+                    }));
+                }
             }
 
             if (loaders.length > 0) {
-                await Promise.all(loaders);
+                await Promise.allSettled(loaders);
+
+                // Логируем результаты загрузки
+                const results = await Promise.allSettled(loaders);
+                results.forEach((result, index) => {
+                    if (result.status === 'rejected') {
+                        Utils.logError(`Loader ${index} failed:`, result.reason);
+                    }
+                });
             }
 
-            Utils.log('Initial data loaded');
+            Utils.log('Initial data loaded successfully');
         } catch (error) {
             Utils.logError('Error loading initial data:', error);
             // Не прерываем инициализацию из-за ошибок загрузки данных
@@ -158,19 +315,21 @@ class App {
     }
 
     static startBackgroundProcesses() {
-        // Периодическая синхронизация данных
-        setInterval(() => {
-            this.syncData();
-        }, 30 * 1000); // Каждые 30 секунд
+        // Периодическая синхронизация данных (только для аутентифицированных пользователей)
+        if (AuthManager.isUserAuthenticated()) {
+            setInterval(() => {
+                this.syncData();
+            }, 30 * 1000); // Каждые 30 секунд
 
-        // Обновление уведомлений
-        setInterval(() => {
-            if (typeof NotificationsManager !== 'undefined') {
-                NotificationsManager.loadNotifications();
-            }
-        }, 60 * 1000); // Каждую минуту
+            // Обновление уведомлений
+            setInterval(() => {
+                if (typeof NotificationsManager !== 'undefined') {
+                    NotificationsManager.loadNotifications();
+                }
+            }, 60 * 1000); // Каждую минуту
+        }
 
-        // Очистка старого кэша
+        // Очистка старого кэша (для всех пользователей)
         setInterval(() => {
             if (typeof CacheManager !== 'undefined') {
                 CacheManager.cleanup();
@@ -184,6 +343,11 @@ class App {
     }
 
     static async syncData() {
+        // Синхронизация только при онлайн-статусе и аутентификации
+        if (!navigator.onLine || !AuthManager.isUserAuthenticated()) {
+            return;
+        }
+
         try {
             EventManager.emit(APP_EVENTS.SYNC_STARTED);
 
@@ -202,7 +366,7 @@ class App {
             }
 
             if (syncTasks.length > 0) {
-                await Promise.all(syncTasks);
+                await Promise.allSettled(syncTasks);
             }
 
             EventManager.emit(APP_EVENTS.SYNC_COMPLETED);
@@ -238,6 +402,11 @@ class App {
                     await ProjectsManager.loadProjects();
                 }
 
+                // Показываем детали проекта
+                if (typeof ProjectsManager !== 'undefined') {
+                    ProjectsManager.openProjectDetail(projectHash);
+                }
+
             } catch (error) {
                 Utils.logError('Error joining project:', error);
                 if (typeof ToastManager !== 'undefined') {
@@ -255,6 +424,7 @@ class App {
         if (overlay) {
             overlay.style.display = 'flex';
             overlay.classList.remove('hidden');
+            overlay.setAttribute('aria-busy', 'true');
         }
     }
 
@@ -262,6 +432,7 @@ class App {
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) {
             overlay.classList.add('hidden');
+            overlay.setAttribute('aria-busy', 'false');
             setTimeout(() => {
                 overlay.style.display = 'none';
             }, 500);
@@ -281,65 +452,27 @@ class App {
                     </div>
                     <h2 style="color: var(--text-primary); margin-bottom: 1rem;">Ошибка загрузки приложения</h2>
                     <p style="color: var(--text-secondary); margin-bottom: 2rem;">Не удалось инициализировать приложение. Пожалуйста, попробуйте позже.</p>
+                    <div class="error-details" style="margin-bottom: 2rem;">
+                        <details style="text-align: left;">
+                            <summary style="cursor: pointer; color: var(--primary-color);">Подробности ошибки</summary>
+                            <pre style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-size: 0.8rem; overflow: auto;">
+${Utils.escapeHTML(error.message || 'Unknown error')}
+                            </pre>
+                        </details>
+                    </div>
                     <div class="error-actions" style="display: flex; gap: 1rem; justify-content: center;">
                         <button class="btn btn-primary" onclick="location.reload()" style="padding: 0.5rem 1rem;">
                             <i class="fas fa-refresh"></i> Перезагрузить
+                        </button>
+                        <button class="btn btn-outline" onclick="App.showDebugInfo()" style="padding: 0.5rem 1rem;">
+                            <i class="fas fa-bug"></i> Отладка
                         </button>
                     </div>
                 </div>
             `;
         }
 
-        // Показываем toast только если ToastManager доступен
-        if (typeof ToastManager !== 'undefined') {
-            ToastManager.error('Ошибка загрузки приложения');
-        }
-
-        // Haptic feedback только если доступен
-        if (typeof HapticManager !== 'undefined') {
-            HapticManager.error();
-        }
-    }
-
-    static showErrorDetails(errorMessage) {
-        if (typeof ModalManager === 'undefined') {
-            console.error('ModalManager not available');
-            return;
-        }
-
-        ModalManager.showModal('error-details', {
-            title: 'Подробности ошибки',
-            size: 'medium',
-            template: `
-                <div class="error-details">
-                    <p>Произошла ошибка при инициализации приложения:</p>
-                    <div class="error-message">
-                        <code>${Utils.escapeHTML(errorMessage)}</code>
-                    </div>
-                    <p class="text-muted mt-3">
-                        Если ошибка повторяется, попробуйте очистить кэш браузера или обратитесь в поддержку.
-                    </p>
-                </div>
-            `,
-            actions: [
-                {
-                    text: 'Закрыть',
-                    type: 'secondary',
-                    action: 'close'
-                },
-                {
-                    text: 'Очистить кэш',
-                    type: 'primary',
-                    action: 'custom',
-                    onClick: () => {
-                        if (typeof PersistenceManager !== 'undefined') {
-                            PersistenceManager.clearAll();
-                        }
-                        location.reload();
-                    }
-                }
-            ]
-        });
+        this.showErrorToast('Ошибка загрузки приложения');
     }
 
     static applyTheme(theme) {
@@ -356,7 +489,10 @@ class App {
             document.body.removeAttribute('data-theme');
         }
 
-        // Сохраняем тему в localStorage
+        // Сохраняем тему в StateManager
+        StateManager.setTheme(theme);
+
+        // Сохраняем тему в localStorage для быстрого доступа
         localStorage.setItem('theme', theme);
 
         Utils.log(`Theme changed to: ${theme}`);
@@ -365,7 +501,8 @@ class App {
     static getCurrentTheme() {
         // Сначала из StateManager, потом из localStorage
         const stateTheme = StateManager.getState('ui.theme');
-        if (stateTheme && stateTheme !== 'light') return stateTheme;
+        if (stateTheme) return stateTheme;
+
         return localStorage.getItem('theme') || 'light';
     }
 
@@ -383,27 +520,6 @@ class App {
         return navigator.onLine ? 'online' : 'offline';
     }
 
-    static setupNetworkHandler() {
-        window.addEventListener('online', () => {
-            if (typeof ToastManager !== 'undefined') {
-                ToastManager.success('Соединение восстановлено');
-            }
-            if (typeof HapticManager !== 'undefined') {
-                HapticManager.success();
-            }
-            this.syncData();
-        });
-
-        window.addEventListener('offline', () => {
-            if (typeof ToastManager !== 'undefined') {
-                ToastManager.warning('Отсутствует соединение с интернетом');
-            }
-            if (typeof HapticManager !== 'undefined') {
-                HapticManager.warning();
-            }
-        });
-    }
-
     static async logout() {
         try {
             await AuthManager.logout();
@@ -413,7 +529,10 @@ class App {
                 ToastManager.success('Вы вышли из системы');
             }
 
-            // Перезагружаем страницу для очистки состояния
+            // Очищаем состояние приложения
+            StateManager.clearState();
+
+            // Перезагружаем страницу для полной очистки состояния
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -433,9 +552,11 @@ class App {
             return;
         }
 
-        const state = typeof StateManager !== 'undefined' ? StateManager.getState() : {};
+        const state = StateManager.getState();
         const cacheStats = typeof CacheManager !== 'undefined' ? CacheManager.getStats() : {};
         const storageInfo = typeof PersistenceManager !== 'undefined' ? PersistenceManager.getStorageInfo() : {};
+        const networkStatus = this.getNetworkStatus();
+        const user = AuthManager.getCurrentUser();
 
         ModalManager.showModal('debug-info', {
             title: 'Информация для разработки',
@@ -443,8 +564,23 @@ class App {
             template: `
                 <div class="debug-info">
                     <div class="debug-section">
+                        <h5>Системная информация</h5>
+                        <div class="system-info">
+                            <div><strong>Сеть:</strong> <span class="badge ${networkStatus === 'online' ? 'success' : 'warning'}">${networkStatus}</span></div>
+                            <div><strong>Пользователь:</strong> ${user ? user.full_name || user.username : 'Не аутентифицирован'}</div>
+                            <div><strong>Тема:</strong> ${this.getCurrentTheme()}</div>
+                            <div><strong>Версия:</strong> ${CONFIG.VERSION}</div>
+                        </div>
+                    </div>
+
+                    <div class="debug-section">
                         <h5>Состояние приложения</h5>
-                        <pre><code>${JSON.stringify(state, null, 2)}</code></pre>
+                        <pre><code>${JSON.stringify({
+                            projects: state.projects?.length || 0,
+                            tasks: state.tasks?.length || 0,
+                            notifications: state.notifications?.length || 0,
+                            currentView: state.ui?.currentView
+                        }, null, 2)}</code></pre>
                     </div>
 
                     <div class="debug-section">
@@ -485,20 +621,51 @@ class App {
                         if (typeof ToastManager !== 'undefined') {
                             ToastManager.success('Кэш очищен');
                         }
-                        if (typeof ModalManager !== 'undefined') {
-                            ModalManager.closeCurrentModal();
-                        }
+                        ModalManager.closeCurrentModal();
                     }
                 }
             ]
         });
     }
+
+    // Health check приложения
+    static async healthCheck() {
+        const checks = [
+            { name: 'API Health', check: () => ApiService.healthCheck() },
+            { name: 'Authentication', check: () => AuthManager.isUserAuthenticated() },
+            { name: 'State Manager', check: () => !!StateManager },
+            { name: 'Event System', check: () => !!EventManager }
+        ];
+
+        const results = [];
+        for (const check of checks) {
+            try {
+                const result = await check.check();
+                results.push({ name: check.name, status: 'healthy', result });
+            } catch (error) {
+                results.push({ name: check.name, status: 'unhealthy', error: error.message });
+            }
+        }
+
+        return results;
+    }
+}
+
+// Глобальные события для сетевого статуса
+if (typeof APP_EVENTS !== 'undefined') {
+    APP_EVENTS.NETWORK_STATUS_CHANGED = 'network:status-changed';
 }
 
 // Запуск приложения при загрузке DOM
 document.addEventListener('DOMContentLoaded', () => {
-    // Инициализация обработчика сети
-    App.setupNetworkHandler();
+    // Устанавливаем глобальные обработчики ошибок
+    window.addEventListener('error', (event) => {
+        Utils.logError('Global error caught:', event.error);
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+        Utils.logError('Unhandled promise rejection:', event.reason);
+    });
 
     // Глобальные горячие клавиши для разработки
     document.addEventListener('keydown', (e) => {
@@ -506,19 +673,20 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             App.showDebugInfo();
         }
+
+        if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+            e.preventDefault();
+            App.healthCheck().then(results => {
+                console.log('Health Check Results:', results);
+                ToastManager.info('Health check completed');
+            });
+        }
     });
 
-    // Запуск приложения
-    App.init();
-});
-
-// Глобальные обработчики ошибок для улучшения UX
-window.addEventListener('error', (event) => {
-    Utils.logError('Global error caught:', event.error);
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-    Utils.logError('Unhandled promise rejection:', event.reason);
+    // Запуск приложения с небольшой задержкой для полной загрузки DOM
+    setTimeout(() => {
+        App.init();
+    }, 100);
 });
 
 // Экспорт глобальных объектов для отладки

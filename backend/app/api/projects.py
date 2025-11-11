@@ -1,4 +1,4 @@
-# В начале файла добавьте правильные импорты
+#/backend/app/api/project.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_

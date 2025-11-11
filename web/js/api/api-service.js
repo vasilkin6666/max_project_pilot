@@ -32,7 +32,8 @@ class ApiService {
             signal: AbortSignal.timeout(CONFIG.API.TIMEOUT)
         };
 
-        if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+        // Для GET и DELETE не добавляем body, для остальных методов добавляем
+        if (data && method !== 'GET' && method !== 'DELETE') {
             config.body = JSON.stringify(data);
         }
 
@@ -42,7 +43,19 @@ class ApiService {
             const response = await fetch(url, config);
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { detail: errorText || `HTTP error! status: ${response.status}` };
+                }
+
+                throw {
+                    status: response.status,
+                    message: errorData.detail || `HTTP error! status: ${response.status}`,
+                    data: errorData
+                };
             }
 
             // Для DELETE запросов и 204 No Content
@@ -61,11 +74,16 @@ class ApiService {
                 throw new Error('Превышено время ожидания ответа от сервера');
             }
 
+            if (error.status) {
+                // Это HTTP ошибка
+                throw new Error(error.message);
+            }
+
             throw error;
         }
     }
 
-    // Аутентификация
+    // ==================== АУТЕНТИФИКАЦИЯ ====================
     static async getAuthToken(maxId, fullName, username = '') {
         return await this.apiCall('/auth/token', 'POST', {
             max_id: maxId,
@@ -74,7 +92,7 @@ class ApiService {
         });
     }
 
-    // Пользователи
+    // ==================== ПОЛЬЗОВАТЕЛИ ====================
     static async getCurrentUser() {
         return await this.apiCall('/users/me');
     }
@@ -83,6 +101,20 @@ class ApiService {
         return await this.apiCall('/users/me', 'PUT', data);
     }
 
+    // ДОБАВЛЕННЫЕ МЕТОДЫ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ
+    static async getUserById(userId) {
+        return await this.apiCall(`/users/${userId}`);
+    }
+
+    static async getUserProjects(userId = 'me') {
+        return await this.apiCall(`/users/${userId}/projects`);
+    }
+
+    static async getRootEndpoint() {
+        return await this.apiCall('/');
+    }
+
+    // ==================== НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ ====================
     static async getUserPreferences() {
         return await this.apiCall('/users/me/preferences');
     }
@@ -99,7 +131,12 @@ class ApiService {
         return await this.apiCall('/users/me/preferences/reset', 'PUT');
     }
 
-    // Проекты
+    // ==================== ДАШБОРД ====================
+    static async getDashboard() {
+        return await this.apiCall('/dashboard/');
+    }
+
+    // ==================== ПРОЕКТЫ ====================
     static async getProjects() {
         return await this.apiCall('/projects/');
     }
@@ -120,6 +157,11 @@ class ApiService {
         return await this.apiCall(`/projects/${projectHash}`, 'DELETE');
     }
 
+    static async getProjectSummary(projectHash) {
+        return await this.apiCall(`/projects/${projectHash}/summary`);
+    }
+
+    // ==================== УЧАСТНИКИ ПРОЕКТА ====================
     static async getProjectMembers(projectHash) {
         return await this.apiCall(`/projects/${projectHash}/members`);
     }
@@ -132,6 +174,7 @@ class ApiService {
         return await this.apiCall(`/projects/${projectHash}/members/${userId}`, 'DELETE');
     }
 
+    // ==================== ПРИСОЕДИНЕНИЕ К ПРОЕКТУ ====================
     static async joinProject(projectHash) {
         return await this.apiCall(`/projects/${projectHash}/join`, 'POST');
     }
@@ -152,11 +195,7 @@ class ApiService {
         return await this.apiCall(`/projects/${projectHash}/regenerate-invite`, 'POST');
     }
 
-    static async getProjectSummary(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}/summary`);
-    }
-
-    // Задачи
+    // ==================== ЗАДАЧИ ====================
     static async getTasks(filters = {}) {
         return await this.apiCall('/tasks/', 'GET', null, filters);
     }
@@ -181,27 +220,36 @@ class ApiService {
         return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', null, { status });
     }
 
+    // ==================== ЗАВИСИМОСТИ ЗАДАЧ ====================
     static async getTaskDependencies(taskId) {
         return await this.apiCall(`/tasks/${taskId}/dependencies`);
     }
 
+    // ИСПРАВЛЕННЫЙ МЕТОД - теперь передаем данные в body, а не в params
     static async addTaskDependency(taskId, dependsOnId) {
-        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', null, { depends_on_id: dependsOnId });
+        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', {
+            depends_on_id: dependsOnId
+        });
     }
 
+    // ==================== КОММЕНТАРИИ К ЗАДАЧАМ ====================
     static async getTaskComments(taskId) {
         return await this.apiCall(`/tasks/${taskId}/comments`);
     }
 
+    // ИСПРАВЛЕННЫЙ МЕТОД - теперь передаем данные в body, а не в params
     static async addTaskComment(taskId, content) {
-        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', null, { content });
+        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', {
+            content: content
+        });
     }
 
+    // ==================== ЗАДАЧИ ПРОЕКТА ====================
     static async getProjectTasks(projectHash) {
         return await this.apiCall(`/tasks/projects/${projectHash}/tasks`);
     }
 
-    // Уведомления
+    // ==================== УВЕДОМЛЕНИЯ ====================
     static async getNotifications() {
         return await this.apiCall('/notifications/');
     }
@@ -210,18 +258,38 @@ class ApiService {
         return await this.apiCall('/notifications/mark_all_read', 'PUT');
     }
 
-    // Дашборд
-    static async getDashboard() {
-        return await this.apiCall('/dashboard/');
-    }
-
-    // Health check
+    // ==================== HEALTH CHECKS ====================
     static async healthCheck() {
         return await this.apiCall('/health');
     }
 
     static async apiHealthCheck() {
         return await this.apiCall('/api/health');
+    }
+
+    // ==================== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ====================
+    static async validateToken() {
+        try {
+            await this.getCurrentUser();
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    static async retryWithRefresh(fn, maxRetries = 3) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await fn();
+            } catch (error) {
+                if (error.status === 401 && attempt < maxRetries) {
+                    // Попытка обновить токен
+                    await AuthManager.refreshToken();
+                    continue;
+                }
+                throw error;
+            }
+        }
     }
 }
 
