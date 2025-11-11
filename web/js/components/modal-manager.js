@@ -2,9 +2,9 @@
 class ModalManager {
     static currentModal = null;
     static modalStack = [];
+    static currentContextMenu = null;
 
     static showModal(modalId, options = {}) {
-        // Закрываем предыдущее модальное окно
         if (this.currentModal) {
             this.closeCurrentModal();
         }
@@ -12,7 +12,7 @@ class ModalManager {
         const {
             title = '',
             template = '',
-            size = 'medium', // small, medium, large, fullscreen
+            size = 'medium',
             actions = [],
             onClose = null,
             onSubmit = null,
@@ -21,12 +21,8 @@ class ModalManager {
         } = options;
 
         const modalHTML = this.createModalHTML(modalId, title, template, actions, size);
-
-        // Удаляем существующее модальное окно с таким ID
         const existingModal = document.getElementById(modalId);
-        if (existingModal) {
-            existingModal.remove();
-        }
+        if (existingModal) existingModal.remove();
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
 
@@ -36,40 +32,22 @@ class ModalManager {
             keyboard: closeOnEscape
         });
 
-        // Сохраняем информацию о модальном окне
-        this.currentModal = {
-            id: modalId,
-            element: modalElement,
-            instance: modal,
-            options: options
-        };
-
+        this.currentModal = { id: modalId, element: modalElement, instance: modal, options };
         this.modalStack.push(this.currentModal);
 
-        // Настраиваем обработчики действий
         this.setupModalActions(modalId, actions, onSubmit);
 
-        // Показываем модальное окно
         modal.show();
 
-        // Обработчики событий
         modalElement.addEventListener('shown.bs.modal', () => {
             EventManager.emit(APP_EVENTS.MODAL_OPENED, modalId);
-
-            // Фокус на первом инпуте
             const firstInput = modalElement.querySelector('input, textarea, select');
-            if (firstInput) {
-                firstInput.focus();
-            }
+            if (firstInput) firstInput.focus();
         });
 
         modalElement.addEventListener('hidden.bs.modal', () => {
             EventManager.emit(APP_EVENTS.MODAL_CLOSED, modalId);
-
-            if (onClose) {
-                onClose();
-            }
-
+            if (onClose) onClose();
             this.cleanupModal(modalId);
         });
 
@@ -90,11 +68,9 @@ class ModalManager {
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                         ` : ''}
-
                         <div class="modal-body">
                             ${template}
                         </div>
-
                         ${actionsHTML ? `
                             <div class="modal-footer">
                                 ${actionsHTML}
@@ -150,15 +126,12 @@ class ModalManager {
         const modalElement = document.getElementById(modalId);
         if (!modalElement) return;
 
-        // Обработка отправки формы
         const form = modalElement.querySelector('form');
         if (form && onSubmit) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-
                 const formData = new FormData(form);
                 const data = Object.fromEntries(formData.entries());
-
                 try {
                     await onSubmit(data, form);
                 } catch (error) {
@@ -168,7 +141,6 @@ class ModalManager {
             });
         }
 
-        // Настройка действий кнопок
         actions.forEach((action, index) => {
             if (action.action === 'submit' && action.onClick) {
                 const button = modalElement.querySelectorAll('.modal-footer .btn')[index];
@@ -185,7 +157,6 @@ class ModalManager {
     static handleSubmit(button) {
         const modal = button.closest('.modal');
         const form = modal?.querySelector('form');
-
         if (form) {
             form.requestSubmit();
         } else {
@@ -201,19 +172,10 @@ class ModalManager {
 
     static cleanupModal(modalId) {
         const modalElement = document.getElementById(modalId);
-        if (modalElement) {
-            modalElement.remove();
-        }
+        if (modalElement) modalElement.remove();
 
-        // Удаляем из стека
         this.modalStack = this.modalStack.filter(modal => modal.id !== modalId);
-
-        // Восстанавливаем предыдущее модальное окно
-        if (this.modalStack.length > 0) {
-            this.currentModal = this.modalStack[this.modalStack.length - 1];
-        } else {
-            this.currentModal = null;
-        }
+        this.currentModal = this.modalStack[this.modalStack.length - 1] || null;
     }
 
     static showConfirmation(options = {}) {
@@ -224,27 +186,25 @@ class ModalManager {
             cancelText = 'Отмена',
             onConfirm = null,
             onCancel = null,
-            type = 'warning' // warning, danger, info
+            type = 'warning'
         } = options;
 
         return new Promise((resolve) => {
             const modalId = 'confirmation-modal-' + Date.now();
-
             this.showModal(modalId, {
                 title,
                 template: `
-                    <div class="confirmation-dialog">
-                        <div class="confirmation-icon ${type}">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <p>${Utils.escapeHTML(message)}</p>
-                    </div>
+                    <p>${Utils.escapeHTML(message)}</p>
                 `,
                 actions: [
                     {
                         text: cancelText,
                         type: 'secondary',
-                        action: 'close'
+                        action: 'close',
+                        onClick: () => {
+                            if (onCancel) onCancel();
+                            resolve(false);
+                        }
                     },
                     {
                         text: confirmText,
@@ -272,7 +232,6 @@ class ModalManager {
             triggerElement = null
         } = options;
 
-        // Закрываем существующее контекстное меню
         this.closeContextMenu();
 
         const menuId = 'context-menu-' + Date.now();
@@ -283,46 +242,30 @@ class ModalManager {
         const menuElement = document.getElementById(menuId);
         const backdrop = document.createElement('div');
         backdrop.className = 'context-menu-backdrop';
-
         document.body.appendChild(backdrop);
 
-        // Позиционирование
         if (triggerElement) {
             this.positionContextMenu(menuElement, triggerElement, position);
         } else {
-            // Центрирование по умолчанию
             menuElement.style.top = '50%';
             menuElement.style.left = '50%';
             menuElement.style.transform = 'translate(-50%, -50%)';
         }
 
-        // Показываем меню
         setTimeout(() => {
             menuElement.classList.add('show');
             backdrop.classList.add('show');
         }, 10);
 
-        // Сохраняем ссылку для закрытия
-        this.currentContextMenu = {
-            id: menuId,
-            element: menuElement,
-            backdrop: backdrop
-        };
+        this.currentContextMenu = { id: menuId, element: menuElement, backdrop, closeHandlers: {} };
 
-        // Обработчик закрытия
         const closeHandler = () => this.closeContextMenu();
         backdrop.addEventListener('click', closeHandler);
 
-        // Закрытие по ESC
-        const escHandler = (e) => {
-            if (e.key === 'Escape') closeHandler();
-        };
+        const escHandler = (e) => { if (e.key === 'Escape') closeHandler(); };
         document.addEventListener('keydown', escHandler);
 
-        this.currentContextMenu.closeHandlers = {
-            backdrop: closeHandler,
-            esc: escHandler
-        };
+        this.currentContextMenu.closeHandlers = { backdrop: closeHandler, esc: escHandler };
 
         return menuElement;
     }
@@ -334,11 +277,15 @@ class ModalManager {
             }
 
             const dangerClass = item.danger ? 'danger' : '';
+            const actionStr = JSON.stringify(item.action);
+            // Безопасная замена только если строка
+            const safeActionStr = typeof actionStr === 'string' ? actionStr.replace(/'/g, "\\'") : '';
+
             return `
                 <button class="context-menu-item ${dangerClass}"
-                        onclick="ModalManager.handleContextMenuAction('${menuId}', ${JSON.stringify(item.action).replace(/'/g, "\\'")})">
-                    <i class="fas ${item.icon}"></i>
-                    <span>${Utils.escapeHTML(item.text)}</span>
+                        onclick="ModalManager.handleContextMenuAction('${menuId}', ${safeActionStr})">
+                    <i class="fas ${item.icon || 'fa-circle'}"></i>
+                    <span>${Utils.escapeHTML(item.text || '')}</span>
                 </button>
             `;
         }).join('');
@@ -385,20 +332,10 @@ class ModalManager {
                 left = triggerRect.left + window.scrollX;
         }
 
-        // Корректировка для выхода за границы экрана
-        const viewport = {
-            width: window.innerWidth,
-            height: window.innerHeight
-        };
+        const viewport = { width: window.innerWidth, height: window.innerHeight };
 
-        if (left + menuRect.width > viewport.width) {
-            left = viewport.width - menuRect.width - 10;
-        }
-
-        if (top + menuRect.height > viewport.height) {
-            top = viewport.height - menuRect.height - 10;
-        }
-
+        if (left + menuRect.width > viewport.width) left = viewport.width - menuRect.width - 10;
+        if (top + menuRect.height > viewport.height) top = viewport.height - menuRect.height - 10;
         if (left < 0) left = 10;
         if (top < 0) top = 10;
 
@@ -414,28 +351,26 @@ class ModalManager {
     }
 
     static closeContextMenu() {
-        if (this.currentContextMenu) {
-            const { element, backdrop, closeHandlers } = this.currentContextMenu;
+        if (!this.currentContextMenu) return;
 
-            element.classList.remove('show');
-            backdrop.classList.remove('show');
+        const { element, backdrop, closeHandlers } = this.currentContextMenu;
 
-            setTimeout(() => {
-                if (element.parentNode) element.parentNode.removeChild(element);
-                if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        element.classList.remove('show');
+        backdrop.classList.remove('show');
 
-                if (closeHandlers) {
-                    document.removeEventListener('keydown', closeHandlers.esc);
-                }
-            }, 300);
+        setTimeout(() => {
+            if (element.parentNode) element.parentNode.removeChild(element);
+            if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+            if (closeHandlers?.esc) {
+                document.removeEventListener('keydown', closeHandlers.esc);
+            }
+        }, 300);
 
-            this.currentContextMenu = null;
-        }
+        this.currentContextMenu = null;
     }
 
     static showLoadingModal(message = 'Загрузка...') {
         const modalId = 'loading-modal-' + Date.now();
-
         return this.showModal(modalId, {
             template: `
                 <div class="loading-modal">
@@ -456,23 +391,19 @@ class ModalManager {
         const { title, template, actions } = updates;
 
         if (title !== undefined) {
-            const titleElement = modal.element.querySelector('.modal-title');
-            if (titleElement) {
-                titleElement.textContent = title;
-            }
+            const titleEl = modal.element.querySelector('.modal-title');
+            if (titleEl) titleEl.textContent = title;
         }
 
         if (template !== undefined) {
-            const bodyElement = modal.element.querySelector('.modal-body');
-            if (bodyElement) {
-                bodyElement.innerHTML = template;
-            }
+            const bodyEl = modal.element.querySelector('.modal-body');
+            if (bodyEl) bodyEl.innerHTML = template;
         }
 
         if (actions !== undefined) {
-            const footerElement = modal.element.querySelector('.modal-footer');
-            if (footerElement) {
-                footerElement.innerHTML = this.createActionsHTML(actions);
+            const footerEl = modal.element.querySelector('.modal-footer');
+            if (footerEl) {
+                footerEl.innerHTML = this.createActionsHTML(actions);
             }
             this.setupModalActions(modalId, actions);
         }

@@ -363,6 +363,9 @@ class App {
     }
 
     static getCurrentTheme() {
+        // Сначала из StateManager, потом из localStorage
+        const stateTheme = StateManager.getState('ui.theme');
+        if (stateTheme && stateTheme !== 'light') return stateTheme;
         return localStorage.getItem('theme') || 'light';
     }
 

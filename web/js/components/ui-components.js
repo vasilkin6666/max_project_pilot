@@ -149,47 +149,16 @@ class UIComponents {
         if (searchBtn && searchOverlay) {
             searchBtn.addEventListener('click', () => {
                 this.showSearch();
+                searchOverlay.setAttribute('aria-hidden', 'false');
             });
         }
 
         if (closeSearch) {
             closeSearch.addEventListener('click', () => {
                 this.hideSearch();
+                searchOverlay.setAttribute('aria-hidden', 'true');
             });
         }
-
-        if (searchInput) {
-            // Поиск с debounce
-            const performSearch = Utils.debounce((query) => {
-                if (typeof SearchManager !== 'undefined') {
-                    SearchManager.performSearch(query);
-                }
-            }, 300);
-
-            searchInput.addEventListener('input', (e) => {
-                performSearch(e.target.value.trim());
-            });
-
-            // Обработка клавиши Enter
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    if (typeof SearchManager !== 'undefined') {
-                        SearchManager.performSearch(e.target.value.trim());
-                    }
-                }
-            });
-        }
-
-        // Закрытие поиска по клику вне области
-        if (searchOverlay) {
-            searchOverlay.addEventListener('click', (e) => {
-                if (e.target === searchOverlay) {
-                    this.hideSearch();
-                }
-            });
-        }
-    }
-
     static initEventListeners() {
         // Кнопка уведомлений
         const notificationsBtn = document.getElementById('notifications-btn');
@@ -265,37 +234,23 @@ class UIComponents {
     }
 
     static showSearch() {
-        const searchOverlay = document.getElementById('search-overlay');
-        const searchInput = document.getElementById('search-input');
-
-        if (searchOverlay && searchInput) {
-            searchOverlay.classList.add('active');
-            searchInput.focus();
-            if (typeof StateManager !== 'undefined') {
-                StateManager.updateState('ui.search', { active: true });
-            }
-
-            EventManager.emit(APP_EVENTS.MODAL_OPENED, 'search');
+        const overlay = document.getElementById('search-overlay');
+        if (overlay) {
+            overlay.classList.add('active');
+            document.body.classList.add('search-open');
+            const input = document.getElementById('search-input');
+            if (input) setTimeout(() => input.focus(), 100);
         }
     }
 
     static hideSearch() {
-        const searchOverlay = document.getElementById('search-overlay');
-        const searchInput = document.getElementById('search-input');
-
-        if (searchOverlay && searchInput) {
-            searchOverlay.classList.remove('active');
-            searchInput.value = '';
-            if (typeof StateManager !== 'undefined') {
-                StateManager.updateState('ui.search', {
-                    active: false,
-                    query: '',
-                    results: []
-                });
-            }
-
-            EventManager.emit(APP_EVENTS.MODAL_CLOSED, 'search');
+        const overlay = document.getElementById('search-overlay');
+        if (overlay) {
+            overlay.classList.remove('active');
+            document.body.classList.remove('search-open');
+            overlay.setAttribute('aria-hidden', 'true');
         }
+        SearchManager.clearResults();
     }
 
     static updateUserInfo(user) {
@@ -339,38 +294,39 @@ class UIComponents {
     }
 
     static showUserMenu() {
-        const user = AuthManager.getCurrentUser();
+        const user = StateManager.getState('user');
         if (!user) return;
 
-        const menuItems = [
-            {
-                text: 'Мой профиль',
-                icon: 'fa-user',
-                action: () => this.showUserProfile()
-            },
-            {
-                text: 'Настройки',
-                icon: 'fa-cog',
-                action: () => this.showView('settings-view')
-            },
-            { type: 'separator' },
-            {
-                text: 'Выйти',
-                icon: 'fa-sign-out-alt',
-                action: () => App.logout(),
-                danger: true
-            }
-        ];
-
-        if (typeof ModalManager !== 'undefined') {
-            ModalManager.showContextMenu({
-                title: user.full_name || 'Пользователь',
-                items: menuItems,
-                position: 'bottom-end'
-            });
-        }
+        ModalManager.showContextMenu({
+            triggerElement: document.getElementById('user-menu-btn'),
+            position: 'bottom-end',
+            items: [
+                {
+                    text: user.full_name || user.username || 'Пользователь',
+                    icon: 'fa-user',
+                    action: () => {
+                        UIComponents.showView('profile-view');
+                    }
+                },
+                { type: 'separator' },
+                {
+                    text: 'Настройки',
+                    icon: 'fa-cog',
+                    action: () => {
+                        UIComponents.showView('settings-view');
+                    }
+                },
+                {
+                    text: 'Выйти',
+                    icon: 'fa-sign-out-alt',
+                    danger: true,
+                    action: () => {
+                        App.logout();
+                    }
+                }
+            ]
+        });
     }
-
     static showUserProfile() {
         const user = AuthManager.getCurrentUser();
         if (!user) return;

@@ -2,7 +2,7 @@
 class PersistenceManager {
     static async saveData(key, data) {
         try {
-            const serialized = JSON.stringify(data);
+            const serialized = typeof data === 'string' ? data : JSON.stringify(data);
             localStorage.setItem(key, serialized);
             return true;
         } catch (error) {
@@ -13,11 +13,15 @@ class PersistenceManager {
 
     static async loadData(key, defaultValue = null) {
         try {
-            const serialized = localStorage.getItem(key);
-            if (serialized) {
-                return JSON.parse(serialized);
+            const raw = localStorage.getItem(key);
+            if (raw === null) return defaultValue;
+
+            // Попробуем распарсить как JSON, если не получится — вернём как строку
+            try {
+                return JSON.parse(raw);
+            } catch {
+                return raw; // Это строка (например, токен, тема)
             }
-            return defaultValue;
         } catch (error) {
             Utils.logError(`Failed to load data for key: ${key}`, error);
             return defaultValue;
@@ -47,8 +51,6 @@ class PersistenceManager {
     static async exportData() {
         try {
             const data = {};
-
-            // Собираем все данные из localStorage
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key) {
@@ -56,10 +58,7 @@ class PersistenceManager {
                 }
             }
 
-            // Создаем файл для скачивания
-            const blob = new Blob([JSON.stringify(data, null, 2)], {
-                type: 'application/json'
-            });
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -68,7 +67,6 @@ class PersistenceManager {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-
             return true;
         } catch (error) {
             Utils.logError('Failed to export data', error);
@@ -80,12 +78,9 @@ class PersistenceManager {
         try {
             const text = await file.text();
             const data = JSON.parse(text);
-
-            // Восстанавливаем данные
             for (const [key, value] of Object.entries(data)) {
                 await this.saveData(key, value);
             }
-
             ToastManager.success('Данные успешно восстановлены');
             return true;
         } catch (error) {
@@ -98,7 +93,6 @@ class PersistenceManager {
     static getStorageInfo() {
         let totalSize = 0;
         const items = [];
-
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key) {
@@ -108,12 +102,7 @@ class PersistenceManager {
                 items.push({ key, size });
             }
         }
-
-        return {
-            totalItems: localStorage.length,
-            totalSize,
-            items: items.sort((a, b) => b.size - a.size)
-        };
+        return { totalItems: localStorage.length, totalSize, items: items.sort((a, b) => b.size - a.size) };
     }
 
     static async cleanupOldData() {
@@ -136,7 +125,6 @@ class PersistenceManager {
             if (cleanedCount > 0) {
                 Utils.log(`Cleaned up ${cleanedCount} old cache items`);
             }
-
             return cleanedCount;
         } catch (error) {
             Utils.logError('Failed to cleanup old data', error);
