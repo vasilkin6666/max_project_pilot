@@ -22,7 +22,19 @@ class ProjectsManager {
         }
     }
 
+    // Защита от перезагрузки при GET-параметрах
+    static clearUrlParams() {
+        if (window.location.search.includes('title=')) {
+            const url = new URL(window.location);
+            url.search = '';
+            window.history.replaceState({}, '', url);
+        }
+    }
+
     static showCreateProjectModal() {
+        // Очищаем URL от параметров формы
+        this.clearUrlParams();
+
         ModalManager.showModal('create-project', {
             title: 'Создание проекта',
             size: 'medium',
@@ -78,7 +90,6 @@ class ProjectsManager {
             onShow: () => {
                 const form = document.getElementById('create-project-form');
                 if (form) {
-                    // Предотвращаем перезагрузку страницы
                     form.addEventListener('submit', (e) => {
                         e.preventDefault();
                         this.handleCreateProjectSubmit();
@@ -121,26 +132,27 @@ class ProjectsManager {
                 requires_approval: requiresApproval
             };
 
+            Utils.log('API Call: POST /api/projects/', projectData);
             const result = await ApiService.createProject(projectData);
 
-            if (result && result.project) {
-                ToastManager.success(`Проект "${result.project.title}" создан!`);
-                HapticManager.projectCreated();
-                CacheManager.invalidate('projects');
-                CacheManager.invalidate('dashboard');
-                await this.loadProjects();
-                EventManager.emit(APP_EVENTS.PROJECT_CREATED, result.project);
-                ModalManager.closeCurrentModal();
-                form.reset();
-            } else {
-                throw new Error('Неожиданный ответ сервера');
+            // Проверка ответа
+            if (!result || !result.project) {
+                throw new Error(result?.error || 'Сервер не вернул проект');
             }
+
+            ToastManager.success(`Проект "${result.project.title}" создан!`);
+            HapticManager.projectCreated();
+            CacheManager.invalidate('projects');
+            CacheManager.invalidate('dashboard');
+            await this.loadProjects();
+            EventManager.emit(APP_EVENTS.PROJECT_CREATED, result.project);
+            ModalManager.closeCurrentModal();
+            form.reset();
         } catch (error) {
             Utils.logError('Project creation error:', error);
             ToastManager.error('Ошибка при создании проекта: ' + (error.message || 'неизвестная ошибка'));
             HapticManager.error();
         } finally {
-            // Разблокируем кнопку
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
