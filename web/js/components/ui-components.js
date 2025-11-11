@@ -159,6 +159,40 @@ class UIComponents {
                 searchOverlay.setAttribute('aria-hidden', 'true');
             });
         }
+
+        if (searchInput) {
+            // Поиск с debounce
+            const performSearch = Utils.debounce((query) => {
+                if (typeof SearchManager !== 'undefined') {
+                    SearchManager.performSearch(query);
+                }
+            }, 300);
+
+            searchInput.addEventListener('input', (e) => {
+                performSearch(e.target.value.trim());
+            });
+
+            // Обработка клавиши Enter
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (typeof SearchManager !== 'undefined') {
+                        SearchManager.performSearch(e.target.value.trim());
+                    }
+                }
+            });
+        }
+
+        // Закрытие поиска по клику вне области
+        if (searchOverlay) {
+            searchOverlay.addEventListener('click', (e) => {
+                if (e.target === searchOverlay) {
+                    this.hideSearch();
+                    searchOverlay.setAttribute('aria-hidden', 'true');
+                }
+            });
+        }
+    }
+
     static initEventListeners() {
         // Кнопка уведомлений
         const notificationsBtn = document.getElementById('notifications-btn');
@@ -190,46 +224,24 @@ class UIComponents {
             this.updateNotificationBadge(notifications);
         });
 
-        EventManager.on(APP_EVENTS.THEME_CHANGED, (theme) => {
-            this.updateTheme(theme);
+        EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
+            this.renderProjects(projects);
+        });
+
+        EventManager.on(APP_EVENTS.TASKS_LOADED, (tasks) => {
+            this.renderTasks(tasks);
         });
     }
 
+    // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ОТОБРАЖЕНИЯ ===
+
     static showView(viewName) {
-        // Скрываем все вью
         const views = document.querySelectorAll('.view');
         views.forEach(view => view.classList.remove('active'));
-
-        // Показываем выбранную вью
         const targetView = document.getElementById(viewName);
         if (targetView) {
             targetView.classList.add('active');
-            if (typeof StateManager !== 'undefined') {
-                StateManager.setCurrentView(viewName);
-            }
-
-            // Загружаем данные для вью, если необходимо
-            this.loadViewData(viewName);
-
-            EventManager.emit(APP_EVENTS.VIEW_CHANGED, viewName);
-        }
-    }
-
-    static loadViewData(viewName) {
-        switch (viewName) {
-            case 'dashboard-view':
-                if (typeof DashboardManager !== 'undefined') {
-                    DashboardManager.loadDashboard();
-                }
-                break;
-            case 'notifications-view':
-                if (typeof NotificationsManager !== 'undefined') {
-                    NotificationsManager.loadNotifications();
-                }
-                break;
-            case 'settings-view':
-                // Данные настроек загружаются автоматически
-                break;
+            StateManager.setCurrentView(viewName);
         }
     }
 
@@ -251,46 +263,6 @@ class UIComponents {
             overlay.setAttribute('aria-hidden', 'true');
         }
         SearchManager.clearResults();
-    }
-
-    static updateUserInfo(user) {
-        const userAvatar = document.getElementById('user-avatar');
-        if (userAvatar && user) {
-            const initials = Utils.getInitials(user.full_name || 'Пользователь');
-            userAvatar.textContent = initials;
-        }
-    }
-
-    static updateNotificationBadge(notifications) {
-        const badge = document.getElementById('notification-count');
-        const navBadge = document.getElementById('nav-notification-count');
-
-        const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
-
-        if (badge) {
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-
-        if (navBadge) {
-            if (unreadCount > 0) {
-                navBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                navBadge.style.display = 'flex';
-            } else {
-                navBadge.style.display = 'none';
-            }
-        }
-    }
-
-    static updateTheme(theme) {
-        const themeSwitch = document.getElementById('themeSwitch');
-        if (themeSwitch) {
-            themeSwitch.checked = theme === 'dark';
-        }
     }
 
     static showUserMenu() {
@@ -327,126 +299,98 @@ class UIComponents {
             ]
         });
     }
-    static showUserProfile() {
-        const user = AuthManager.getCurrentUser();
-        if (!user) return;
 
-        if (typeof ModalManager === 'undefined') {
-            console.error('ModalManager not available');
+    static updateUserInfo(user) {
+        const userNameEl = document.getElementById('user-name');
+        const userAvatarEl = document.getElementById('user-avatar');
+        if (userNameEl) userNameEl.textContent = user.full_name || user.username || 'Пользователь';
+        if (userAvatarEl) userAvatarEl.textContent = (user.full_name || user.username || 'U')[0].toUpperCase();
+    }
+
+    static updateNotificationBadge(notifications) {
+        const badge = document.getElementById('notifications-badge');
+        const count = notifications.filter(n => !n.is_read).length;
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'flex' : 'none';
+        }
+    }
+
+    static renderProjects(projects) {
+        const container = document.getElementById('projects-container');
+        if (!container) return;
+
+        if (!projects || projects.length === 0) {
+            this.showEmptyState(container, 'Проектов пока нет', 'fa-folder-open');
             return;
         }
 
-        ModalManager.showModal('user-profile', {
-            title: 'Мой профиль',
-            size: 'medium',
-            template: `
-                <div class="user-profile">
-                    <div class="profile-header">
-                        <div class="profile-avatar large">
-                            ${Utils.getInitials(user.full_name || 'Пользователь')}
-                        </div>
-                        <div class="profile-info">
-                            <h3>${Utils.escapeHTML(user.full_name || 'Пользователь')}</h3>
-                            <p class="text-muted">${Utils.escapeHTML(user.username || 'Без username')}</p>
-                        </div>
-                    </div>
-
-                    <div class="profile-details">
-                        <div class="detail-item">
-                            <label>ID пользователя:</label>
-                            <span>${user.id}</span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Роль:</label>
-                            <span class="role-badge role-${user.role || 'member'}">
-                                ${Utils.escapeHTML(AuthManager.getRoleText(user.role || 'member'))}
-                            </span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Дата регистрации:</label>
-                            <span>${Utils.formatDate(user.created_at)}</span>
-                        </div>
-                    </div>
-                </div>
-            `,
-            actions: [
-                {
-                    text: 'Закрыть',
-                    type: 'secondary',
-                    action: 'close'
-                }
-            ]
+        container.innerHTML = '';
+        projects.forEach(projectData => {
+            const cardHTML = this.renderProjectCardWithTemplate(projectData);
+            const card = document.createElement('div');
+            card.innerHTML = cardHTML;
+            container.appendChild(card.firstElementChild);
         });
     }
 
-    // Вспомогательные методы для создания UI элементов
-    static createProjectCard(projectData) {
-        const project = projectData.project || projectData;
+    static renderTasks(tasks) {
+        const container = document.getElementById('tasks-container');
+        if (!container) return;
+
+        if (!tasks || tasks.length === 0) {
+            this.showEmptyState(container, 'Задач пока нет', 'fa-tasks');
+            return;
+        }
+
+        container.innerHTML = '';
+        tasks.forEach(task => {
+            const cardHTML = this.renderTaskCardWithTemplate(task);
+            const card = document.createElement('div');
+            card.innerHTML = cardHTML;
+            container.appendChild(card.firstElementChild);
+        });
+    }
+
+    static createProjectCard(project) {
         const stats = project.stats || {};
-        const role = projectData.role || 'member';
-        const progress = stats.tasks_count > 0 ?
-            Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+        const progress = stats.tasks_count > 0
+            ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
+            : 0;
 
         return `
-            <div class="project-card"
-                 data-project-id="${project.id}"
-                 data-project-hash="${project.hash}"
-                 data-user-role="${role}">
-
-                <div class="swipe-actions">
-                    <div class="swipe-action edit-action">
-                        <i class="fas fa-edit"></i>
+            <div class="project-card" data-project-hash="${project.hash}">
+                <div class="card-header">
+                    <h5 class="project-title">${Utils.escapeHTML(project.title)}</h5>
+                    <span class="project-status">${this.getProjectStatus(project)}</span>
+                </div>
+                <p class="project-description">
+                    ${Utils.escapeHTML(project.description || 'Без описания')}
+                </p>
+                <div class="project-stats">
+                    <div class="stat">
+                        <i class="fas fa-users"></i>
+                        <span>${stats.members_count || 0}</span>
                     </div>
-                    <div class="swipe-action delete-action">
-                        <i class="fas fa-trash"></i>
+                    <div class="stat">
+                        <i class="fas fa-tasks"></i>
+                        <span>${stats.tasks_count || 0}</span>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-check-circle"></i>
+                        <span>${stats.tasks_done || 0}</span>
                     </div>
                 </div>
-
-                <div class="card-content">
-                    <div class="card-header">
-                        <h3 class="project-title">${Utils.escapeHTML(project.title)}</h3>
-                        <span class="role-badge role-${role}">
-                            ${Utils.escapeHTML(this.getRoleText(role))}
-                        </span>
-                    </div>
-
-                    <p class="project-description">
-                        ${Utils.escapeHTML(project.description || 'Без описания')}
-                    </p>
-
-                    <div class="project-stats">
-                        <div class="stat">
-                            <i class="fas fa-users"></i>
-                            <span>${stats.members_count || 0}</span>
-                        </div>
-                        <div class="stat">
-                            <i class="fas fa-tasks"></i>
-                            <span>${stats.tasks_count || 0}</span>
-                        </div>
-                        <div class="stat">
-                            <i class="fas fa-user-check"></i>
-                            <span>${stats.user_tasks || 0}</span>
-                        </div>
-                    </div>
-
-                    <div class="progress-container">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${progress}%"></div>
-                        </div>
-                        <span class="progress-text">${progress}%</span>
-                    </div>
-
-                    <div class="card-footer">
-                        <span class="project-status">
-                            ${this.getProjectStatus(project)}
-                        </span>
-                        ${['owner', 'admin'].includes(role) ? `
-                            <button class="btn btn-sm btn-outline invite-btn"
-                                    onclick="ProjectsManager.showInviteDialog('${project.hash}')">
-                                <i class="fas fa-share-alt"></i>
-                            </button>
-                        ` : ''}
-                    </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progress}%"></div>
+                </div>
+                <div class="project-footer">
+                    <span class="progress-text">${progress}%</span>
+                    ${project.is_private ? `
+                        <button class="btn btn-sm btn-outline share-btn">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -454,8 +398,9 @@ class UIComponents {
 
     static createTaskCard(task) {
         const isOverdue = task.due_date && Utils.isOverdue(task.due_date);
-        const progress = task.subtasks && task.subtasks.length > 0 ?
-            Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100) : 0;
+        const progress = task.subtasks && task.subtasks.length > 0
+            ? Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)
+            : 0;
 
         return `
             <div class="task-card" data-task-id="${task.id}">
@@ -522,9 +467,9 @@ class UIComponents {
 
     static getProjectStatus(project) {
         if (project.is_private) {
-            return project.requires_approval ? '🔒 Приватный (требует одобрения)' : '🔒 Приватный';
+            return project.requires_approval ? 'Приватный (требует одобрения)' : 'Приватный';
         }
-        return '🌐 Публичный';
+        return 'Публичный';
     }
 
     // Методы для показа состояний загрузки/ошибок
@@ -580,8 +525,9 @@ class UIComponents {
         const project = projectData.project || projectData;
         const stats = project.stats || {};
         const role = projectData.role || 'member';
-        const progress = stats.tasks_count > 0 ?
-            Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+        const progress = stats.tasks_count > 0
+            ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
+            : 0;
 
         const templateData = {
             id: project.id,
@@ -603,8 +549,9 @@ class UIComponents {
 
     static renderTaskCardWithTemplate(task) {
         const isOverdue = Utils.isOverdue(task.due_date);
-        const progress = task.subtasks && task.subtasks.length > 0 ?
-            Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100) : 0;
+        const progress = task.subtasks && task.subtasks.length > 0
+            ? Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)
+            : 0;
 
         const templateData = {
             id: task.id,
@@ -626,8 +573,9 @@ class UIComponents {
 
     static renderNotificationWithTemplate(notification) {
         const isJoinRequest = notification.type && notification.type.includes('join');
-        const projectHash = typeof NotificationsManager !== 'undefined' ?
-            NotificationsManager.extractProjectHashFromNotification(notification) : '';
+        const projectHash = typeof NotificationsManager !== 'undefined'
+            ? NotificationsManager.extractProjectHashFromNotification(notification)
+            : '';
 
         const templateData = {
             id: notification.id,
