@@ -106,8 +106,8 @@ class ProjectsManager {
         const formData = new FormData(form);
         const title = formData.get('title')?.toString().trim();
         const description = formData.get('description')?.toString().trim();
-        const isPrivate = formData.get('is_private') === 'on';
-        const requiresApproval = formData.get('requires_approval') === 'on';
+        const isPrivate = !!formData.get('is_private');
+        const requiresApproval = !!formData.get('requires_approval');
 
         if (!title) {
             ToastManager.error('Введите название проекта');
@@ -332,8 +332,8 @@ class ProjectsManager {
         const formData = new FormData(form);
         const title = formData.get('title')?.toString().trim();
         const description = formData.get('description')?.toString().trim();
-        const isPrivate = formData.get('is_private') === 'on';
-        const requiresApproval = formData.get('requires_approval') === 'on';
+        const isPrivate = !!formData.get('is_private');
+        const requiresApproval = !!formData.get('requires_approval');
 
         if (!title) {
             ToastManager.error('Введите название проекта');
