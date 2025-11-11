@@ -1,0 +1,234 @@
+/* Dark theme variables */
+[data-theme="dark"] {
+    /* Colors */
+    --primary-color: #7367f0;
+    --primary-hover: #8177f2;
+    --success-color: #28c76f;
+    --warning-color: #ff9f43;
+    --danger-color: #ea5455;
+    --info-color: #00cfe8;
+
+    /* Backgrounds */
+    --bg-primary: #161d31;
+    --bg-secondary: #283046;
+    --bg-tertiary: #343d55;
+
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: #b4b7bd;
+    --text-muted: #6c757d;
+
+    /* Borders */
+    --border-color: #434968;
+
+    /* Shadows */
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.25);
+
+    /* Overlays */
+    --overlay-light: rgba(40, 48, 70, 0.8);
+    --overlay-dark: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark theme specific styles */
+[data-theme="dark"] body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Dark theme adjustments for cards */
+[data-theme="dark"] .project-card,
+[data-theme="dark"] .task-card,
+[data-theme="dark"] .member-item,
+[data-theme="dark"] .notification-item {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .project-card:hover,
+[data-theme="dark"] .task-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+}
+
+/* Dark theme form elements */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .form-control::placeholder {
+    color: var(--text-muted);
+}
+
+/* Dark theme buttons */
+[data-theme="dark"] .btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-secondary:hover:not(:disabled) {
+    background: var(--border-color);
+}
+
+[data-theme="dark"] .btn-outline {
+    background: transparent;
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-outline:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+}
+
+/* Dark theme modals */
+[data-theme="dark"] .modal-content {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer {
+    border-color: var(--border-color);
+}
+
+/* Dark theme context menus */
+[data-theme="dark"] .context-menu {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .context-menu-header {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .context-menu-item:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Dark theme search */
+[data-theme="dark"] .search-container {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .search-header {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .search-input {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .search-result-item:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Dark theme navigation */
+[data-theme="dark"] .bottom-nav {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .nav-item:hover {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .btn-icon:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Dark theme toast notifications */
+[data-theme="dark"] .toast {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Dark theme loading and empty states */
+[data-theme="dark"] .loading-state,
+[data-theme="dark"] .error-state,
+[data-theme="dark"] .empty-state {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .empty-state .empty-icon {
+    color: var(--text-muted);
+}
+
+/* Dark theme scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-hover);
+}
+
+/* Dark theme selection */
+[data-theme="dark"] ::selection {
+    background: rgba(115, 103, 240, 0.3);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] ::-moz-selection {
+    background: rgba(115, 103, 240, 0.3);
+    color: var(--text-primary);
+}
+
+/* Dark theme focus rings */
+[data-theme="dark"] *:focus-visible {
+    outline-color: var(--primary-color);
+}
+
+/* Dark theme adjustments for specific components */
+[data-theme="dark"] .subtask-item {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .subtask-item:hover {
+    background: var(--border-color);
+}
+
+[data-theme="dark"] .comment-item {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .progress-bar {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .result-icon {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .result-type {
+    background: var(--bg-tertiary);
+}
+
+/* Print styles for dark theme */
+@media print {
+    [data-theme="dark"] body {
+        background: white !important;
+        color: black !important;
+    }
+
+    [data-theme="dark"] .project-card,
+    [data-theme="dark"] .task-card {
+        background: white !important;
+        color: black !important;
+        border: 1px solid #ddd !important;
+    }
+}

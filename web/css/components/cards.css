@@ -1,0 +1,381 @@
+/* Стили для карточек */
+.project-card,
+.task-card,
+.member-item,
+.notification-item {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.project-card:hover,
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.dark-theme .project-card:hover,
+.dark-theme .task-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+}
+
+/* Swipe actions */
+.swipe-actions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.swipe-action {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.swipe-action.edit-action {
+    left: -80px;
+    background: var(--warning-color);
+}
+
+.swipe-action.delete-action {
+    right: -80px;
+    background: var(--danger-color);
+}
+
+.project-card.swipe-left .delete-action,
+.task-card.swipe-left .delete-action {
+    opacity: 1;
+}
+
+.project-card.swipe-right .edit-action,
+.task-card.swipe-right .edit-action {
+    opacity: 1;
+}
+
+/* Card content */
+.card-content {
+    position: relative;
+    z-index: 2;
+    background: inherit;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-sm);
+}
+
+.project-title,
+.task-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
+    margin-right: var(--spacing-sm);
+}
+
+.project-description,
+.task-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    line-height: 1.4;
+}
+
+/* Badges */
+.role-badge,
+.status-badge,
+.priority-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.role-owner { background: var(--primary-color); color: white; }
+.role-admin { background: var(--info-color); color: white; }
+.role-member { background: var(--success-color); color: white; }
+
+.status-todo { background: var(--warning-color); color: white; }
+.status-in_progress { background: var(--info-color); color: white; }
+.status-done { background: var(--success-color); color: white; }
+
+.priority-low { background: var(--success-color); color: white; }
+.priority-medium { background: var(--warning-color); color: white; }
+.priority-high { background: var(--danger-color); color: white; }
+.priority-urgent { background: #6c757d; color: white; }
+
+/* Project stats */
+.project-stats {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.stat i {
+    color: var(--primary-color);
+}
+
+/* Progress bars */
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.progress-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar.small {
+    height: 4px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--info-color));
+    border-radius: 4px;
+    transition: width 0.8s ease;
+}
+
+.progress-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 40px;
+}
+
+/* Card footer */
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--spacing-sm);
+}
+
+.project-status {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Task meta */
+.task-meta {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.meta-item.overdue {
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
+.task-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* Notification items */
+.notification-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-md);
+    border-left: 4px solid transparent;
+    transition: var(--transition);
+}
+
+.notification-item.unread {
+    border-left-color: var(--primary-color);
+    background: rgba(115, 103, 240, 0.05);
+}
+
+.notification-item.join-request.unread {
+    border-left-color: var(--info-color);
+    background: rgba(0, 207, 232, 0.05);
+}
+
+.notification-content {
+    display: flex;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+.notification-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.notification-details {
+    flex: 1;
+}
+
+.notification-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-xs) 0;
+}
+
+.notification-message {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.notification-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-left: var(--spacing-md);
+}
+
+/* Member items */
+.member-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+}
+
+.member-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.member-details h6 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.member-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .project-stats {
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .task-meta {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .card-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .notification-content {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .notification-time {
+        margin-left: 0;
+        margin-top: var(--spacing-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .project-card,
+    .task-card {
+        padding: var(--spacing-sm);
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .project-title,
+    .task-title {
+        margin-right: 0;
+    }
+}

@@ -1,0 +1,38 @@
+<!-- Шаблон элемента уведомления -->
+<script type="text/template" id="notification-item-template">
+    <div class="notification-item {{type}} {{#unless isRead}}unread{{/unless}}"
+         data-notification-id="{{id}}"
+         {{#if projectHash}}data-project-hash="{{projectHash}}"{{/if}}
+         tabindex="0"
+         role="button"
+         aria-label="Уведомление: {{title}}">
+
+        <div class="notification-content">
+            <div class="notification-icon" aria-hidden="true">
+                <i class="fas {{icon}}"></i>
+            </div>
+            <div class="notification-details">
+                <h5 class="notification-title">{{title}}</h5>
+                <p class="notification-message">{{message}}</p>
+
+                {{#if isJoinRequest}}
+                <div class="notification-actions">
+                    <button class="btn btn-success btn-sm"
+                            onclick="NotificationsManager.approveJoinRequest('{{id}}', '{{projectHash}}')"
+                            aria-label="Принять запрос на вступление">
+                        <i class="fas fa-check"></i> Принять
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                            onclick="NotificationsManager.rejectJoinRequest('{{id}}', '{{projectHash}}')"
+                            aria-label="Отклонить запрос на вступление">
+                        <i class="fas fa-times"></i> Отклонить
+                    </button>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+        <div class="notification-time" aria-label="Получено: {{time}}">
+            {{time}}
+        </div>
+    </div>
+</script>

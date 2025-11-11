@@ -1,0 +1,81 @@
+<!-- Шаблон модального окна создания задачи -->
+<script type="text/template" id="create-task-modal-template">
+    <form id="create-task-form" novalidate>
+        <div class="form-group">
+            <label for="task-title" class="form-label">Название задачи *</label>
+            <input type="text" class="form-control" id="task-title" required
+                   placeholder="Введите название задачи"
+                   aria-describedby="task-title-help">
+            <div id="task-title-help" class="form-text">
+                Краткое и понятное название задачи
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="task-description" class="form-label">Описание</label>
+            <textarea class="form-control" id="task-description" rows="3"
+                      placeholder="Опишите задачу (необязательно)"
+                      aria-describedby="task-description-help"></textarea>
+            <div id="task-description-help" class="form-text">
+                Детальное описание поможет исполнителю понять задачу
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="task-assignee" class="form-label">Исполнитель</label>
+                    <select class="form-select" id="task-assignee"
+                            aria-describedby="task-assignee-help">
+                        <option value="">Не назначен</option>
+                        {{#each members}}
+                        <option value="{{user_id}}">{{user.full_name}}</option>
+                        {{/each}}
+                    </select>
+                    <div id="task-assignee-help" class="form-text">
+                        Выберите ответственного за выполнение задачи
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="task-priority" class="form-label">Приоритет</label>
+                    <select class="form-select" id="task-priority"
+                            aria-describedby="task-priority-help">
+                        <option value="low">Низкий</option>
+                        <option value="medium" selected>Средний</option>
+                        <option value="high">Высокий</option>
+                        <option value="urgent">Срочный</option>
+                    </select>
+                    <div id="task-priority-help" class="form-text">
+                        Определяет важность и срочность задачи
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="task-due-date" class="form-label">Срок выполнения</label>
+            <input type="datetime-local" class="form-control" id="task-due-date"
+                   aria-describedby="task-due-date-help">
+            <div id="task-due-date-help" class="form-text">
+                Установите крайний срок выполнения задачи
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Подзадачи</label>
+            <div id="subtasks-container" aria-describedby="subtasks-help">
+                <!-- Подзадачи будут добавляться динамически -->
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm mt-2"
+                    onclick="TasksManager.addSubtaskField()"
+                    aria-label="Добавить подзадачу">
+                <i class="fas fa-plus"></i> Добавить подзадачу
+            </button>
+            <div id="subtasks-help" class="form-text">
+                Разбейте сложную задачу на более мелкие подзадачи
+            </div>
+        </div>
+    </form>
+</script>

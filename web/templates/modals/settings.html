@@ -1,0 +1,167 @@
+<!-- Шаблон модального окна настроек -->
+<script type="text/template" id="settings-modal-template">
+    <div class="settings-modal">
+        <div class="settings-section">
+            <h4 class="settings-section-title">Внешний вид</h4>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Тема приложения</label>
+                    <span class="setting-description">Выберите светлую или темную тему</span>
+                </div>
+                <div class="theme-toggle-container">
+                    <div class="theme-toggle">
+                        <input type="checkbox" id="settings-theme-switch" class="theme-checkbox"
+                               {{#if isDarkTheme}}checked{{/if}}
+                               aria-label="Переключить тему">
+                        <label for="settings-theme-switch" class="theme-label">
+                            <span class="theme-icon sun"><i class="fas fa-sun"></i></span>
+                            <span class="theme-icon moon"><i class="fas fa-moon"></i></span>
+                            <span class="theme-ball"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Компактный вид</label>
+                    <span class="setting-description">Уменьшить отступы между элементами</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="compact-view"
+                           {{#if compactView}}checked{{/if}}
+                           aria-label="Включить компактный вид">
+                    <span class="slider"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h4 class="settings-section-title">Уведомления</h4>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Push-уведомления</label>
+                    <span class="setting-description">Получать уведомления в реальном времени</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="push-notifications"
+                           {{#if pushNotifications}}checked{{/if}}
+                           aria-label="Включить push-уведомления">
+                    <span class="slider"></span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Email уведомления</label>
+                    <span class="setting-description">Получать уведомления на email</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="email-notifications"
+                           {{#if emailNotifications}}checked{{/if}}
+                           aria-label="Включить email уведомления">
+                    <span class="slider"></span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Звуковые уведомления</label>
+                    <span class="setting-description">Воспроизводить звук при новых уведомлениях</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="sound-notifications"
+                           {{#if soundNotifications}}checked{{/if}}
+                           aria-label="Включить звуковые уведомления">
+                    <span class="slider"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h4 class="settings-section-title">Данные и синхронизация</h4>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Автосинхронизация</label>
+                    <span class="setting-description">Автоматически синхронизировать данные каждые 5 минут</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="auto-sync"
+                           {{#if autoSync}}checked{{/if}}
+                           aria-label="Включить автосинхронизацию">
+                    <span class="slider"></span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Оффлайн режим</label>
+                    <span class="setting-description">Сохранять данные для работы без интернета</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="offline-mode"
+                           {{#if offlineMode}}checked{{/if}}
+                           aria-label="Включить оффлайн режим">
+                    <span class="slider"></span>
+                </div>
+            </div>
+
+            <div class="setting-actions">
+                <button class="btn btn-outline" id="export-data-btn"
+                        aria-label="Экспортировать данные">
+                    <i class="fas fa-download"></i> Экспорт данных
+                </button>
+                <button class="btn btn-outline" id="clear-cache-btn"
+                        aria-label="Очистить кэш">
+                    <i class="fas fa-trash"></i> Очистить кэш
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h4 class="settings-section-title">Дополнительно</h4>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Тактильная обратная связь</label>
+                    <span class="setting-description">Вибрация при взаимодействии с элементами</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="haptic-feedback"
+                           {{#if hapticFeedback}}checked{{/if}}
+                           aria-label="Включить тактильную обратную связь">
+                    <span class="slider"></span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Анимации</label>
+                    <span class="setting-description">Плавные переходы и анимации интерфейса</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="animations"
+                           {{#if animations}}checked{{/if}}
+                           aria-label="Включить анимации">
+                    <span class="slider"></span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-label-group">
+                    <label class="setting-label">Режим доступности</label>
+                    <span class="setting-description">Улучшенная поддержка для пользователей с ограниченными возможностями</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" id="accessibility-mode"
+                           {{#if accessibilityMode}}checked{{/if}}
+                           aria-label="Включить режим доступности">
+                    <span class="slider"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

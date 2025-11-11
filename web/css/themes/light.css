@@ -1,0 +1,116 @@
+/* Light theme variables */
+:root {
+    /* Colors */
+    --primary-color: #7367f0;
+    --primary-hover: #685dd8;
+    --success-color: #28c76f;
+    --warning-color: #ff9f43;
+    --danger-color: #ea5455;
+    --info-color: #00cfe8;
+
+    /* Backgrounds */
+    --bg-primary: #f8f8f8;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f0f0f0;
+
+    /* Text */
+    --text-primary: #2a2a2a;
+    --text-secondary: #6e6b7b;
+    --text-muted: #a5a5a5;
+
+    /* Borders */
+    --border-color: #e0e0e0;
+
+    /* Shadows */
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.15);
+
+    /* Overlays */
+    --overlay-light: rgba(255, 255, 255, 0.8);
+    --overlay-dark: rgba(0, 0, 0, 0.1);
+}
+
+/* Light theme specific styles */
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Toast notifications in light theme */
+.toast {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-dark);
+}
+
+.toast-success {
+    border-left: 4px solid var(--success-color);
+}
+
+.toast-error {
+    border-left: 4px solid var(--danger-color);
+}
+
+.toast-warning {
+    border-left: 4px solid var(--warning-color);
+}
+
+.toast-info {
+    border-left: 4px solid var(--info-color);
+}
+
+/* Loading states */
+.spinner-border {
+    color: var(--primary-color);
+}
+
+/* Selection colors */
+::selection {
+    background: rgba(115, 103, 240, 0.2);
+    color: var(--text-primary);
+}
+
+::-moz-selection {
+    background: rgba(115, 103, 240, 0.2);
+    color: var(--text-primary);
+}
+
+/* Scrollbar styling for light theme */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-hover);
+}
+
+/* Focus rings for accessibility */
+*:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Print styles for light theme */
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+
+    .btn,
+    .bottom-nav,
+    .header-actions {
+        display: none !important;
+    }
+}
