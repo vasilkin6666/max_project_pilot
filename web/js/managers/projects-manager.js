@@ -76,11 +76,11 @@ class ProjectsManager {
                 }
             ],
             onShow: () => {
-                // Привязываем submit к форме при открытии модалки
                 const form = document.getElementById('create-project-form');
                 if (form) {
+                    // Предотвращаем перезагрузку страницы
                     form.addEventListener('submit', (e) => {
-                        e.preventDefault(); // КРИТИЧНО: предотвращаем перезагрузку
+                        e.preventDefault();
                         this.handleCreateProjectSubmit();
                     });
                 }
@@ -105,10 +105,13 @@ class ProjectsManager {
         }
 
         // Блокируем кнопку
-        const submitBtn = ModalManager.getCurrentModal().querySelector('[data-action="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание...';
+        const modal = ModalManager.getCurrentModal?.() || document.querySelector('.modal.show');
+        const submitBtn = modal?.querySelector('[data-action="submit"]') || modal?.querySelector('button[type="submit"]');
+        const originalText = submitBtn?.innerHTML || 'Создать проект';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание...';
+        }
 
         try {
             const projectData = {
@@ -313,6 +316,7 @@ class ProjectsManager {
     static async handleEditProjectSubmit(projectHash) {
         const form = document.getElementById('edit-project-form');
         if (!form) return;
+
         const formData = new FormData(form);
         const title = formData.get('title')?.toString().trim();
         const description = formData.get('description')?.toString().trim();
@@ -324,10 +328,13 @@ class ProjectsManager {
             return;
         }
 
-        const submitBtn = ModalManager.getCurrentModal().querySelector('[data-action="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
+        const modal = ModalManager.getCurrentModal?.() || document.querySelector('.modal.show');
+        const submitBtn = modal?.querySelector('[data-action="submit"]') || modal?.querySelector('button[type="submit"]');
+        const originalText = submitBtn?.innerHTML || 'Сохранить';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
+        }
 
         try {
             const updateData = {

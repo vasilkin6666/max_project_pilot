@@ -384,6 +384,10 @@ class ModalManager {
         });
     }
 
+    static getCurrentModal() {
+        return document.querySelector('.modal.show');
+    }
+
     static updateModal(modalId, updates) {
         const modal = this.modalStack.find(m => m.id === modalId);
         if (!modal) return;
