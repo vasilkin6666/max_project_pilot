@@ -69,39 +69,50 @@ body {
 
 /* App Container */
 .app-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0; /* Убираем лишние отступы */
 }
 
 /* Header */
 .max-header {
-  background: var(--bg-secondary);
-  padding: var(--spacing-md);
-  box-shadow: var(--shadow);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(10px);
+    background: var(--bg-secondary);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
 }
 
 .header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .app-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
 }
 
 .header-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: center;
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+#create-project-btn {
+    padding: var(--spacing-sm);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Buttons */
@@ -208,9 +219,10 @@ body {
 
 /* Main Content */
 .main-content {
-  flex: 1;
-  padding: var(--spacing-md);
-  overflow-y: auto;
+    flex: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    padding-bottom: 80px; /* Добавляем отступ снизу для навигации */
 }
 
 /* Views */
@@ -311,16 +323,18 @@ body {
 
 /* Bottom Navigation */
 .bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-around;
-  padding: var(--spacing-sm);
-  z-index: 100;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    padding: var(--spacing-sm);
+    z-index: 100;
+    /* Убираем transform который мог загораживать контент */
+    transform: none;
 }
 
 .nav-item {
@@ -1006,57 +1020,66 @@ body {
 
 /* Компактная статистика дашборда */
 .compact-stats {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
 .stats-row {
     display: flex;
     justify-content: space-between;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     background: var(--bg-secondary);
     border-radius: var(--border-radius);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     box-shadow: var(--shadow);
 }
 
 .stat-item {
     flex: 1;
     text-align: center;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs);
 }
 
 .stat-item .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--primary-color);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 2px;
     line-height: 1;
 }
 
 .stat-item .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
-    line-height: 1.2;
+    line-height: 1;
+    font-weight: 500;
 }
 
 /* Адаптивность для мобильных */
 @media (max-width: 768px) {
     .stats-row {
-        flex-wrap: wrap;
-        gap: var(--spacing-xs);
-    }
-
-    .stat-item {
-        flex: 0 0 calc(50% - var(--spacing-xs));
         padding: var(--spacing-xs);
     }
 
+    .stat-item {
+        padding: 4px 2px;
+    }
+
     .stat-item .stat-value {
-        font-size: 1.25rem;
+        font-size: 1rem;
     }
 
     .stat-item .stat-label {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-item .stat-value {
+        font-size: 0.9rem;
+    }
+
+    .stat-item .stat-label {
+        font-size: 0.55rem;
     }
 }
 

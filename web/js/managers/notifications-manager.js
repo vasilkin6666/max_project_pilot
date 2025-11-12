@@ -12,6 +12,10 @@ class NotificationsManager {
             StateManager.setState('notifications', notifications);
 
             this.updateNotificationBadge(notifications);
+
+            // ИСПРАВЛЕНИЕ: сразу рендерим уведомления или пустое состояние
+            this.renderNotifications(notifications);
+
             EventManager.emit(APP_EVENTS.NOTIFICATIONS_LOADED, notifications);
 
             Utils.log('Notifications loaded successfully', { count: notifications.length });
@@ -54,7 +58,7 @@ class NotificationsManager {
         const container = document.getElementById('notifications-list');
         if (!container) return;
 
-        // ИСПРАВЛЕНИЕ: всегда показываем пустое состояние если нет уведомлений
+        // ИСПРАВЛЕНИЕ: всегда показываем правильное пустое состояние
         if (!notifications || notifications.length === 0) {
             container.innerHTML = this.getEmptyStateHTML();
             return;
@@ -112,9 +116,6 @@ class NotificationsManager {
         }
 
         container.innerHTML = html;
-
-        // Инициализируем свайпы для уведомлений
-        SwipeManager.setupTaskSwipes();
     }
 
     static renderJoinRequestNotification(notification) {
@@ -211,7 +212,7 @@ class NotificationsManager {
         return `
             <div class="empty-state">
                 <div class="empty-icon">
-                    <i class="fas fa-bell"></i>
+                    <i class="fas fa-bell-slash"></i>
                 </div>
                 <h3>Уведомлений нет</h3>
                 <p>Новые уведомления появятся здесь</p>

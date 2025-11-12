@@ -20,7 +20,7 @@
         <div class="card-content">
             <div class="card-header">
                 <h3 class="project-title">{{title}}</h3>
-                <span class="role-badge role-{{role}}" aria-label="Роль: {{roleText}}">
+                <span class="role-badge role-{{role}}" aria-label="Ваша роль: {{roleText}}">
                     {{roleText}}
                 </span>
             </div>
@@ -59,9 +59,9 @@
                     {{status}}
                 </span>
                 {{#if canInvite}}
-                <button class="btn btn-sm btn-outline invite-btn"
+                <button class="btn btn-sm btn-outline share-btn"
                         onclick="ProjectsManager.showInviteDialog('{{hash}}')"
-                        aria-label="Пригласить в проект">
+                        aria-label="Поделиться проектом">
                     <i class="fas fa-share-alt"></i>
                 </button>
                 {{/if}}

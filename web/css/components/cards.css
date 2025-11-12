@@ -103,6 +103,10 @@
     gap: var(--spacing-sm);
 }
 
+.share-btn {
+    margin-left: auto;
+}
+
 .project-title,
 .task-title {
     font-size: 1rem;
@@ -146,9 +150,31 @@
     flex-shrink: 0; /* Важно: не сжимается */
 }
 
-.role-owner { background: var(--primary-color); color: white; }
-.role-admin { background: var(--info-color); color: white; }
-.role-member { background: var(--success-color); color: white; }
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.role-owner {
+    background: var(--primary-color);
+    color: white;
+}
+.role-admin {
+    background: var(--info-color);
+    color: white;
+}
+.role-member {
+    background: var(--success-color);
+    color: white;
+}
+.role-guest {
+    background: var(--warning-color);
+    color: white;
+}
 
 .status-todo { background: var(--warning-color); color: white; }
 .status-in_progress { background: var(--info-color); color: white; }

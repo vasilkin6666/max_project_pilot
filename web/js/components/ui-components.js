@@ -103,7 +103,7 @@ class UIComponents {
             });
         });
 
-        // Кнопка создания проекта
+        // Кнопка создания проекта теперь в header
         const createProjectBtn = document.getElementById('create-project-btn');
         if (createProjectBtn) {
             createProjectBtn.addEventListener('click', () => {
@@ -111,59 +111,6 @@ class UIComponents {
                     ProjectsManager.showCreateProjectModal();
                 } else {
                     Utils.logError('ProjectsManager not available');
-                }
-            });
-        }
-
-        // Кнопка пользователя
-        const userMenuBtn = document.getElementById('user-menu-btn');
-        if (userMenuBtn) {
-            userMenuBtn.addEventListener('click', () => {
-                this.showUserMenu();
-            });
-        }
-
-        // Кнопка профиля пользователя
-        const profileBtn = document.getElementById('profile-btn');
-        if (profileBtn) {
-            profileBtn.addEventListener('click', () => {
-                if (typeof UsersManager !== 'undefined') {
-                    UsersManager.showUserProfileModal('me');
-                } else {
-                    this.showView('profile-view');
-                }
-            });
-        }
-
-        // Кнопка выхода
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                App.logout();
-            });
-        }
-
-        // Кнопка экспорта данных
-        const exportBtn = document.getElementById('export-data-btn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                if (typeof PersistenceManager !== 'undefined') {
-                    PersistenceManager.exportData();
-                } else {
-                    ToastManager.error('Функция экспорта недоступна');
-                }
-            });
-        }
-
-        // Кнопка очистки кэша
-        const clearCacheBtn = document.getElementById('clear-cache-btn');
-        if (clearCacheBtn) {
-            clearCacheBtn.addEventListener('click', () => {
-                if (typeof CacheManager !== 'undefined') {
-                    CacheManager.clear();
-                    ToastManager.success('Кэш очищен');
-                } else {
-                    ToastManager.error('Менеджер кэша недоступен');
                 }
             });
         }
@@ -346,9 +293,11 @@ class UIComponents {
         Utils.log('Event listeners initialized');
     }
 
+    // Новый метод для обновления информации в настройках
     static updateAccountSettingsInfo(user) {
         const avatar = document.getElementById('settings-user-avatar');
         const name = document.getElementById('settings-user-name');
+        const userId = document.getElementById('settings-user-id');
         const email = document.getElementById('settings-user-email');
         const role = document.getElementById('settings-user-role');
 
@@ -366,13 +315,17 @@ class UIComponents {
             name.textContent = user.full_name || user.username || 'Пользователь';
         }
 
+        if (userId) {
+            userId.textContent = `ID: ${user.id || 'неизвестен'}`;
+        }
+
         if (email) {
-            email.textContent = user.email || 'Email не указан';
+            email.textContent = `Email: ${user.email || 'не указан'}`;
         }
 
         if (role) {
-            const roleText = UsersManager ? UsersManager.getRoleText(user.role) : user.role;
-            role.textContent = `Роль: ${roleText || 'Участник'}`;
+            const roleText = user.role ? UsersManager.getRoleText(user.role) : 'Участник';
+            role.textContent = `Роль: ${roleText}`;
         }
     }
 
