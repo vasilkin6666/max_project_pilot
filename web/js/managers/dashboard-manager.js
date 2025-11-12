@@ -102,14 +102,24 @@ class DashboardManager {
             container.innerHTML = '';
             projects.forEach((projectData, index) => {
                 setTimeout(() => {
-                    const cardHTML = this.renderProjectCardWithTemplate(projectData);
-                    const card = document.createElement('div');
-                    card.innerHTML = cardHTML;
-                    container.appendChild(card.firstElementChild);
+                    try {
+                        const cardHTML = this.renderProjectCardWithTemplate(projectData);
+                        const card = document.createElement('div');
+                        card.innerHTML = cardHTML;
 
-                    // Добавляем анимацию появления
-                    card.firstElementChild.style.animationDelay = `${index * 50}ms`;
-                    card.firstElementChild.classList.add('fade-in');
+                        const cardElement = card.firstElementChild;
+                        if (cardElement) {
+                            container.appendChild(cardElement);
+
+                            // Добавляем анимацию появления с проверкой существования
+                            if (cardElement.style) {
+                                cardElement.style.animationDelay = `${index * 50}ms`;
+                            }
+                            cardElement.classList.add('fade-in');
+                        }
+                    } catch (error) {
+                        Utils.logError('Error rendering project card:', error);
+                    }
                 }, index * 50);
             });
         });
@@ -130,14 +140,24 @@ class DashboardManager {
             container.innerHTML = '';
             tasks.forEach((task, index) => {
                 setTimeout(() => {
-                    const cardHTML = this.renderTaskCardWithTemplate(task);
-                    const card = document.createElement('div');
-                    card.innerHTML = cardHTML;
-                    container.appendChild(card.firstElementChild);
+                    try {
+                        const cardHTML = this.renderTaskCardWithTemplate(task);
+                        const card = document.createElement('div');
+                        card.innerHTML = cardHTML;
 
-                    // Добавляем анимацию появления
-                    card.firstElementChild.style.animationDelay = `${index * 50}ms`;
-                    card.firstElementChild.classList.add('fade-in');
+                        const cardElement = card.firstElementChild;
+                        if (cardElement) {
+                            container.appendChild(cardElement);
+
+                            // Добавляем анимацию появления с проверкой существования
+                            if (cardElement.style) {
+                                cardElement.style.animationDelay = `${index * 50}ms`;
+                            }
+                            cardElement.classList.add('fade-in');
+                        }
+                    } catch (error) {
+                        Utils.logError('Error rendering task card:', error);
+                    }
                 }, index * 50);
             });
         });
@@ -354,7 +374,7 @@ class DashboardManager {
         return `
             <div class="project-card" data-project-hash="${project.hash}" tabindex="0"
                  aria-label="Проект ${Utils.escapeHTML(project.title)}">
-                <div class="swipe-actions">
+                <div class="swipe-actions" aria-hidden="true">
                     <div class="swipe-action edit-action" aria-label="Редактировать проект">
                         <i class="fas fa-edit" aria-hidden="true"></i>
                     </div>
@@ -416,7 +436,7 @@ class DashboardManager {
         return `
             <div class="task-card" data-task-id="${task.id}" tabindex="0"
                  aria-label="Задача ${Utils.escapeHTML(task.title)}">
-                <div class="swipe-actions">
+                <div class="swipe-actions" aria-hidden="true">
                     <div class="swipe-action edit-action" aria-label="Редактировать задачу">
                         <i class="fas fa-edit" aria-hidden="true"></i>
                     </div>

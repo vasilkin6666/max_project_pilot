@@ -265,14 +265,25 @@ class App {
         try {
             const loaders = [];
 
+            // Загружаем шаблоны перед загрузкой данных
+            if (typeof UIComponents !== 'undefined') {
+                await UIComponents.loadTemplates();
+            }
+
             // Загружаем дашборд если пользователь аутентифицирован
             if (AuthManager.isUserAuthenticated()) {
                 if (typeof DashboardManager !== 'undefined') {
-                    loaders.push(DashboardManager.loadDashboard());
+                    loaders.push(DashboardManager.loadDashboard().catch(error => {
+                        Utils.logError('Dashboard load failed:', error);
+                        return null;
+                    }));
                 }
 
                 if (typeof NotificationsManager !== 'undefined') {
-                    loaders.push(NotificationsManager.loadNotifications());
+                    loaders.push(NotificationsManager.loadNotifications().catch(error => {
+                        Utils.logError('Notifications load failed:', error);
+                        return [];
+                    }));
                 }
 
                 // Загружаем настройки пользователя
@@ -283,6 +294,9 @@ class App {
                             this.applyTheme(prefs.theme);
                         }
                         return prefs;
+                    }).catch(error => {
+                        Utils.logError('User preferences load failed:', error);
+                        return {};
                     }));
                 }
 
@@ -290,21 +304,13 @@ class App {
                 if (typeof ProjectsManager !== 'undefined') {
                     loaders.push(ProjectsManager.loadProjects().catch(error => {
                         Utils.logError('Projects preload failed:', error);
-                        return []; // Возвращаем пустой массив в случае ошибки
+                        return [];
                     }));
                 }
             }
 
             if (loaders.length > 0) {
                 await Promise.allSettled(loaders);
-
-                // Логируем результаты загрузки
-                const results = await Promise.allSettled(loaders);
-                results.forEach((result, index) => {
-                    if (result.status === 'rejected') {
-                        Utils.logError(`Loader ${index} failed:`, result.reason);
-                    }
-                });
             }
 
             Utils.log('Initial data loaded successfully');

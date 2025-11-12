@@ -15,8 +15,36 @@ class UIComponents {
 
     static async loadTemplates() {
         try {
-            const templateElements = document.querySelectorAll('script[type="text/template"]');
+            // Загружаем шаблоны из HTML файлов
+            const templateFiles = [
+                'templates/project-card.html',
+                'templates/task-card.html',
+                'templates/notification-item.html',
+                'templates/modals/create-project.html',
+                'templates/modals/create-task.html',
+                'templates/modals/settings.html'
+            ];
 
+            for (const file of templateFiles) {
+                try {
+                    const response = await fetch(file);
+                    if (response.ok) {
+                        const html = await response.text();
+                        // Извлекаем содержимое script template
+                        const templateMatch = html.match(/<script[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/script>/);
+                        if (templateMatch) {
+                            const templateId = templateMatch[1];
+                            const templateContent = templateMatch[2];
+                            this.templates.set(templateId, templateContent);
+                        }
+                    }
+                } catch (error) {
+                    Utils.logError(`Error loading template ${file}:`, error);
+                }
+            }
+
+            // Также загружаем шаблоны из существующих script элементов
+            const templateElements = document.querySelectorAll('script[type="text/template"]');
             for (const element of templateElements) {
                 const id = element.id;
                 const content = element.innerHTML;
