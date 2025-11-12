@@ -140,12 +140,24 @@ class ProjectsManager {
                 throw new Error(result?.error || 'Сервер не вернул проект');
             }
 
+            // ДОБАВЛЯЕМ РОЛЬ ВЛАДЕЛЬЦА К ПРОЕКТУ
+            const projectWithRole = {
+                ...result.project,
+                role: 'owner' // Принудительно устанавливаем роль владельца
+            };
+
             ToastManager.success(`Проект "${result.project.title}" создан!`);
             HapticManager.projectCreated();
+
+            // Инвалидируем кэш
             CacheManager.invalidate('projects');
             CacheManager.invalidate('dashboard');
-            await this.loadProjects();
-            EventManager.emit(APP_EVENTS.PROJECT_CREATED, result.project);
+
+            // Обновляем локальное состояние с правильной ролью
+            const currentProjects = StateManager.getState('projects');
+            StateManager.setState('projects', [...currentProjects, projectWithRole]);
+
+            EventManager.emit(APP_EVENTS.PROJECT_CREATED, projectWithRole);
             ModalManager.closeCurrentModal();
             form.reset();
         } catch (error) {
@@ -159,8 +171,6 @@ class ProjectsManager {
             }
         }
     }
-
-    // === Остальные методы без изменений (оставлены как есть) ===
 
     static async openProjectDetail(projectHash) {
         try {
@@ -179,8 +189,11 @@ class ProjectsManager {
     static showProjectDetailModal(projectData) {
         const project = projectData.project || projectData;
         const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
-        const currentUserRole = currentUserMember?.role || 'member';
+
+        // ИСПРАВЛЕНИЕ: Если проект только что создан, используем роль из данных проекта
+        const currentUserRole = project.role || currentUserMember?.role || 'member';
         const canManage = ['owner', 'admin'].includes(currentUserRole);
+
         ModalManager.showModal('project-detail', {
             title: project.title,
             size: 'large',
@@ -253,7 +266,6 @@ class ProjectsManager {
         container.innerHTML = tasks.map(task =>
             UIComponents.createTaskCard(task)
         ).join('');
-        SwipeManager.setupTaskSwipes();
     }
 
     static async editProject(projectHash) {
@@ -360,7 +372,16 @@ class ProjectsManager {
             HapticManager.success();
             CacheManager.invalidate('projects');
             CacheManager.invalidate(`project-${projectHash}`);
-            await this.loadProjects();
+
+            // Обновляем локальное состояние
+            const currentProjects = StateManager.getState('projects');
+            const updatedProjects = currentProjects.map(p =>
+                (p.project?.hash === projectHash || p.hash === projectHash)
+                    ? { ...p, ...updateData }
+                    : p
+            );
+            StateManager.setState('projects', updatedProjects);
+
             EventManager.emit(APP_EVENTS.PROJECT_UPDATED, { hash: projectHash, ...updateData });
             ModalManager.closeCurrentModal();
         } catch (error) {
