@@ -148,6 +148,15 @@ class TasksManager {
             return;
         }
 
+        // Блокируем кнопку
+        const modal = ModalManager.getCurrentModal?.() || document.querySelector('.modal.show');
+        const submitBtn = modal?.querySelector('[data-action="submit"]') || modal?.querySelector('button[type="submit"]');
+        const originalText = submitBtn?.innerHTML || 'Создать задачу';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание...';
+        }
+
         try {
             const taskData = {
                 title: title,
@@ -182,21 +191,28 @@ class TasksManager {
                 ToastManager.success('Задача создана успешно!');
                 HapticManager.taskCompleted();
 
+                // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ЗАДАЧ ПРОЕКТА
+                await this.loadProjectTasks(projectHash);
+
                 // Инвалидируем кэш
                 CacheManager.invalidate('tasks');
                 CacheManager.invalidate('dashboard');
 
-                // Обновляем список задач в модальном окне проекта
-                await ProjectsManager.loadProjectTasks(projectHash);
-
                 EventManager.emit(APP_EVENTS.TASK_CREATED, result.task);
 
                 ModalManager.closeCurrentModal();
+            } else {
+                throw new Error('Не удалось создать задачу');
             }
         } catch (error) {
             Utils.logError('Error creating task:', error);
             ToastManager.error('Ошибка создания задачи: ' + error.message);
             HapticManager.error();
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         }
     }
 
@@ -424,9 +440,17 @@ class TasksManager {
 
     static editTask(taskId) {
         const task = StateManager.getState('tasks').find(t => t.id == taskId);
-        if (task) {
-            this.showEditTaskModal(task);
+        if (!task) return;
+
+        // ПРОВЕРКА ПРАВ: можно редактировать свои задачи или если есть права
+        const currentUserId = AuthManager.getCurrentUserId();
+        if (task.assignee_id !== currentUserId && !task.can_edit) {
+            ToastManager.error('Недостаточно прав для редактирования этой задачи');
+            HapticManager.error();
+            return;
         }
+
+        this.showEditTaskModal(task);
     }
 
     static showEditTaskModal(task) {
@@ -495,6 +519,15 @@ class TasksManager {
             return;
         }
 
+        // Блокируем кнопку
+        const modal = ModalManager.getCurrentModal?.() || document.querySelector('.modal.show');
+        const submitBtn = modal?.querySelector('[data-action="submit"]') || modal?.querySelector('button[type="submit"]');
+        const originalText = submitBtn?.innerHTML || 'Сохранить';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
+        }
+
         try {
             const updateData = {
                 title,
@@ -507,6 +540,12 @@ class TasksManager {
 
             ToastManager.success('Задача обновлена');
             HapticManager.success();
+
+            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ЗАДАЧ ПРОЕКТА
+            const task = StateManager.getState('tasks').find(t => t.id == taskId);
+            if (task && task.project_hash) {
+                await this.loadProjectTasks(task.project_hash);
+            }
 
             // Инвалидируем кэш
             CacheManager.invalidate('tasks');
@@ -523,12 +562,25 @@ class TasksManager {
             Utils.logError('Error updating task:', error);
             ToastManager.error('Ошибка обновления задачи: ' + error.message);
             HapticManager.error();
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         }
     }
 
     static deleteTaskWithConfirmation(taskId) {
         const task = StateManager.getState('tasks').find(t => t.id == taskId);
         if (!task) return;
+
+        // ПРОВЕРКА ПРАВ: можно удалять свои задачи или если есть права
+        const currentUserId = AuthManager.getCurrentUserId();
+        if (task.assignee_id !== currentUserId && !task.can_edit) {
+            ToastManager.error('Недостаточно прав для удаления этой задачи');
+            HapticManager.error();
+            return;
+        }
 
         ModalManager.showConfirmation({
             title: 'Удаление задачи',
@@ -542,10 +594,19 @@ class TasksManager {
 
     static async deleteTask(taskId) {
         try {
+            // Получаем информацию о задаче перед удалением для обновления списка
+            const task = StateManager.getState('tasks').find(t => t.id == taskId);
+            const projectHash = task?.project_hash;
+
             await ApiService.deleteTask(taskId);
 
             ToastManager.success('Задача удалена');
             HapticManager.success();
+
+            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ЗАДАЧ ПРОЕКТА
+            if (projectHash) {
+                await this.loadProjectTasks(projectHash);
+            }
 
             // Инвалидируем кэш
             CacheManager.invalidate('tasks');
@@ -556,13 +617,17 @@ class TasksManager {
 
             EventManager.emit(APP_EVENTS.TASK_DELETED, taskId);
 
+            // Закрываем модальное окно если открыто
+            ModalManager.closeCurrentModal();
+
         } catch (error) {
             Utils.logError('Error deleting task:', error);
             ToastManager.error('Ошибка удаления задачи: ' + error.message);
             HapticManager.error();
+            throw error; // Пробрасываем ошибку дальше для обработки в вызывающем коде
         }
     }
-
+    
     // Методы для работы с фильтрами задач
     static async getTasksWithFilters(filters = {}) {
         try {

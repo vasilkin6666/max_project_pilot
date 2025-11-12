@@ -72,22 +72,24 @@
                 </section>
 
                 <!-- Dashboard Stats -->
-                <section class="dashboard-stats" aria-label="Статистика">
-                    <div class="stat-card">
-                        <div class="stat-value" id="active-projects-count">0</div>
-                        <div class="stat-label">Активных проектов</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="overdue-tasks-count">0</div>
-                        <div class="stat-label">Просроченных задач</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="total-tasks-count">0</div>
-                        <div class="stat-label">Всего задач</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="completed-tasks-count">0</div>
-                        <div class="stat-label">Выполнено</div>
+                <section class="dashboard-stats compact-stats" aria-label="Статистика">
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-value" id="active-projects-count">0</div>
+                            <div class="stat-label">Активных</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="overdue-tasks-count">0</div>
+                            <div class="stat-label">Просрочено</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="total-tasks-count">0</div>
+                            <div class="stat-label">Всего задач</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="completed-tasks-count">0</div>
+                            <div class="stat-label">Выполнено</div>
+                        </div>
                     </div>
                 </section>
 
@@ -127,6 +129,21 @@
                     <h2 class="view-title">Настройки</h2>
                 </div>
                 <div class="settings-container">
+                    <!-- ДОБАВЛЯЕМ СЕКЦИЮ АККАУНТА -->
+                    <div class="setting-group">
+                        <h3 class="setting-title">Аккаунт</h3>
+                        <div class="account-info">
+                            <div class="account-avatar-large">
+                                <div class="user-avatar-large" id="settings-user-avatar">U</div>
+                            </div>
+                            <div class="account-details">
+                                <h4 id="settings-user-name">Пользователь</h4>
+                                <p class="text-muted" id="settings-user-email">email@example.com</p>
+                                <p class="text-muted" id="settings-user-role">Роль: Участник</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="setting-group">
                         <h3 class="setting-title">Внешний вид</h3>
                         <div class="setting-item">
@@ -145,24 +162,6 @@
                     </div>
 
                     <div class="setting-group">
-                        <h3 class="setting-title">Уведомления</h3>
-                        <div class="setting-item">
-                            <label class="setting-label">Push-уведомления</label>
-                            <div class="switch">
-                                <input type="checkbox" id="push-notifications" checked aria-label="Включить push-уведомления">
-                                <span class="slider"></span>
-                            </div>
-                        </div>
-                        <div class="setting-item">
-                            <label class="setting-label">Email уведомления</label>
-                            <div class="switch">
-                                <input type="checkbox" id="email-notifications" checked aria-label="Включить email уведомления">
-                                <span class="slider"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
                         <h3 class="setting-title">Данные</h3>
                         <div class="setting-item">
                             <button class="btn btn-outline" id="export-data-btn">
@@ -172,15 +171,6 @@
                         <div class="setting-item">
                             <button class="btn btn-outline" id="clear-cache-btn">
                                 <i class="fas fa-trash"></i> Очистить кэш
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <h3 class="setting-title">Аккаунт</h3>
-                        <div class="setting-item">
-                            <button class="btn btn-danger" id="logout-btn">
-                                <i class="fas fa-sign-out-alt"></i> Выйти
                             </button>
                         </div>
                     </div>

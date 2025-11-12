@@ -558,3 +558,80 @@ input:checked + .slider:before {
     padding: var(--spacing-xl);
     color: var(--danger-color);
 }
+
+/* Тумблер темы */
+.theme-toggle-container {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.theme-toggle {
+    position: relative;
+    width: 60px;
+    height: 30px;
+}
+
+.theme-checkbox {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.theme-label {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-tertiary);
+    border-radius: 15px;
+    position: relative;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 2px solid var(--border-color);
+}
+
+.theme-checkbox:checked + .theme-label {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.theme-ball {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.theme-checkbox:checked + .theme-label .theme-ball {
+    transform: translateX(30px);
+}
+
+.theme-icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.theme-icon.sun {
+    left: 6px;
+}
+
+.theme-icon.moon {
+    right: 6px;
+}
+
+.theme-checkbox:checked + .theme-label .theme-icon.sun {
+    color: white;
+}
+
+.theme-checkbox:not(:checked) + .theme-label .theme-icon.moon {
+    color: white;
+}

@@ -228,7 +228,7 @@ class ModalManager {
         const {
             title = '',
             items = [],
-            position = 'bottom-start',
+            position = 'center', // Изменено по умолчанию на center
             triggerElement = null
         } = options;
 
@@ -244,13 +244,10 @@ class ModalManager {
         backdrop.className = 'context-menu-backdrop';
         document.body.appendChild(backdrop);
 
-        if (triggerElement) {
-            this.positionContextMenu(menuElement, triggerElement, position);
-        } else {
-            menuElement.style.top = '50%';
-            menuElement.style.left = '50%';
-            menuElement.style.transform = 'translate(-50%, -50%)';
-        }
+        // ПО ЦЕНТРУ ЭКРАНА - ИСПРАВЛЕНИЕ
+        menuElement.style.top = '50%';
+        menuElement.style.left = '50%';
+        menuElement.style.transform = 'translate(-50%, -50%)';
 
         setTimeout(() => {
             menuElement.classList.add('show');

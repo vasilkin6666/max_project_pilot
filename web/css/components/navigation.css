@@ -363,3 +363,15 @@
     outline: none;
     box-shadow: 0 0 0 2px var(--primary-color);
 }
+
+/* Стили для результатов поиска публичных проектов */
+.result-owner {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: var(--spacing-xs) 0 0 0;
+}
+
+.search-result-item .badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+}

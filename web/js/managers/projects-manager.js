@@ -149,13 +149,12 @@ class ProjectsManager {
             ToastManager.success(`Проект "${result.project.title}" создан!`);
             HapticManager.projectCreated();
 
+            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
+            await this.loadProjects(); // Загружаем свежий список проектов
+
             // Инвалидируем кэш
             CacheManager.invalidate('projects');
             CacheManager.invalidate('dashboard');
-
-            // Обновляем локальное состояние с правильной ролью
-            const currentProjects = StateManager.getState('projects');
-            StateManager.setState('projects', [...currentProjects, projectWithRole]);
 
             EventManager.emit(APP_EVENTS.PROJECT_CREATED, projectWithRole);
             ModalManager.closeCurrentModal();
@@ -271,6 +270,16 @@ class ProjectsManager {
     static async editProject(projectHash) {
         try {
             const projectData = await ApiService.getProject(projectHash);
+            const project = projectData.project || projectData;
+            const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
+
+            // ПРОВЕРКА ПРАВ: только владелец и админ могут редактировать
+            if (!currentUserMember || !['owner', 'admin'].includes(currentUserMember.role)) {
+                ToastManager.error('Недостаточно прав для редактирования проекта');
+                HapticManager.error();
+                return;
+            }
+
             this.showEditProjectModal(projectData);
         } catch (error) {
             Utils.logError('Error loading project for edit:', error);
@@ -367,20 +376,18 @@ class ProjectsManager {
                 is_private: isPrivate,
                 requires_approval: requiresApproval
             };
+
             await ApiService.updateProject(projectHash, updateData);
+
             ToastManager.success('Проект обновлен!');
             HapticManager.success();
+
+            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
+            await this.loadProjects(); // Загружаем свежий список проектов
+
+            // Инвалидируем кэш
             CacheManager.invalidate('projects');
             CacheManager.invalidate(`project-${projectHash}`);
-
-            // Обновляем локальное состояние
-            const currentProjects = StateManager.getState('projects');
-            const updatedProjects = currentProjects.map(p =>
-                (p.project?.hash === projectHash || p.hash === projectHash)
-                    ? { ...p, ...updateData }
-                    : p
-            );
-            StateManager.setState('projects', updatedProjects);
 
             EventManager.emit(APP_EVENTS.PROJECT_UPDATED, { hash: projectHash, ...updateData });
             ModalManager.closeCurrentModal();
@@ -399,7 +406,17 @@ class ProjectsManager {
     static deleteProjectWithConfirmation(projectHash) {
         const project = StateManager.getProjectByHash(projectHash);
         if (!project) return;
+
         const projectData = project.project || project;
+        const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
+
+        // ПРОВЕРКА ПРАВ: только владелец может удалять
+        if (!currentUserMember || currentUserMember.role !== 'owner') {
+            ToastManager.error('Только владелец может удалить проект');
+            HapticManager.error();
+            return;
+        }
+
         ModalManager.showConfirmation({
             title: 'Удаление проекта',
             message: `Вы уверены, что хотите удалить проект "${projectData.title}"? Все связанные задачи также будут удалены.`,
@@ -413,16 +430,27 @@ class ProjectsManager {
     static async deleteProject(projectHash) {
         try {
             await ApiService.deleteProject(projectHash);
+
             ToastManager.success('Проект удален');
             HapticManager.projectDeleted();
+
+            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
+            await this.loadProjects(); // Загружаем свежий список проектов
+
+            // Инвалидируем кэш
             CacheManager.invalidate('projects');
             CacheManager.invalidate('dashboard');
-            StateManager.removeProject(projectHash);
+
             EventManager.emit(APP_EVENTS.PROJECT_DELETED, projectHash);
+
+            // Закрываем модальное окно если открыто
+            ModalManager.closeCurrentModal();
+
         } catch (error) {
             Utils.logError('Project deletion error:', error);
             ToastManager.error('Ошибка при удалении проекта: ' + error.message);
             HapticManager.error();
+            throw error; // Пробрасываем ошибку дальше для обработки в вызывающем коде
         }
     }
 
@@ -564,6 +592,83 @@ class ProjectsManager {
             Utils.logError('Error loading project settings:', error);
             ToastManager.error('Ошибка загрузки настроек');
         }
+    }
+
+    static async getProjectsWithFilters(filters = {}) {
+        try {
+            // Здесь можно добавить параметры фильтрации к API вызову
+            const data = await ApiService.getProjects();
+            let projects = data.projects || [];
+
+            // Применяем фильтры локально
+            if (filters.status) {
+                projects = projects.filter(project => {
+                    const stats = project.stats || {};
+                    const progress = stats.tasks_count > 0 ?
+                        Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+
+                    if (filters.status === 'active') return progress < 100;
+                    if (filters.status === 'completed') return progress === 100;
+                    return true;
+                });
+            }
+
+            if (filters.role) {
+                projects = projects.filter(project => project.role === filters.role);
+            }
+
+            // Применяем сортировку
+            if (filters.sortBy) {
+                projects = this.sortProjects(projects, filters.sortBy, filters.sortOrder);
+            }
+
+            StateManager.setState('projects', projects);
+            EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
+
+            return projects;
+        } catch (error) {
+            Utils.logError('Error loading projects with filters:', error);
+            throw error;
+        }
+    }
+
+    static sortProjects(projects, sortBy, sortOrder = 'asc') {
+        return projects.sort((a, b) => {
+            let aValue, bValue;
+
+            switch (sortBy) {
+                case 'title':
+                    aValue = a.title?.toLowerCase() || '';
+                    bValue = b.title?.toLowerCase() || '';
+                    break;
+                case 'progress':
+                    const aStats = a.stats || {};
+                    const bStats = b.stats || {};
+                    aValue = aStats.tasks_count > 0 ?
+                        Math.round((aStats.tasks_done / aStats.tasks_count) * 100) : 0;
+                    bValue = bStats.tasks_count > 0 ?
+                        Math.round((bStats.tasks_done / bStats.tasks_count) * 100) : 0;
+                    break;
+                case 'tasks':
+                    aValue = (a.stats?.tasks_count || 0);
+                    bValue = (b.stats?.tasks_count || 0);
+                    break;
+                case 'updated':
+                    aValue = new Date(a.updated_at || a.created_at);
+                    bValue = new Date(b.updated_at || b.created_at);
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (sortOrder === 'desc') {
+                [aValue, bValue] = [bValue, aValue];
+            }
+
+            if (aValue < bValue) return -1;
+            if (aValue > bValue) return 1;
+            return 0;
+        });
     }
 
     static showSettingsModal(projectData) {

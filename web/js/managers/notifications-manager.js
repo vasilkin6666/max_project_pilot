@@ -54,7 +54,8 @@ class NotificationsManager {
         const container = document.getElementById('notifications-list');
         if (!container) return;
 
-        if (notifications.length === 0) {
+        // ИСПРАВЛЕНИЕ: всегда показываем пустое состояние если нет уведомлений
+        if (!notifications || notifications.length === 0) {
             container.innerHTML = this.getEmptyStateHTML();
             return;
         }

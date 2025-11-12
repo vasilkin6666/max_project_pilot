@@ -338,7 +338,42 @@ class UIComponents {
             this.updateNetworkStatusUI(status);
         });
 
+        EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
+            this.updateUserInfo(user);
+            this.updateAccountSettingsInfo(user); // Новый метод
+        });
+
         Utils.log('Event listeners initialized');
+    }
+
+    static updateAccountSettingsInfo(user) {
+        const avatar = document.getElementById('settings-user-avatar');
+        const name = document.getElementById('settings-user-name');
+        const email = document.getElementById('settings-user-email');
+        const role = document.getElementById('settings-user-role');
+
+        if (avatar) {
+            const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
+            avatar.textContent = initials;
+
+            if (user.photo_url) {
+                avatar.style.backgroundImage = `url(${user.photo_url})`;
+                avatar.textContent = '';
+            }
+        }
+
+        if (name) {
+            name.textContent = user.full_name || user.username || 'Пользователь';
+        }
+
+        if (email) {
+            email.textContent = user.email || 'Email не указан';
+        }
+
+        if (role) {
+            const roleText = UsersManager ? UsersManager.getRoleText(user.role) : user.role;
+            role.textContent = `Роль: ${roleText || 'Участник'}`;
+        }
     }
 
     static setupGlobalHandlers() {
@@ -450,21 +485,14 @@ class UIComponents {
                     }
                 }
             },
-            { type: 'separator' }
-        ];
-
-        // Добавляем настройки если доступен UsersManager
-        if (typeof UsersManager !== 'undefined') {
-            menuItems.push({
+            { type: 'separator' },
+            {
                 text: 'Настройки',
                 icon: 'fa-cog',
                 action: () => {
-                    UsersManager.showPreferencesModal();
+                    this.showSettingsView();
                 }
-            });
-        }
-
-        menuItems.push(
+            },
             { type: 'separator' },
             {
                 text: 'Выйти',
@@ -474,13 +502,26 @@ class UIComponents {
                     App.logout();
                 }
             }
-        );
+        ];
 
         ModalManager.showContextMenu({
             triggerElement: document.getElementById('user-menu-btn'),
             position: 'bottom-end',
             items: menuItems
         });
+    }
+
+    // Новый метод для открытия настроек
+    static showSettingsView() {
+        this.showView('settings-view');
+
+        // Обновляем навигацию
+        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+        document.querySelector('.nav-item[data-view="settings-view"]')?.classList.add('active');
+
+        if (typeof HapticManager !== 'undefined') {
+            HapticManager.buttonPress();
+        }
     }
 
     static updateUserInfo(user) {

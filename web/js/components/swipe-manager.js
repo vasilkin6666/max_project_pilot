@@ -327,6 +327,10 @@ class SwipeManager {
             case 'task':
                 TasksManager.editTask(id);
                 break;
+            case 'notification':
+                // Для уведомлений - помечаем как прочитанное
+                NotificationsManager.markNotificationAsRead(id);
+                break;
         }
     }
 
@@ -337,6 +341,10 @@ class SwipeManager {
                 break;
             case 'task':
                 TasksManager.deleteTaskWithConfirmation(id);
+                break;
+            case 'notification':
+                // Для уведомлений - удаление
+                NotificationsManager.deleteNotification(id);
                 break;
         }
     }

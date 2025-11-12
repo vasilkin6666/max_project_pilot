@@ -78,9 +78,88 @@ class SearchManager {
     }
 
     static async searchAPI(query) {
-        // Здесь может быть реализация поиска через API
-        // Пока возвращаем пустой массив
-        return [];
+        try {
+            // Ищем среди всех проектов (не только пользовательских)
+            const allProjects = await ApiService.getProjects({ search: query, include_public: true });
+            const projects = allProjects.projects || [];
+
+            return projects.map(project => {
+                const isMember = project.role && project.role !== 'none';
+                const canJoin = !project.is_private || (project.is_private && !project.requires_approval);
+
+                return {
+                    type: 'public-project',
+                    data: project,
+                    score: 80, // Высокий приоритет для публичных проектов
+                    title: project.title,
+                    description: project.description,
+                    metadata: {
+                        owner: project.owner?.full_name || 'Неизвестно',
+                        isMember: isMember,
+                        canJoin: canJoin,
+                        requiresApproval: project.requires_approval
+                    },
+                    action: () => this.handlePublicProjectClick(project)
+                };
+            });
+        } catch (error) {
+            Utils.logError('API search error:', error);
+            return [];
+        }
+    }
+
+
+    static handlePublicProjectClick(project) {
+        const currentUserId = AuthManager.getCurrentUserId();
+        const isMember = project.members?.some(m => m.user_id === currentUserId);
+
+        if (isMember) {
+            // Уже участник - открываем проект
+            ProjectsManager.openProjectDetail(project.hash);
+        } else {
+            // Не участник - показываем диалог присоединения
+            this.showJoinProjectDialog(project);
+        }
+
+        UIComponents.hideSearch();
+    }
+
+    static showJoinProjectDialog(project) {
+        const requiresApproval = project.requires_approval;
+
+        ModalManager.showConfirmation({
+            title: `Присоединиться к проекту "${project.title}"`,
+            message: requiresApproval
+                ? `Это приватный проект. Будет отправлен запрос на присоединение владельцу проекта.`
+                : `Вы хотите присоединиться к проекту "${project.title}"?`,
+            confirmText: requiresApproval ? 'Отправить запрос' : 'Присоединиться',
+            cancelText: 'Отмена',
+            onConfirm: () => this.joinProject(project.hash, requiresApproval)
+        });
+    }
+
+    static async joinProject(projectHash, requiresApproval) {
+        try {
+            await ApiService.joinProject(projectHash);
+
+            if (requiresApproval) {
+                ToastManager.success('Запрос на присоединение отправлен');
+            } else {
+                ToastManager.success('Вы успешно присоединились к проекту!');
+            }
+
+            HapticManager.success();
+
+            // Обновляем список проектов
+            if (typeof ProjectsManager !== 'undefined') {
+                await ProjectsManager.loadProjects();
+            }
+
+        } catch (error) {
+            Utils.logError('Error joining project:', error);
+            ToastManager.error('Ошибка присоединения к проекту: ' + error.message);
+            HapticManager.error();
+        }
     }
 
     static calculateRelevance(item, query, type) {
@@ -161,20 +240,47 @@ class SearchManager {
         return grouped;
     }
 
-    static createResultsHTML(grouped) {
-        let html = '';
+    static createSectionHTML(title, items) {
+        const itemsHTML = items.slice(0, 5).map(item => {
+            let actionButton = '';
 
-        // Проекты
-        if (grouped.project) {
-            html += this.createSectionHTML('Проекты', grouped.project);
-        }
+            if (item.type === 'public-project') {
+                if (item.metadata.isMember) {
+                    actionButton = '<span class="badge bg-success">Вы в проекте</span>';
+                } else if (item.metadata.requiresApproval) {
+                    actionButton = '<span class="badge bg-warning">Запрос на присоединение</span>';
+                } else {
+                    actionButton = '<span class="badge bg-primary">Присоединиться</span>';
+                }
+            }
 
-        // Задачи
-        if (grouped.task) {
-            html += this.createSectionHTML('Задачи', grouped.task);
-        }
+            return `
+                <div class="search-result-item" onclick="SearchManager.handleResultClick(${JSON.stringify(item).replace(/'/g, "\\'")})">
+                    <div class="result-icon">
+                        <i class="fas ${this.getTypeIcon(item.type)}"></i>
+                    </div>
+                    <div class="result-content">
+                        <h6 class="result-title">${Utils.escapeHTML(item.title)}</h6>
+                        <p class="result-description">${Utils.escapeHTML(item.description || '')}</p>
+                        ${item.metadata?.owner ? `
+                            <p class="result-owner">Владелец: ${Utils.escapeHTML(item.metadata.owner)}</p>
+                        ` : ''}
+                    </div>
+                    <div class="result-meta">
+                        ${actionButton || `<span class="result-type">${this.getTypeLabel(item.type)}</span>`}
+                    </div>
+                </div>
+            `;
+        }).join('');
 
-        return html;
+        return `
+            <div class="search-section">
+                <h5 class="section-title">${title}</h5>
+                <div class="search-results-list">
+                    ${itemsHTML}
+                </div>
+            </div>
+        `;
     }
 
     static createSectionHTML(title, items) {
@@ -206,6 +312,7 @@ class SearchManager {
     static getTypeIcon(type) {
         const icons = {
             project: 'fa-folder',
+            'public-project': 'fa-folder-plus',
             task: 'fa-tasks',
             user: 'fa-user',
             notification: 'fa-bell'
@@ -216,6 +323,7 @@ class SearchManager {
     static getTypeLabel(type) {
         const labels = {
             project: 'Проект',
+            'public-project': 'Публичный проект',
             task: 'Задача',
             user: 'Пользователь',
             notification: 'Уведомление'
