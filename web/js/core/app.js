@@ -1,5 +1,8 @@
 // Основной класс приложения (исправленная версия)
 class App {
+    // Добавьте свойство для отслеживания настройки обработчиков ДО всех методов
+    static eventHandlersSetup = false;
+
     static async init() {
         try {
             Utils.log('App initialization started');
@@ -122,9 +125,6 @@ class App {
         Utils.log('All core systems initialized successfully');
     }
 
-    // Добавьте свойство для отслеживания настройки обработчиков
-    App.eventHandlersSetup = false;
-        
     static setupErrorHandling() {
         // Глобальный обработчик ошибок
         window.addEventListener('error', (event) => {
