@@ -58,18 +58,20 @@ class NotificationsManager {
         const container = document.getElementById('notifications-list');
         if (!container) return;
 
-        // ИСПРАВЛЕНИЕ: всегда показываем правильное пустое состояние
         if (!notifications || notifications.length === 0) {
             container.innerHTML = this.getEmptyStateHTML();
             return;
         }
 
-        // Группируем уведомления по типам
-        const joinRequests = notifications.filter(n => n.type && n.type.includes('join'));
-        const taskNotifications = notifications.filter(n => n.type && n.type.includes('task'));
-        const systemNotifications = notifications.filter(n =>
-            !n.type || (!n.type.includes('join') && !n.type.includes('task'))
+        // Фильтруем заявки на вступление
+        const joinRequests = notifications.filter(n =>
+            n.type && (n.type.includes('join') || n.type.includes('request')) ||
+            n.title && n.title.toLowerCase().includes('вступление') ||
+            n.message && n.message.toLowerCase().includes('хочет присоединиться')
         );
+
+        // Остальные уведомления
+        const otherNotifications = notifications.filter(n => !joinRequests.includes(n));
 
         let html = '';
 
@@ -87,27 +89,13 @@ class NotificationsManager {
             `;
         }
 
-        // Уведомления о задачах
-        if (taskNotifications.length > 0) {
+        // Остальные уведомления
+        if (otherNotifications.length > 0) {
             html += `
                 <div class="notifications-section">
-                    <h4 class="section-title">Задачи</h4>
+                    <h4 class="section-title">Уведомления</h4>
                     <div class="notifications-list">
-                        ${taskNotifications.map(notification =>
-                            this.renderTaskNotification(notification)
-                        ).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        // Системные уведомления
-        if (systemNotifications.length > 0) {
-            html += `
-                <div class="notifications-section">
-                    <h4 class="section-title">Системные</h4>
-                    <div class="notifications-list">
-                        ${systemNotifications.map(notification =>
+                        ${otherNotifications.map(notification =>
                             this.renderSystemNotification(notification)
                         ).join('')}
                     </div>

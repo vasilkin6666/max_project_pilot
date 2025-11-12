@@ -638,11 +638,14 @@ body {
 .stats-row {
     display: flex;
     justify-content: space-around;
-    padding: 8px;
+    padding: 12px;
     margin-bottom: 0;
     background: var(--bg-secondary);
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
+    max-width: 100%; /* Ограничиваем максимальную ширину */
+    width: 100%; /* Занимает всю доступную ширину */
+    box-sizing: border-box;
 }
 
 .stat-item {
@@ -877,19 +880,19 @@ body {
   }
 
   .stats-row {
-    padding: 6px;
+      padding: 8px;
   }
 
   .stat-item {
-    padding: 6px 2px;
+      padding: 6px 2px;
   }
 
   .stat-item .stat-value {
-    font-size: 1rem;
+      font-size: 1rem;
   }
 
   .stat-item .stat-label {
-    font-size: 0.6rem;
+      font-size: 0.6rem;
   }
 
   .account-info {

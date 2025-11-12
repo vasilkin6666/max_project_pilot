@@ -123,7 +123,31 @@ class App {
             this.eventHandlersSetup = true;
         }
 
+        // Периодическое обновление данных
+        this.startDataRefreshInterval();
+
         Utils.log('All core systems initialized successfully');
+    }
+
+    static startDataRefreshInterval() {
+        // Обновляем данные каждые 2 минуты для предотвращения устаревания
+        setInterval(async () => {
+            if (AuthManager.isAuthenticated) {
+                try {
+                    // Обновляем проекты
+                    if (typeof ProjectsManager !== 'undefined') {
+                        await ProjectsManager.loadProjects(true);
+                    }
+                    // Обновляем уведомления
+                    if (typeof NotificationsManager !== 'undefined') {
+                        await NotificationsManager.loadNotifications();
+                    }
+                    Utils.log('Background data refresh completed');
+                } catch (error) {
+                    Utils.logError('Background data refresh failed:', error);
+                }
+            }
+        }, 2 * 60 * 1000); // 2 минуты
     }
 
     static setupErrorHandling() {
@@ -348,7 +372,7 @@ class App {
             Utils.logError('Error loading initial data:', error);
         }
     }
-    
+
     static startBackgroundProcesses() {
         // Периодическая синхронизация данных (только для аутентифицированных пользователей)
         if (AuthManager.isUserAuthenticated()) {

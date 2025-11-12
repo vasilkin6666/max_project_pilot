@@ -810,9 +810,9 @@ class UIComponents {
                         <label class="form-label">Сортировать по</label>
                         <select class="form-select" id="project-sort-by">
                             <option value="title">Названию</option>
+                            <option value="updated">Дате обновления</option>
                             <option value="progress">Прогрессу</option>
                             <option value="tasks">Количеству задач</option>
-                            <option value="updated">Дате обновления</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -844,8 +844,10 @@ class UIComponents {
         const statusFilter = document.getElementById('project-status-filter').value;
         const roleFilter = document.getElementById('project-role-filter').value;
 
-        // Здесь можно добавить логику фильтрации
-        ToastManager.info('Фильтры применены');
+        if (typeof ProjectsManager !== 'undefined') {
+            ProjectsManager.applyFilters(statusFilter, roleFilter);
+        }
+
         ModalManager.closeCurrentModal();
     }
 
@@ -853,8 +855,10 @@ class UIComponents {
         const sortBy = document.getElementById('project-sort-by').value;
         const sortOrder = document.getElementById('project-sort-order').value;
 
-        // Здесь можно добавить логику сортировки
-        ToastManager.info('Сортировка применена');
+        if (typeof ProjectsManager !== 'undefined') {
+            ProjectsManager.applySorting(sortBy, sortOrder);
+        }
+
         ModalManager.closeCurrentModal();
     }
 

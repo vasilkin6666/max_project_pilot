@@ -25,10 +25,27 @@ class AuthManager {
             // 2. Если токен невалиден или отсутствует - новая аутентификация
             await this.performAuthentication();
 
+            // После успешной аутентификации
+            this.startPeriodicUserUpdate();
+
         } catch (error) {
             Utils.logError('User initialization failed:', error);
             await this.handleAuthenticationFailure(error);
         }
+    }
+
+    static startPeriodicUserUpdate() {
+        // Обновляем данные пользователя каждые 5 минут
+        setInterval(async () => {
+            if (this.isAuthenticated) {
+                try {
+                    await this.loadCurrentUser();
+                    Utils.log('Periodic user data update completed');
+                } catch (error) {
+                    Utils.logError('Periodic user update failed:', error);
+                }
+            }
+        }, 5 * 60 * 1000); // 5 минут
     }
 
     static async performAuthentication() {
@@ -199,6 +216,8 @@ class AuthManager {
             if (error.status === 401 || error.message?.includes('401')) {
                 Utils.log('Token invalid, clearing authentication data');
                 this.clearAuthData();
+                // Перезагружаем страницу для повторной аутентификации
+                setTimeout(() => window.location.reload(), 1000);
             }
 
             return false;

@@ -50,7 +50,8 @@ class ProjectsManager {
             if (project.project) {
                 return {
                     ...project.project,
-                    user_role: project.current_user_role || 'member', // Используем current_user_role из API
+                    user_role: project.current_user_role || project.role || 'member',
+                    current_user_role: project.current_user_role || project.role || 'member', // Дублируем для надежности
                     stats: project.stats || {},
                     has_access: project.has_access !== false,
                     members: project.members || []
@@ -61,6 +62,7 @@ class ProjectsManager {
             return {
                 ...project,
                 user_role: project.user_role || project.current_user_role || 'member',
+                current_user_role: project.current_user_role || project.user_role || 'member',
                 stats: project.stats || {},
                 has_access: project.has_access !== false,
                 members: project.members || []
@@ -248,25 +250,11 @@ class ProjectsManager {
     static showProjectDetailModal(projectData) {
         const project = projectData.project || projectData;
 
-        // ИСПРАВЛЕНИЕ: КОРРЕКТНО ОПРЕДЕЛЯЕМ РОЛЬ ПОЛЬЗОВАТЕЛЯ
-        let currentUserRole = 'member';
-
-        // Приоритеты определения роли:
-        if (project.current_user_role) {
-            // 1. Из API ответа (самый надежный)
-            currentUserRole = project.current_user_role;
-        } else if (project.user_role) {
-            // 2. Из обработанных данных
-            currentUserRole = project.user_role;
-        } else if (project.members) {
-            // 3. Из списка участников
-            const currentUserMember = project.members.find(m => m.user_id === AuthManager.getCurrentUserId());
-            if (currentUserMember) {
-                currentUserRole = currentUserMember.role;
-            }
-        }
+        // КОРРЕКТНО ОПРЕДЕЛЯЕМ РОЛЬ ПОЛЬЗОВАТЕЛЯ
+        let currentUserRole = project.current_user_role || project.user_role || 'member';
 
         const canManage = ['owner', 'admin'].includes(currentUserRole);
+        const canCreateTasks = canManage; // Владелец и админ могут создавать задачи
 
         ModalManager.showModal('project-detail', {
             title: project.title,
@@ -300,7 +288,7 @@ class ProjectsManager {
                     <div class="project-tasks">
                         <div class="tasks-header">
                             <h3>Задачи проекта</h3>
-                            ${canManage ? `
+                            ${canCreateTasks ? `
                                 <button class="btn btn-primary" onclick="TasksManager.showCreateTaskModal('${project.hash}')">
                                     <i class="fas fa-plus"></i> Новая задача
                                 </button>
@@ -314,6 +302,57 @@ class ProjectsManager {
             `
         });
         this.loadProjectTasks(project.hash);
+    }
+
+    static async applyFilters(statusFilter, roleFilter) {
+        try {
+            let projects = StateManager.getState('projects');
+
+            // Применяем фильтры
+            if (statusFilter && statusFilter !== 'all') {
+                projects = projects.filter(project => {
+                    const stats = project.stats || {};
+                    const progress = stats.tasks_count > 0 ?
+                        Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+
+                    if (statusFilter === 'active') return progress < 100;
+                    if (statusFilter === 'completed') return progress === 100;
+                    return true;
+                });
+            }
+
+            if (roleFilter && roleFilter !== 'all') {
+                projects = projects.filter(project =>
+                    project.user_role === roleFilter || project.current_user_role === roleFilter
+                );
+            }
+
+            StateManager.setState('projects', projects);
+            EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
+
+            ToastManager.success('Фильтры применены');
+            return projects;
+        } catch (error) {
+            Utils.logError('Error applying filters:', error);
+            ToastManager.error('Ошибка применения фильтров');
+            throw error;
+        }
+    }
+
+    static async applySorting(sortBy, sortOrder) {
+        try {
+            const projects = StateManager.getState('projects');
+            const sortedProjects = this.sortProjects(projects, sortBy, sortOrder);
+            StateManager.setState('projects', sortedProjects);
+            EventManager.emit(APP_EVENTS.PROJECTS_LOADED, sortedProjects);
+
+            ToastManager.success('Сортировка применена');
+            return sortedProjects;
+        } catch (error) {
+            Utils.logError('Error applying sorting:', error);
+            ToastManager.error('Ошибка применения сортировки');
+            throw error;
+        }
     }
 
     static async loadProjectTasks(projectHash) {
