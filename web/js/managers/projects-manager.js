@@ -1,18 +1,35 @@
 // Менеджер проектов
 class ProjectsManager {
-    static async loadProjects() {
+    static async loadProjects(forceRefresh = false) {
         try {
             StateManager.setLoading(true);
-            const data = await CacheManager.getWithCache(
-                'projects',
-                () => ApiService.getProjects(),
-                'projects'
-            );
+
+            let data;
+            if (forceRefresh) {
+                // Принудительное обновление - пропускаем кэш
+                data = await ApiService.getProjects();
+                // Сохраняем в кэш
+                if (data && typeof CacheManager !== 'undefined') {
+                    CacheManager.set('projects', data, 5 * 60 * 1000); // 5 минут
+                }
+            } else {
+                // Используем кэш
+                data = await CacheManager.getWithCache(
+                    'projects',
+                    () => ApiService.getProjects(),
+                    'projects'
+                );
+            }
+
             const projects = data.projects || [];
-            StateManager.setState('projects', projects);
-            EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
-            Utils.log('Projects loaded successfully', { count: projects.length });
-            return projects;
+
+            // ОБРАБАТЫВАЕМ ДАННЫЕ ПРОЕКТОВ ДЛЯ КОРРЕКТНОГО ОТОБРАЖЕНИЯ РОЛИ
+            const processedProjects = this.processProjectsData(projects);
+
+            StateManager.setState('projects', processedProjects);
+            EventManager.emit(APP_EVENTS.PROJECTS_LOADED, processedProjects);
+            Utils.log('Projects loaded successfully', { count: processedProjects.length, forceRefresh });
+            return processedProjects;
         } catch (error) {
             Utils.logError('Projects load error:', error);
             EventManager.emit(APP_EVENTS.DATA_ERROR, error);
@@ -20,6 +37,35 @@ class ProjectsManager {
         } finally {
             StateManager.setLoading(false);
         }
+    }
+
+    // Обработка данных проектов для корректного отображения роли
+    static processProjectsData(projects) {
+        if (!projects || !Array.isArray(projects)) {
+            return [];
+        }
+
+        return projects.map(project => {
+            // Если проект пришел как объект с полем project (структура API)
+            if (project.project) {
+                return {
+                    ...project.project,
+                    user_role: project.current_user_role || 'member', // Используем current_user_role из API
+                    stats: project.stats || {},
+                    has_access: project.has_access !== false,
+                    members: project.members || []
+                };
+            }
+
+            // Если проект пришел напрямую
+            return {
+                ...project,
+                user_role: project.user_role || project.current_user_role || 'member',
+                stats: project.stats || {},
+                has_access: project.has_access !== false,
+                members: project.members || []
+            };
+        });
     }
 
     // Защита от перезагрузки при GET-параметрах
@@ -154,18 +200,21 @@ class ProjectsManager {
             // ДОБАВЛЯЕМ РОЛЬ ВЛАДЕЛЬЦА К ПРОЕКТУ
             const projectWithRole = {
                 ...result.project,
-                role: 'owner' // Принудительно устанавливаем роль владельца
+                user_role: 'owner', // Явно указываем роль владельца
+                current_user_role: 'owner' // И для совместимости с API
             };
 
             ToastManager.success(`Проект "${result.project.title}" создан!`);
             HapticManager.projectCreated();
 
-            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
-            await this.loadProjects(); // Загружаем свежий список проектов
+            // ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ С ОЧИСТКОЙ КЭША
+            await this.loadProjects(true); // forceRefresh = true
 
-            // Инвалидируем кэш
-            CacheManager.invalidate('projects');
-            CacheManager.invalidate('dashboard');
+            // Дополнительно инвалидируем кэш
+            if (typeof CacheManager !== 'undefined') {
+                CacheManager.invalidate('projects');
+                CacheManager.invalidate('dashboard');
+            }
 
             EventManager.emit(APP_EVENTS.PROJECT_CREATED, projectWithRole);
             ModalManager.closeCurrentModal();
@@ -198,10 +247,25 @@ class ProjectsManager {
 
     static showProjectDetailModal(projectData) {
         const project = projectData.project || projectData;
-        const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
 
-        // ИСПРАВЛЕНИЕ: Если проект только что создан, используем роль из данных проекта
-        const currentUserRole = project.role || currentUserMember?.role || 'member';
+        // ИСПРАВЛЕНИЕ: КОРРЕКТНО ОПРЕДЕЛЯЕМ РОЛЬ ПОЛЬЗОВАТЕЛЯ
+        let currentUserRole = 'member';
+
+        // Приоритеты определения роли:
+        if (project.current_user_role) {
+            // 1. Из API ответа (самый надежный)
+            currentUserRole = project.current_user_role;
+        } else if (project.user_role) {
+            // 2. Из обработанных данных
+            currentUserRole = project.user_role;
+        } else if (project.members) {
+            // 3. Из списка участников
+            const currentUserMember = project.members.find(m => m.user_id === AuthManager.getCurrentUserId());
+            if (currentUserMember) {
+                currentUserRole = currentUserMember.role;
+            }
+        }
+
         const canManage = ['owner', 'admin'].includes(currentUserRole);
 
         ModalManager.showModal('project-detail', {
@@ -282,10 +346,20 @@ class ProjectsManager {
         try {
             const projectData = await ApiService.getProject(projectHash);
             const project = projectData.project || projectData;
-            const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
+
+            // ИСПРАВЛЕНИЕ: КОРРЕКТНО ОПРЕДЕЛЯЕМ РОЛЬ ДЛЯ ПРОВЕРКИ ПРАВ
+            let currentUserRole = 'member';
+            if (project.current_user_role) {
+                currentUserRole = project.current_user_role;
+            } else if (project.members) {
+                const currentUserMember = project.members.find(m => m.user_id === AuthManager.getCurrentUserId());
+                if (currentUserMember) {
+                    currentUserRole = currentUserMember.role;
+                }
+            }
 
             // ПРОВЕРКА ПРАВ: только владелец и админ могут редактировать
-            if (!currentUserMember || !['owner', 'admin'].includes(currentUserMember.role)) {
+            if (!['owner', 'admin'].includes(currentUserRole)) {
                 ToastManager.error('Недостаточно прав для редактирования проекта');
                 HapticManager.error();
                 return;
@@ -394,12 +468,14 @@ class ProjectsManager {
             ToastManager.success('Проект обновлен!');
             HapticManager.success();
 
-            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
-            await this.loadProjects(); // Загружаем свежий список проектов
+            // ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
+            await this.loadProjects(true); // forceRefresh = true
 
             // Инвалидируем кэш
-            CacheManager.invalidate('projects');
-            CacheManager.invalidate(`project-${projectHash}`);
+            if (typeof CacheManager !== 'undefined') {
+                CacheManager.invalidate('projects');
+                CacheManager.invalidate(`project-${projectHash}`);
+            }
 
             EventManager.emit(APP_EVENTS.PROJECT_UPDATED, { hash: projectHash, ...updateData });
             ModalManager.closeCurrentModal();
@@ -420,10 +496,22 @@ class ProjectsManager {
         if (!project) return;
 
         const projectData = project.project || project;
-        const currentUserMember = project.members?.find(m => m.user_id === AuthManager.getCurrentUserId());
+
+        // ИСПРАВЛЕНИЕ: КОРРЕКТНО ОПРЕДЕЛЯЕМ РОЛЬ ДЛЯ ПРОВЕРКИ ПРАВ
+        let currentUserRole = 'member';
+        if (project.current_user_role) {
+            currentUserRole = project.current_user_role;
+        } else if (project.user_role) {
+            currentUserRole = project.user_role;
+        } else if (project.members) {
+            const currentUserMember = project.members.find(m => m.user_id === AuthManager.getCurrentUserId());
+            if (currentUserMember) {
+                currentUserRole = currentUserMember.role;
+            }
+        }
 
         // ПРОВЕРКА ПРАВ: только владелец может удалять
-        if (!currentUserMember || currentUserMember.role !== 'owner') {
+        if (currentUserRole !== 'owner') {
             ToastManager.error('Только владелец может удалить проект');
             HapticManager.error();
             return;
@@ -446,12 +534,14 @@ class ProjectsManager {
             ToastManager.success('Проект удален');
             HapticManager.projectDeleted();
 
-            // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
-            await this.loadProjects(); // Загружаем свежий список проектов
+            // ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ
+            await this.loadProjects(true); // forceRefresh = true
 
             // Инвалидируем кэш
-            CacheManager.invalidate('projects');
-            CacheManager.invalidate('dashboard');
+            if (typeof CacheManager !== 'undefined') {
+                CacheManager.invalidate('projects');
+                CacheManager.invalidate('dashboard');
+            }
 
             EventManager.emit(APP_EVENTS.PROJECT_DELETED, projectHash);
 
@@ -462,7 +552,7 @@ class ProjectsManager {
             Utils.logError('Project deletion error:', error);
             ToastManager.error('Ошибка при удалении проекта: ' + error.message);
             HapticManager.error();
-            throw error; // Пробрасываем ошибку дальше для обработки в вызывающем коде
+            throw error;
         }
     }
 
@@ -612,6 +702,9 @@ class ProjectsManager {
             const data = await ApiService.getProjects();
             let projects = data.projects || [];
 
+            // Обрабатываем данные для корректного отображения роли
+            projects = this.processProjectsData(projects);
+
             // Применяем фильтры локально
             if (filters.status) {
                 projects = projects.filter(project => {
@@ -626,7 +719,7 @@ class ProjectsManager {
             }
 
             if (filters.role) {
-                projects = projects.filter(project => project.role === filters.role);
+                projects = projects.filter(project => project.user_role === filters.role);
             }
 
             // Применяем сортировку
@@ -723,7 +816,8 @@ class ProjectsManager {
             const result = await ApiService.createProject(projectData);
 
             if (result && result.project) {
-                await this.loadProjects();
+                // Принудительно обновляем список проектов
+                await this.loadProjects(true);
                 return result.project;
             }
         } catch (error) {

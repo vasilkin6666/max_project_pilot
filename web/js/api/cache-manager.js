@@ -80,17 +80,41 @@ class CacheManager {
     }
 
     static invalidate(pattern) {
-        let count = 0;
+        const keysToRemove = [];
 
-        for (const [key] of this.cache) {
-            if (key.includes(pattern)) {
-                this.cache.delete(key);
-                count++;
+        for (const key of this.cache.keys()) {
+            if (key === pattern || key.includes(pattern)) {
+                keysToRemove.push(key);
             }
         }
 
-        Utils.log(`Cache invalidated: ${pattern} (${count} items)`);
-        return count;
+        keysToRemove.forEach(key => {
+            this.cache.delete(key);
+            Utils.log(`Cache invalidated: ${key}`);
+        });
+
+        return keysToRemove.length;
+    }
+
+    // Добавьте метод для принудительного обновления определенных данных
+    static async refreshWithFallback(key, apiCall, fallbackData = null, ttl = 5 * 60 * 1000) {
+        try {
+            // Пробуем получить свежие данные
+            const freshData = await apiCall();
+            this.set(key, freshData, ttl);
+            return freshData;
+        } catch (error) {
+            Utils.logError(`Failed to refresh ${key}:`, error);
+
+            // Возвращаем закешированные данные или fallback
+            const cached = this.get(key);
+            if (cached) {
+                Utils.log(`Using cached data for ${key} due to refresh failure`);
+                return cached;
+            }
+
+            return fallbackData;
+        }
     }
 
     static clear() {

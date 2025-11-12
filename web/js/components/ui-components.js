@@ -996,7 +996,7 @@ class UIComponents {
             }
         }
     }
-    
+
     static renderTasks(tasks) {
         const container = document.getElementById('tasks-container');
         if (!container) return;
@@ -1241,10 +1241,20 @@ class UIComponents {
             const project = projectData.project || projectData;
             const stats = project.stats || {};
 
-            // Безопасное извлечение данных
+            // Безопасное извлечение данных с приоритетом роли
             const title = project.title || 'Без названия';
             const description = project.description || 'Без описания';
-            const role = project.user_role || projectData.role || 'member';
+
+            // Определяем роль с приоритетами
+            let role = 'member';
+            if (project.user_role) {
+                role = project.user_role;
+            } else if (project.current_user_role) {
+                role = project.current_user_role;
+            } else if (projectData.role) {
+                role = projectData.role;
+            }
+
             const isPrivate = Boolean(project.is_private);
             const requiresApproval = Boolean(project.requires_approval);
 
@@ -1275,15 +1285,21 @@ class UIComponents {
 
             // Используем шаблон
             const rendered = this.renderTemplate('project-card-template', templateData);
-            console.log('Rendered template:', rendered);
 
-            return rendered || this.createProjectCardFallback(templateData);
+            if (!rendered) {
+                console.warn('Template rendering returned empty, using fallback');
+                return this.createProjectCardFallback(templateData);
+            }
+
+            return rendered;
 
         } catch (error) {
             Utils.logError('Error in renderProjectCardWithTemplate:', error);
             return this.createProjectCardFallback({title: 'Ошибка загрузки'});
         }
     }
+
+
 
     static createProjectCardFallback(project) {
         return `

@@ -2,6 +2,7 @@
 class App {
     // Добавьте свойство для отслеживания настройки обработчиков ДО всех методов
     static eventHandlersSetup = false;
+    static templatesLoaded = false;
 
     static async init() {
         try {
@@ -289,9 +290,10 @@ class App {
         try {
             const loaders = [];
 
-            // Загружаем шаблоны перед загрузкой данных
-            if (typeof UIComponents !== 'undefined') {
+            // Загружаем шаблоны только один раз
+            if (typeof UIComponents !== 'undefined' && !this.templatesLoaded) {
                 await UIComponents.loadTemplates();
+                this.templatesLoaded = true;
             }
 
             // Загружаем дашборд если пользователь аутентифицирован
@@ -324,11 +326,15 @@ class App {
                     }));
                 }
 
-                // Предзагрузка проектов и задач
+                // Загружаем проекты с принудительным обновлением после создания
                 if (typeof ProjectsManager !== 'undefined') {
-                    loaders.push(ProjectsManager.loadProjects().catch(error => {
+                    const forceRefresh = localStorage.getItem('force_refresh_projects') === 'true';
+                    loaders.push(ProjectsManager.loadProjects(forceRefresh).catch(error => {
                         Utils.logError('Projects preload failed:', error);
                         return [];
+                    }).finally(() => {
+                        // Сбрасываем флаг принудительного обновления
+                        localStorage.removeItem('force_refresh_projects');
                     }));
                 }
             }
@@ -340,10 +346,9 @@ class App {
             Utils.log('Initial data loaded successfully');
         } catch (error) {
             Utils.logError('Error loading initial data:', error);
-            // Не прерываем инициализацию из-за ошибок загрузки данных
         }
     }
-
+    
     static startBackgroundProcesses() {
         // Периодическая синхронизация данных (только для аутентифицированных пользователей)
         if (AuthManager.isUserAuthenticated()) {
