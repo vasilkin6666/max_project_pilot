@@ -35,7 +35,7 @@ class NotificationsManager {
           return;
       }
 
-      // Получаем все проекты для проверки прав
+      // Получаем проекты, где пользователь имеет права администратора/владельца
       const projects = StateManager.getState('projects') || [];
       const userProjectsWithAccess = projects.filter(project => {
           const role = project.current_user_role || project.user_role;
@@ -44,7 +44,7 @@ class NotificationsManager {
 
       let html = '';
 
-      // Уведомления о заявках на вступление (только для проектов где пользователь владелец/админ)
+      // Уведомления о заявках на вступление (только для проектов с правами)
       if (userProjectsWithAccess.length > 0) {
           const joinRequestNotifications = notifications.filter(n =>
               n.type === 'join_request' ||
@@ -88,6 +88,37 @@ class NotificationsManager {
       }
 
       container.innerHTML = html || this.getEmptyStateHTML();
+  }
+
+  static extractProjectHashFromNotification(notification) {
+      // Пробуем разные способы извлечения project_hash
+      if (notification.data && notification.data.project_hash) {
+          return notification.data.project_hash;
+      }
+
+      if (notification.project_hash) {
+          return notification.project_hash;
+      }
+
+      // Ищем в сообщении
+      const hashMatch = notification.message?.match(/project[_-]hash[:\s]*([a-zA-Z0-9]+)/i);
+      if (hashMatch) {
+          return hashMatch[1];
+      }
+
+      // Ищем в дополнительных данных
+      if (notification.extra_data) {
+          try {
+              const extraData = typeof notification.extra_data === 'string'
+                  ? JSON.parse(notification.extra_data)
+                  : notification.extra_data;
+              return extraData.project_hash || extraData.projectHash || '';
+          } catch (e) {
+              return '';
+          }
+      }
+
+      return '';
   }
 
   static renderJoinRequestNotification(notification) {

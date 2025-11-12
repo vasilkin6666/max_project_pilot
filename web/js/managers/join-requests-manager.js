@@ -6,6 +6,13 @@ class JoinRequestsManager {
             return response.requests || response.join_requests || [];
         } catch (error) {
             Utils.logError('Error loading join requests:', error);
+
+            // Если ошибка 404, значит заявок нет
+            if (error.status === 404) {
+                return [];
+            }
+
+            ToastManager.error('Ошибка загрузки заявок');
             return [];
         }
     }

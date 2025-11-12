@@ -440,6 +440,13 @@ class UIComponents {
                 }
             });
         }
+        
+        const joinRequestsBtn = document.getElementById('join-requests-btn');
+        if (joinRequestsBtn) {
+            joinRequestsBtn.addEventListener('click', () => {
+                // Логика открытия модального окна заявок
+            });
+        }
 
         // Кнопка "Прочитать все" в уведомлениях
         const markAllReadBtn = document.getElementById('mark-all-read-btn');

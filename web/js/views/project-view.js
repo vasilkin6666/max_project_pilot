@@ -47,9 +47,11 @@ class ProjectView {
                     ${canManage ? `
                         <div class="project-actions">
                             ${canViewJoinRequests ? `
-                                <button class="btn btn-outline" onclick="JoinRequestsManager.showJoinRequestsModal('${project.hash}')">
-                                    <i class="fas fa-user-plus"></i> Заявки на вступление
-                                </button>
+                                <div class="project-join-requests">
+                                    <button class="btn btn-primary" onclick="JoinRequestsManager.showJoinRequestsModal('${project.hash}')">
+                                        <i class="fas fa-user-plus"></i> Управление заявками на вступление
+                                    </button>
+                                </div>
                             ` : ''}
                             <button class="btn btn-outline" onclick="ProjectsManager.showMembersManagement('${project.hash}')">
                                 <i class="fas fa-users"></i> Участники
@@ -180,19 +182,35 @@ class ProjectView {
 
         if (projectViewContainer) {
             projectViewContainer.style.display = 'none';
+            projectViewContainer.innerHTML = ''; // Очищаем контент
         }
 
         if (mainContent) {
             mainContent.style.display = 'block';
         }
 
-        // Показываем обратно bottom navigation
+        // Восстанавливаем навигацию
         const bottomNav = document.querySelector('.bottom-nav');
         if (bottomNav) {
             bottomNav.style.display = 'flex';
         }
 
+        // Восстанавливаем активное состояние в навигации
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            if (item.getAttribute('data-view') === 'dashboard-view') {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
         this.currentProject = null;
+
+        // Возвращаемся к главному виду
+        if (typeof UIComponents !== 'undefined') {
+            UIComponents.showView('dashboard-view');
+        }
     }
 
     static async refreshProjectTasks() {

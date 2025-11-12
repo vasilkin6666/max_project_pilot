@@ -81,7 +81,8 @@ class App {
             { name: 'CacheManager', instance: CacheManager },
             { name: 'SwipeManager', instance: SwipeManager },
             { name: 'HapticManager', instance: HapticManager },
-            { name: 'UsersManager', instance: UsersManager }
+            { name: 'UsersManager', instance: UsersManager },
+            { name: 'JoinRequestsManager', instance: JoinRequestsManager } // Добавьте эту строку
         ];
 
         // Инициализируем только если не инициализированы
