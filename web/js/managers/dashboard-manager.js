@@ -95,16 +95,24 @@ class DashboardManager {
             return;
         }
 
-        // Фильтруем и сортируем проекты
-        const activeProjects = this.getActiveProjects(projects);
-        const projectsToShow = activeProjects.slice(0, 6); // Показываем до 6 проектов
+        this.showLoadingState(container);
 
-        container.innerHTML = projectsToShow.map(project =>
-            UIComponents.createProjectCard(project)
-        ).join('');
+        // Используем requestAnimationFrame для плавного рендеринга
+        requestAnimationFrame(() => {
+            container.innerHTML = '';
+            projects.forEach((projectData, index) => {
+                setTimeout(() => {
+                    const cardHTML = this.renderProjectCardWithTemplate(projectData);
+                    const card = document.createElement('div');
+                    card.innerHTML = cardHTML;
+                    container.appendChild(card.firstElementChild);
 
-        // Инициализируем свайпы для новых карточек
-        SwipeManager.setupProjectSwipes();
+                    // Добавляем анимацию появления
+                    card.firstElementChild.style.animationDelay = `${index * 50}ms`;
+                    card.firstElementChild.classList.add('fade-in');
+                }, index * 50);
+            });
+        });
     }
 
     static renderPriorityTasks(tasks) {
@@ -116,16 +124,23 @@ class DashboardManager {
             return;
         }
 
-        // Сортируем задачи по приоритету и сроку
-        const priorityTasks = this.getPriorityTasks(tasks);
-        const tasksToShow = priorityTasks.slice(0, 5); // Показываем до 5 задач
+        this.showLoadingState(container);
 
-        container.innerHTML = tasksToShow.map(task =>
-            UIComponents.createTaskCard(task)
-        ).join('');
+        requestAnimationFrame(() => {
+            container.innerHTML = '';
+            tasks.forEach((task, index) => {
+                setTimeout(() => {
+                    const cardHTML = this.renderTaskCardWithTemplate(task);
+                    const card = document.createElement('div');
+                    card.innerHTML = cardHTML;
+                    container.appendChild(card.firstElementChild);
 
-        // Инициализируем свайпы для новых карточек
-        SwipeManager.setupTaskSwipes();
+                    // Добавляем анимацию появления
+                    card.firstElementChild.style.animationDelay = `${index * 50}ms`;
+                    card.firstElementChild.classList.add('fade-in');
+                }, index * 50);
+            });
+        });
     }
 
     static getActiveProjects(projects) {
@@ -265,6 +280,220 @@ class DashboardManager {
         EventManager.on(APP_EVENTS.TASK_CREATED, () => {
             this.loadDashboard();
         });
+    }
+
+    // Вспомогательные методы для рендеринга с шаблонами
+    static renderProjectCardWithTemplate(projectData) {
+        const project = projectData.project || projectData;
+        const stats = project.stats || {};
+        const role = projectData.role || 'member';
+        const progress = stats.tasks_count > 0
+            ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
+            : 0;
+
+        const templateData = {
+            id: project.id,
+            hash: project.hash,
+            title: project.title,
+            description: project.description || 'Без описания',
+            role: role,
+            roleText: this.getRoleText(role),
+            membersCount: stats.members_count || 0,
+            tasksCount: stats.tasks_count || 0,
+            userTasks: stats.user_tasks || 0,
+            progress: progress,
+            status: this.getProjectStatus(project),
+            canInvite: ['owner', 'admin'].includes(role)
+        };
+
+        // Используем UIComponents для рендеринга
+        if (typeof UIComponents !== 'undefined' && UIComponents.templates.has('project-card-template')) {
+            return UIComponents.renderTemplate('project-card-template', templateData);
+        } else {
+            // Fallback на стандартный рендеринг
+            return this.createProjectCard(projectData);
+        }
+    }
+
+    static renderTaskCardWithTemplate(task) {
+        const isOverdue = Utils.isOverdue(task.due_date);
+        const progress = task.subtasks && task.subtasks.length > 0
+            ? Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)
+            : 0;
+
+        const templateData = {
+            id: task.id,
+            title: task.title,
+            description: task.description || '',
+            priority: task.priority,
+            priorityText: Utils.getPriorityText(task.priority),
+            status: task.status,
+            statusText: Utils.getStatusText(task.status),
+            assignee: task.assignee?.full_name || 'Не назначен',
+            dueDate: task.due_date ? Utils.formatDate(task.due_date) : 'Нет срока',
+            isOverdue: isOverdue,
+            hasSubtasks: !!(task.subtasks && task.subtasks.length > 0),
+            progress: progress
+        };
+
+        // Используем UIComponents для рендеринга
+        if (typeof UIComponents !== 'undefined' && UIComponents.templates.has('task-card-template')) {
+            return UIComponents.renderTemplate('task-card-template', templateData);
+        } else {
+            // Fallback на стандартный рендеринг
+            return this.createTaskCard(task);
+        }
+    }
+
+    static createProjectCard(project) {
+        const stats = project.stats || {};
+        const progress = stats.tasks_count > 0
+            ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
+            : 0;
+
+        return `
+            <div class="project-card" data-project-hash="${project.hash}" tabindex="0"
+                 aria-label="Проект ${Utils.escapeHTML(project.title)}">
+                <div class="swipe-actions">
+                    <div class="swipe-action edit-action" aria-label="Редактировать проект">
+                        <i class="fas fa-edit" aria-hidden="true"></i>
+                    </div>
+                    <div class="swipe-action delete-action" aria-label="Удалить проект">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
+                    </div>
+                </div>
+
+                <div class="card-content">
+                    <div class="card-header">
+                        <h5 class="project-title">${Utils.escapeHTML(project.title)}</h5>
+                        <span class="project-status">${this.getProjectStatus(project)}</span>
+                    </div>
+                    <p class="project-description">
+                        ${Utils.escapeHTML(project.description || 'Без описания')}
+                    </p>
+                    <div class="project-stats">
+                        <div class="stat">
+                            <i class="fas fa-users" aria-hidden="true"></i>
+                            <span>${stats.members_count || 0}</span>
+                            <span class="sr-only">участников</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-tasks" aria-hidden="true"></i>
+                            <span>${stats.tasks_count || 0}</span>
+                            <span class="sr-only">задач</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-check-circle" aria-hidden="true"></i>
+                            <span>${stats.tasks_done || 0}</span>
+                            <span class="sr-only">выполнено</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%"
+                             aria-label="Прогресс: ${progress}%"></div>
+                    </div>
+                    <div class="project-footer">
+                        <span class="progress-text">${progress}%</span>
+                        ${project.is_private ? `
+                            <button class="btn btn-sm btn-outline share-btn"
+                                    onclick="ProjectsManager.showInviteDialog('${project.hash}')"
+                                    aria-label="Поделиться проектом">
+                                <i class="fas fa-share-alt" aria-hidden="true"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    static createTaskCard(task) {
+        const isOverdue = task.due_date && Utils.isOverdue(task.due_date);
+        const progress = task.subtasks && task.subtasks.length > 0
+            ? Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)
+            : 0;
+
+        return `
+            <div class="task-card" data-task-id="${task.id}" tabindex="0"
+                 aria-label="Задача ${Utils.escapeHTML(task.title)}">
+                <div class="swipe-actions">
+                    <div class="swipe-action edit-action" aria-label="Редактировать задачу">
+                        <i class="fas fa-edit" aria-hidden="true"></i>
+                    </div>
+                    <div class="swipe-action delete-action" aria-label="Удалить задачу">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
+                    </div>
+                </div>
+
+                <div class="card-content">
+                    <div class="card-header">
+                        <h4 class="task-title">${Utils.escapeHTML(task.title)}</h4>
+                        <span class="priority-badge priority-${task.priority}">
+                            ${Utils.escapeHTML(Utils.getPriorityText(task.priority))}
+                        </span>
+                    </div>
+
+                    <p class="task-description">
+                        ${Utils.escapeHTML(task.description || '')}
+                    </p>
+
+                    <div class="task-meta">
+                        <div class="meta-item">
+                            <i class="fas fa-user" aria-hidden="true"></i>
+                            <span>${Utils.escapeHTML(task.assignee?.full_name || 'Не назначен')}</span>
+                        </div>
+                        <div class="meta-item ${isOverdue ? 'overdue' : ''}">
+                            <i class="fas fa-clock" aria-hidden="true"></i>
+                            <span>${task.due_date ? Utils.formatDate(task.due_date) : 'Нет срока'}</span>
+                            ${isOverdue ? '<span class="sr-only">Просрочено</span>' : ''}
+                        </div>
+                    </div>
+
+                    <div class="task-footer">
+                        <span class="status-badge status-${task.status}">
+                            ${Utils.escapeHTML(Utils.getStatusText(task.status))}
+                        </span>
+
+                        ${task.subtasks && task.subtasks.length > 0 ? `
+                            <div class="task-progress">
+                                <span class="progress-text">${progress}%</span>
+                                <div class="progress-bar small">
+                                    <div class="progress-fill" style="width: ${progress}%"></div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    static getRoleText(role) {
+        const roles = {
+            'owner': 'Владелец',
+            'admin': 'Админ',
+            'member': 'Участник',
+            'guest': 'Гость'
+        };
+        return roles[role] || role;
+    }
+
+    static getProjectStatus(project) {
+        if (project.is_private) {
+            return project.requires_approval ? 'Приватный (требует одобрения)' : 'Приватный';
+        }
+        return 'Публичный';
+    }
+
+    static showLoadingState(container) {
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="loading-state" aria-live="polite" aria-busy="true">
+                <div class="spinner" aria-hidden="true"></div>
+                <p>Загрузка...</p>
+            </div>
+        `;
     }
 }
 
