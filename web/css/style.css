@@ -1329,3 +1329,235 @@ body {
     white-space: nowrap;
     border: 0;
 }
+
+/* Project View Styles */
+.project-view-container {
+    display: none;
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+.project-view {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px;
+    padding-bottom: 20px;
+}
+
+.project-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.back-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.project-title-section {
+    flex: 1;
+}
+
+.project-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+}
+
+.project-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.project-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 24px;
+}
+
+.project-info {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    height: fit-content;
+}
+
+.project-description h3 {
+    margin: 0 0 12px 0;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+.project-description p {
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.project-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.meta-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.meta-item:last-child {
+    border-bottom: none;
+}
+
+.project-tasks-section {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.tasks-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.tasks-container {
+    min-height: 200px;
+}
+
+@media (max-width: 768px) {
+    .project-content {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .project-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .project-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .tasks-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+
+/* Join Requests Styles */
+.join-requests-modal {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.join-requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.join-request-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    gap: 16px;
+}
+
+.request-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.request-user-info .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.user-details h5 {
+    margin: 0 0 4px 0;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.user-max-id {
+    margin: 0 0 4px 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.request-date {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.request-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.project-join-requests {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .join-request-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .request-actions {
+        justify-content: stretch;
+    }
+
+    .request-actions .btn {
+        flex: 1;
+    }
+}

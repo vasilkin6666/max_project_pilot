@@ -50,7 +50,7 @@
                         <i class="fas fa-search"></i>
                     </button>
                     <button class="btn btn-primary" id="create-project-btn">
-                        <i class="fas fa-plus"></i> +
+                        <i class="fas fa-plus"></i>
                     </button>
                 </div>
             </div>
@@ -69,28 +69,6 @@
                         <button class="btn btn-outline" id="sort-btn">
                             <i class="fas fa-sort"></i> Сортировка
                         </button>
-                    </div>
-                </section>
-
-                <!-- Dashboard Stats -->
-                <section class="dashboard-stats compact-stats" aria-label="Статистика">
-                    <div class="stats-row">
-                        <div class="stat-item">
-                            <div class="stat-value" id="active-projects-count">0</div>
-                            <div class="stat-label">Активных</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value" id="overdue-tasks-count">0</div>
-                            <div class="stat-label">Просрочено</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value" id="total-tasks-count">0</div>
-                            <div class="stat-label">Всего задач</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value" id="completed-tasks-count">0</div>
-                            <div class="stat-label">Выполнено</div>
-                        </div>
                     </div>
                 </section>
 
@@ -139,7 +117,7 @@
                             </div>
                             <div class="account-details">
                                 <h4 id="settings-user-name">Загрузка...</h4>
-                                <p class="text-muted" id="settings-user-id">ID: загрузка...</p>
+                                <p class="text-muted" id="settings-max-id">MAX ID: загрузка...</p>
                             </div>
                         </div>
                     </div>
@@ -254,6 +232,12 @@
     <script src="js/managers/tasks-manager.js"></script>
     <script src="js/managers/notifications-manager.js"></script>
     <script src="js/managers/users-manager.js"></script>
+
+    <!-- Project View -->
+    <script src="js/views/project-view.js"></script>
+
+    <!-- Join Requests Manager -->
+    <script src="js/managers/join-requests-manager.js"></script>
 
     <!-- App -->
     <script src="js/core/app.js"></script>

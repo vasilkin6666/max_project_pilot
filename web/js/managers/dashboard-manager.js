@@ -108,50 +108,79 @@ class DashboardManager {
     }
 
     static renderProjects(projects) {
-        const container = document.getElementById('projects-list');
-        if (!container) return;
+        try {
+            const container = document.getElementById('projects-list');
+            if (!container) {
+                console.warn('Projects container not found');
+                return;
+            }
 
-        if (!projects || projects.length === 0) {
-            container.innerHTML = this.getEmptyProjectsHTML();
-            return;
-        }
-
-        this.showLoadingState(container);
-
-        requestAnimationFrame(() => {
             container.innerHTML = '';
 
-            // Ограничиваем количество проектов для отображения
-            const projectsToShow = projects.slice(0, 6); // Максимум 6 проектов
+            if (!projects || !Array.isArray(projects) || projects.length === 0) {
+                this.showEmptyState(container, 'Проектов пока нет', 'fa-folder-open', `
+                    <button class="btn btn-primary" onclick="ProjectsManager.showCreateProjectModal()">
+                        <i class="fas fa-plus"></i> Создать проект
+                    </button>
+                `);
+                return;
+            }
 
-            projectsToShow.forEach((projectData, index) => {
+            // Рендерим проекты
+            projects.forEach((projectData, index) => {
                 setTimeout(() => {
                     try {
-                        // Используем данные из dashboard response
                         const project = projectData.project || projectData;
                         const cardHTML = this.renderProjectCardWithTemplate(project);
-                        const card = document.createElement('div');
-                        card.innerHTML = cardHTML;
 
-                        const cardElement = card.firstElementChild;
-                        if (cardElement) {
-                            container.appendChild(cardElement);
-
-                            // Добавляем обработчик клика
-                            cardElement.addEventListener('click', () => {
-                                ProjectsManager.openProjectDetail(project.hash);
-                            });
-
-                            // Анимация появления
-                            cardElement.style.animationDelay = `${index * 50}ms`;
-                            cardElement.classList.add('fade-in');
+                        if (!cardHTML) {
+                            console.error('Empty card HTML for project:', project);
+                            return;
                         }
+
+                        const cardElement = document.createElement('div');
+                        cardElement.innerHTML = cardHTML.trim();
+                        const projectCard = cardElement.firstElementChild;
+
+                        if (!projectCard) {
+                            console.error('Could not create card element for project:', project);
+                            return;
+                        }
+
+                        // Добавляем обработчик клика для открытия полноэкранного view
+                        projectCard.addEventListener('click', () => {
+                            if (typeof ProjectView !== 'undefined') {
+                                ProjectView.openProject(project.hash);
+                            } else {
+                                ProjectsManager.openProjectDetail(project.hash);
+                            }
+                        });
+
+                        projectCard.style.opacity = '0';
+                        projectCard.style.transform = 'translateY(20px)';
+
+                        container.appendChild(projectCard);
+
+                        requestAnimationFrame(() => {
+                            projectCard.style.opacity = '1';
+                            projectCard.style.transform = 'translateY(0)';
+                            projectCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        });
+
                     } catch (error) {
-                        Utils.logError('Error rendering project card:', error);
+                        console.error('Error rendering project card:', error, projectData);
                     }
                 }, index * 50);
             });
-        });
+
+            Utils.log(`Rendered ${projects.length} projects`);
+        } catch (error) {
+            Utils.logError('Error in renderProjects:', error);
+            const container = document.getElementById('projects-list');
+            if (container) {
+                this.showErrorState(container, 'Ошибка отображения проектов');
+            }
+        }
     }
 
     static renderPriorityTasks(tasks) {

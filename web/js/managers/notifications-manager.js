@@ -1,32 +1,134 @@
 // Менеджер уведомлений
 class NotificationsManager {
-    static async loadNotifications() {
-        try {
-            const data = await CacheManager.getWithCache(
-                'notifications',
-                () => ApiService.getNotifications(),
-                'notifications'
-            );
+  static async loadNotifications() {
+      try {
+          const data = await CacheManager.getWithCache(
+              'notifications',
+              () => ApiService.getNotifications(),
+              'notifications'
+          );
 
-            const notifications = data.notifications || [];
-            StateManager.setState('notifications', notifications);
+          const notifications = data.notifications || [];
+          StateManager.setState('notifications', notifications);
 
-            this.updateNotificationBadge(notifications);
+          this.updateNotificationBadge(notifications);
+          this.renderNotifications(notifications);
 
-            // ИСПРАВЛЕНИЕ: сразу рендерим уведомления или пустое состояние
-            this.renderNotifications(notifications);
+          EventManager.emit(APP_EVENTS.NOTIFICATIONS_LOADED, notifications);
 
-            EventManager.emit(APP_EVENTS.NOTIFICATIONS_LOADED, notifications);
+          Utils.log('Notifications loaded successfully', { count: notifications.length });
 
-            Utils.log('Notifications loaded successfully', { count: notifications.length });
+          return notifications;
+      } catch (error) {
+          Utils.logError('Notifications load error:', error);
+          this.showErrorState();
+          throw error;
+      }
+  }
 
-            return notifications;
-        } catch (error) {
-            Utils.logError('Notifications load error:', error);
-            this.showErrorState();
-            throw error;
-        }
-    }
+  static renderNotifications(notifications) {
+      const container = document.getElementById('notifications-list');
+      if (!container) return;
+
+      if (!notifications || notifications.length === 0) {
+          container.innerHTML = this.getEmptyStateHTML();
+          return;
+      }
+
+      // Получаем все проекты для проверки прав
+      const projects = StateManager.getState('projects') || [];
+      const userProjectsWithAccess = projects.filter(project => {
+          const role = project.current_user_role || project.user_role;
+          return ['owner', 'admin'].includes(role);
+      });
+
+      let html = '';
+
+      // Уведомления о заявках на вступление (только для проектов где пользователь владелец/админ)
+      if (userProjectsWithAccess.length > 0) {
+          const joinRequestNotifications = notifications.filter(n =>
+              n.type === 'join_request' ||
+              (n.title && n.title.includes('вступление')) ||
+              (n.message && n.message.includes('хочет присоединиться'))
+          );
+
+          if (joinRequestNotifications.length > 0) {
+              html += `
+                  <div class="notifications-section">
+                      <h4 class="section-title">Заявки на вступление в проекты</h4>
+                      <div class="notifications-list">
+                          ${joinRequestNotifications.map(notification =>
+                              this.renderJoinRequestNotification(notification)
+                          ).join('')}
+                      </div>
+                  </div>
+              `;
+          }
+      }
+
+      // Остальные уведомления
+      const otherNotifications = notifications.filter(n => {
+          const isJoinRequest = n.type === 'join_request' ||
+                              (n.title && n.title.includes('вступление')) ||
+                              (n.message && n.message.includes('хочет присоединиться'));
+          return !isJoinRequest;
+      });
+
+      if (otherNotifications.length > 0) {
+          html += `
+              <div class="notifications-section">
+                  <h4 class="section-title">Системные уведомления</h4>
+                  <div class="notifications-list">
+                      ${otherNotifications.map(notification =>
+                          this.renderSystemNotification(notification)
+                      ).join('')}
+                  </div>
+              </div>
+          `;
+      }
+
+      container.innerHTML = html || this.getEmptyStateHTML();
+  }
+
+  static renderJoinRequestNotification(notification) {
+      const isUnread = !notification.is_read;
+
+      // Извлекаем информацию о проекте из уведомления
+      const projectHash = this.extractProjectHashFromNotification(notification);
+      const userName = notification.data?.user_name || 'Пользователь';
+      const projectName = notification.data?.project_name || 'Проект';
+
+      return `
+          <div class="notification-item join-request ${isUnread ? 'unread' : ''}"
+               data-notification-id="${notification.id}"
+               data-project-hash="${projectHash}">
+              <div class="notification-content">
+                  <div class="notification-icon">
+                      <i class="fas fa-user-plus"></i>
+                  </div>
+                  <div class="notification-details">
+                      <h5 class="notification-title">Запрос на вступление</h5>
+                      <p class="notification-message">
+                          ${Utils.escapeHTML(userName)} хочет присоединиться к проекту "${Utils.escapeHTML(projectName)}"
+                      </p>
+                      <div class="notification-actions">
+                          <button class="btn btn-success btn-sm"
+                                  onclick="JoinRequestsManager.approveJoinRequest('${projectHash}', ${notification.id})">
+                              <i class="fas fa-check"></i> Принять
+                          </button>
+                          <button class="btn btn-danger btn-sm"
+                                  onclick="JoinRequestsManager.rejectJoinRequest('${projectHash}', ${notification.id})">
+                              <i class="fas fa-times"></i> Отклонить
+                          </button>
+                      </div>
+                  </div>
+              </div>
+              <div class="notification-time">
+                  ${Utils.formatDate(notification.created_at)}
+              </div>
+          </div>
+      `;
+  }
 
     static updateNotificationBadge(notifications) {
         const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -52,92 +154,6 @@ class NotificationsManager {
                 navBadge.style.display = 'none';
             }
         }
-    }
-
-    static renderNotifications(notifications) {
-        const container = document.getElementById('notifications-list');
-        if (!container) return;
-
-        if (!notifications || notifications.length === 0) {
-            container.innerHTML = this.getEmptyStateHTML();
-            return;
-        }
-
-        // Фильтруем заявки на вступление
-        const joinRequests = notifications.filter(n =>
-            n.type && (n.type.includes('join') || n.type.includes('request')) ||
-            n.title && n.title.toLowerCase().includes('вступление') ||
-            n.message && n.message.toLowerCase().includes('хочет присоединиться')
-        );
-
-        // Остальные уведомления
-        const otherNotifications = notifications.filter(n => !joinRequests.includes(n));
-
-        let html = '';
-
-        // Запросы на вступление
-        if (joinRequests.length > 0) {
-            html += `
-                <div class="notifications-section">
-                    <h4 class="section-title">Запросы на вступление</h4>
-                    <div class="notifications-list">
-                        ${joinRequests.map(notification =>
-                            this.renderJoinRequestNotification(notification)
-                        ).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        // Остальные уведомления
-        if (otherNotifications.length > 0) {
-            html += `
-                <div class="notifications-section">
-                    <h4 class="section-title">Уведомления</h4>
-                    <div class="notifications-list">
-                        ${otherNotifications.map(notification =>
-                            this.renderSystemNotification(notification)
-                        ).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        container.innerHTML = html;
-    }
-
-    static renderJoinRequestNotification(notification) {
-        const isUnread = !notification.is_read;
-        const projectHash = this.extractProjectHashFromNotification(notification);
-
-        return `
-            <div class="notification-item join-request ${isUnread ? 'unread' : ''}"
-                 data-notification-id="${notification.id}"
-                 data-project-hash="${projectHash}">
-                <div class="notification-content">
-                    <div class="notification-icon">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <div class="notification-details">
-                        <h5 class="notification-title">${Utils.escapeHTML(notification.title)}</h5>
-                        <p class="notification-message">${Utils.escapeHTML(notification.message)}</p>
-                        <div class="notification-actions">
-                            <button class="btn btn-success btn-sm"
-                                    onclick="NotificationsManager.approveJoinRequest('${notification.id}', '${projectHash}')">
-                                <i class="fas fa-check"></i> Принять
-                            </button>
-                            <button class="btn btn-danger btn-sm"
-                                    onclick="NotificationsManager.rejectJoinRequest('${notification.id}', '${projectHash}')">
-                                <i class="fas fa-times"></i> Отклонить
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="notification-time">
-                    ${Utils.formatDate(notification.created_at)}
-                </div>
-            </div>
-        `;
     }
 
     static renderTaskNotification(notification) {

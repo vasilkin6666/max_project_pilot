@@ -235,12 +235,18 @@ class ProjectsManager {
 
     static async openProjectDetail(projectHash) {
         try {
-            const projectData = await CacheManager.getWithCache(
-                `project-${projectHash}`,
-                () => ApiService.getProject(projectHash),
-                'projects'
-            );
-            this.showProjectDetailModal(projectData);
+            // Используем новый полноэкранный view вместо модального окна
+            if (typeof ProjectView !== 'undefined') {
+                await ProjectView.openProject(projectHash);
+            } else {
+                // Fallback на старый метод
+                const projectData = await CacheManager.getWithCache(
+                    `project-${projectHash}`,
+                    () => ApiService.getProject(projectHash),
+                    'projects'
+                );
+                this.showProjectDetailModal(projectData);
+            }
         } catch (error) {
             Utils.logError('Error opening project detail:', error);
             ToastManager.error('Ошибка загрузки проекта');

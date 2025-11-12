@@ -41,9 +41,7 @@ class UsersManager {
 
             const avatar = document.getElementById('settings-user-avatar');
             const name = document.getElementById('settings-user-name');
-            const userId = document.getElementById('settings-user-id');
-            const email = document.getElementById('settings-user-email');
-            const role = document.getElementById('settings-user-role');
+            const maxId = document.getElementById('settings-max-id');
 
             if (avatar) {
                 const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
@@ -55,17 +53,9 @@ class UsersManager {
                 name.textContent = user.full_name || user.username || 'Пользователь';
             }
 
-            if (userId) {
-                userId.textContent = `ID: ${user.id || 'неизвестен'}`;
-            }
-
-            if (email) {
-                email.textContent = `Email: ${user.email || 'не указан'}`;
-            }
-
-            if (role) {
-                const roleText = user.role ? this.getRoleText(user.role) : 'Участник';
-                role.textContent = `Роль: ${roleText}`;
+            if (maxId) {
+                // Отображаем MAX ID из данных пользователя
+                maxId.textContent = `MAX ID: ${user.max_id || user.id || 'неизвестен'}`;
             }
         } catch (error) {
             Utils.logError('Error updating account settings info:', error);
