@@ -264,16 +264,16 @@ class AuthManager {
                 }
             }
 
-            // 4. Если ничего не сработало - выходим
+            // 4. Если ничего не сработало - очищаем данные и перезагружаем
             Utils.logError('Silent re-authentication failed');
-            await this.logout();
+            this.clearAuthData();
+            setTimeout(() => window.location.reload(), 1000);
             return false;
 
         } catch (error) {
             Utils.logError('Token refresh failed:', error);
-
-            // При ошибке обновления токена выходим
-            await this.logout();
+            this.clearAuthData();
+            setTimeout(() => window.location.reload(), 1000);
             return false;
         }
     }

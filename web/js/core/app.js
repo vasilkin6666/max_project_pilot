@@ -71,17 +71,17 @@ class App {
 
         Utils.log('Starting core systems initialization...');
 
-        // 1. State Manager
-        if (typeof StateManager !== 'undefined') {
+        // 1. State Manager (только один раз)
+        if (typeof StateManager !== 'undefined' && !StateManager.initialized) {
             StateManager.init();
+            StateManager.initialized = true;
             Utils.log('State manager initialized');
-        } else {
-            throw new Error('StateManager not loaded');
         }
 
-        // 2. Cache Manager
-        if (typeof CacheManager !== 'undefined') {
+        // 2. Cache Manager (только один раз)
+        if (typeof CacheManager !== 'undefined' && !CacheManager.initialized) {
             CacheManager.init();
+            CacheManager.initialized = true;
             Utils.log('Cache manager initialized');
         }
 
@@ -90,21 +90,24 @@ class App {
             Utils.log('Persistence manager available');
         }
 
-        // 4. Swipe Manager
-        if (typeof SwipeManager !== 'undefined') {
+        // 4. Swipe Manager (только один раз)
+        if (typeof SwipeManager !== 'undefined' && !SwipeManager.initialized) {
             SwipeManager.init();
+            SwipeManager.initialized = true;
             Utils.log('Swipe manager initialized');
         }
 
-        // 5. Haptic Manager
-        if (typeof HapticManager !== 'undefined') {
+        // 5. Haptic Manager (только один раз)
+        if (typeof HapticManager !== 'undefined' && !HapticManager.initialized) {
             HapticManager.init();
+            HapticManager.initialized = true;
             Utils.log('Haptic manager initialized');
         }
 
-        // 6. Users Manager
-        if (typeof UsersManager !== 'undefined') {
+        // 6. Users Manager (только один раз)
+        if (typeof UsersManager !== 'undefined' && !UsersManager.initialized) {
             UsersManager.init();
+            UsersManager.initialized = true;
             Utils.log('Users manager initialized');
         }
 
@@ -116,12 +119,6 @@ class App {
 
         // 8. Dashboard Manager
         if (typeof DashboardManager !== 'undefined') {
-            // Загружаем дашборд после успешной аутентификации
-            EventManager.on(APP_EVENTS.USER_LOGIN, () => {
-                setTimeout(() => {
-                    DashboardManager.loadDashboard();
-                }, 1000);
-            });
             Utils.log('Dashboard manager initialized');
         }
 
@@ -136,7 +133,7 @@ class App {
 
         Utils.log('All core systems initialized successfully');
     }
-
+    
     static setupErrorHandling() {
         // Глобальный обработчик ошибок
         window.addEventListener('error', (event) => {

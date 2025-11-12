@@ -17,21 +17,24 @@ class UIComponents {
     static async loadTemplates() {
         try {
             const templateFiles = [
-                'templates/project-card.html',
-                'templates/task-card.html',
-                'templates/notification-item.html',
-                'templates/modals/create-project.html',
-                'templates/modals/create-task.html',
-                'templates/modals/settings.html'
+                './templates/project-card.html',
+                './templates/task-card.html',
+                './templates/notification-item.html',
+                './templates/modals/create-project.html',
+                './templates/modals/create-task.html',
+                './templates/modals/settings.html'
             ];
 
             let loadedCount = 0;
 
             for (const file of templateFiles) {
                 try {
+                    // Используем правильный путь
                     const response = await fetch(file);
                     if (response.ok) {
                         const html = await response.text();
+
+                        // Ищем template в загруженном HTML
                         const templateMatch = html.match(/<script[^>]*id="([^"]+)"[^>]*type="text\/template"[^>]*>([\s\S]*?)<\/script>/);
                         if (templateMatch) {
                             const templateId = templateMatch[1];
@@ -40,13 +43,22 @@ class UIComponents {
                             loadedCount++;
                             console.log(`✅ Loaded template: ${templateId} from ${file}`);
                         } else {
-                            console.warn(`❌ No template found in: ${file}`);
+                            // Если не нашли script template, используем весь HTML как шаблон
+                            const fileName = file.split('/').pop().replace('.html', '');
+                            const templateId = `${fileName}-template`;
+                            this.templates.set(templateId, html);
+                            loadedCount++;
+                            console.log(`✅ Loaded entire file as template: ${templateId} from ${file}`);
                         }
                     } else {
                         console.warn(`❌ Failed to load template: ${file}`, response.status);
+                        // Создаем fallback шаблон
+                        this.createFallbackTemplate(file);
                     }
                 } catch (error) {
                     Utils.logError(`Error loading template ${file}:`, error);
+                    // Создаем fallback шаблон при ошибке
+                    this.createFallbackTemplate(file);
                 }
             }
 
@@ -62,19 +74,144 @@ class UIComponents {
 
             Utils.log('Templates loaded', { count: loadedCount });
 
-            // Проверяем наличие ключевых шаблонов
-            const requiredTemplates = ['project-card-template', 'task-card-template'];
-            requiredTemplates.forEach(templateId => {
-                if (!this.templates.has(templateId)) {
-                    console.error(`🚨 REQUIRED TEMPLATE MISSING: ${templateId}`);
-                } else {
-                    console.log(`✅ Required template available: ${templateId}`);
-                }
-            });
+            // Проверяем наличие ключевых шаблонов и создаем fallback если нужно
+            this.ensureRequiredTemplates();
 
         } catch (error) {
             Utils.logError('Error loading templates:', error);
+            // Создаем базовые fallback шаблоны
+            this.createFallbackTemplates();
         }
+    }
+
+    static ensureRequiredTemplates() {
+        const requiredTemplates = {
+            'project-card-template': `
+                <div class="project-card" data-project-hash="{{hash}}">
+                    <div class="card-header">
+                        <h3 class="project-title">{{title}}</h3>
+                        <div class="project-badges">
+                            <span class="project-privacy {{#if isPrivate}}private{{else}}public{{/if}}">
+                                {{#if isPrivate}}🔒 Приватный{{else}}🌐 Публичный{{/if}}
+                            </span>
+                            <span class="project-role {{role}}">{{roleText}}</span>
+                        </div>
+                    </div>
+                    <p class="project-description">{{description}}</p>
+                    <div class="project-stats">
+                        <div class="stat">
+                            <i class="fas fa-users"></i>
+                            <span>{{membersCount}}</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-tasks"></i>
+                            <span>{{tasksCount}}</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-check-circle"></i>
+                            <span>{{tasksDone}}</span>
+                        </div>
+                    </div>
+                    {{#if tasksCount}}
+                    <div class="progress-section">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{progress}}%"></div>
+                        </div>
+                        <span class="progress-text">{{progress}}%</span>
+                    </div>
+                    {{/if}}
+                    <div class="project-footer">
+                        <div class="task-breakdown">
+                            <span class="task-todo">{{tasksTodo}} к выполнению</span>
+                            <span class="task-in-progress">{{tasksInProgress}} в работе</span>
+                        </div>
+                        {{#if canInvite}}
+                        {{#if isPrivate}}
+                        <button class="btn btn-sm btn-outline share-btn" onclick="ProjectsManager.showInviteDialog('{{hash}}')">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                        {{/if}}
+                        {{/if}}
+                    </div>
+                </div>
+            `,
+            'task-card-template': `
+                <div class="task-card" data-task-id="{{id}}">
+                    <div class="swipe-actions">
+                        <div class="swipe-action edit-action">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <div class="swipe-action delete-action">
+                            <i class="fas fa-trash"></i>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-header">
+                            <h4 class="task-title">{{title}}</h4>
+                            <span class="priority-badge priority-{{priority}}">{{priorityText}}</span>
+                        </div>
+                        <p class="task-description">{{description}}</p>
+                        <div class="task-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-user"></i>
+                                <span>{{assignee}}</span>
+                            </div>
+                            <div class="meta-item {{#if isOverdue}}overdue{{/if}}">
+                                <i class="fas fa-clock"></i>
+                                <span>{{dueDate}}</span>
+                            </div>
+                        </div>
+                        <div class="task-footer">
+                            <span class="status-badge status-{{status}}">{{statusText}}</span>
+                            {{#if hasSubtasks}}
+                            <div class="task-progress">
+                                <span class="progress-text">{{progress}}%</span>
+                                <div class="progress-bar small">
+                                    <div class="progress-fill" style="width: {{progress}}%"></div>
+                                </div>
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        Object.entries(requiredTemplates).forEach(([templateId, templateContent]) => {
+            if (!this.templates.has(templateId)) {
+                console.warn(`Creating fallback template: ${templateId}`);
+                this.templates.set(templateId, templateContent);
+            } else {
+                console.log(`✅ Required template available: ${templateId}`);
+            }
+        });
+    }
+
+    static createFallbackTemplate(file) {
+        const fileName = file.split('/').pop().replace('.html', '');
+        const templateId = `${fileName}-template`;
+
+        let fallbackContent = '';
+
+        switch(templateId) {
+            case 'project-card-template':
+                fallbackContent = this.createProjectCardFallback({});
+                break;
+            case 'task-card-template':
+                fallbackContent = this.createTaskCard({});
+                break;
+            case 'notification-item-template':
+                fallbackContent = '<div class="notification-item">{{message}}</div>';
+                break;
+            default:
+                fallbackContent = `<div class="fallback-template">Шаблон ${templateId}</div>`;
+        }
+
+        this.templates.set(templateId, fallbackContent);
+    }
+
+    static createFallbackTemplates() {
+        this.ensureRequiredTemplates();
     }
 
     static renderTemplate(templateId, data) {

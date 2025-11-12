@@ -1,5 +1,6 @@
 // Менеджер состояния приложения
 class StateManager {
+    static initialized = false;
     static state = {
         user: null,
         projects: [],
@@ -22,7 +23,8 @@ class StateManager {
                 query: '',
                 results: [],
                 active: false
-            }
+            },
+            hasUnsavedChanges: false
         }
     };
 
@@ -31,12 +33,18 @@ class StateManager {
     static maxHistorySize = 50;
 
     static init() {
+        if (this.initialized) {
+            Utils.log('State manager already initialized');
+            return;
+        }
+
         // Загружаем состояние из localStorage
         this.loadState();
 
         // Настраиваем отслеживание изменений
         this.setupPersistence();
 
+        this.initialized = true;
         Utils.log('State manager initialized');
     }
 
@@ -187,9 +195,16 @@ class StateManager {
             const stateToSave = {
                 user: this.state.user,
                 ui: {
-                    theme: this.state.ui.theme
-                }
-                // Сохраняем только необходимые данные
+                    theme: this.state.ui.theme,
+                    currentView: this.state.ui.currentView
+                },
+                // Сохраняем только необходимые данные для производительности
+                projects: this.state.projects.map(p => ({
+                    id: p.id,
+                    hash: p.hash,
+                    title: p.title,
+                    // Минимальные данные для быстрой загрузки
+                }))
             };
 
             localStorage.setItem('app_state', JSON.stringify(stateToSave));
@@ -207,11 +222,15 @@ class StateManager {
                 // Восстанавливаем состояние
                 if (parsed.user) this.state.user = parsed.user;
                 if (parsed.ui?.theme) this.state.ui.theme = parsed.ui.theme;
+                if (parsed.ui?.currentView) this.state.ui.currentView = parsed.ui.currentView;
+                if (parsed.projects) this.state.projects = parsed.projects;
 
                 Utils.log('State loaded from localStorage');
             }
         } catch (error) {
             Utils.logError('Failed to load state:', error);
+            // В случае ошибки очищаем поврежденное состояние
+            localStorage.removeItem('app_state');
         }
     }
 
@@ -238,7 +257,8 @@ class StateManager {
                     query: '',
                     results: [],
                     active: false
-                }
+                },
+                hasUnsavedChanges: false
             }
         };
 
@@ -274,6 +294,10 @@ class StateManager {
 
     static setTheme(theme) {
         this.updateState('ui', ui => ({ ...ui, theme }));
+    }
+
+    static setUnsavedChanges(hasChanges) {
+        this.updateState('ui', ui => ({ ...ui, hasUnsavedChanges: hasChanges }));
     }
 
     static addProject(project) {
@@ -334,6 +358,119 @@ class StateManager {
                 Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
             return progress < 100;
         }).length;
+    }
+
+    static getOverdueTasksCount() {
+        const now = new Date();
+        return this.state.tasks.filter(task => {
+            if (!task.due_date) return false;
+            const dueDate = new Date(task.due_date);
+            return dueDate < now && task.status !== 'done';
+        }).length;
+    }
+
+    static getTotalTasksCount() {
+        return this.state.tasks.length;
+    }
+
+    static getCompletedTasksCount() {
+        return this.state.tasks.filter(task => task.status === 'done').length;
+    }
+
+    // Методы для работы с поиском
+    static setSearchQuery(query) {
+        this.updateState('ui.search', search => ({ ...search, query }));
+    }
+
+    static setSearchResults(results) {
+        this.updateState('ui.search', search => ({ ...search, results }));
+    }
+
+    static setSearchActive(active) {
+        this.updateState('ui.search', search => ({ ...search, active }));
+    }
+
+    // Методы для работы с модальными окнами
+    static setActiveModal(modalName, data = null) {
+        this.updateState('ui.modals', modals => ({
+            ...modals,
+            active: modalName,
+            data
+        }));
+    }
+
+    static closeActiveModal() {
+        this.updateState('ui.modals', modals => ({
+            ...modals,
+            active: null,
+            data: null
+        }));
+    }
+
+    // Методы для статистики
+    static updateDashboardStats() {
+        const stats = {
+            activeProjects: this.getActiveProjectsCount(),
+            overdueTasks: this.getOverdueTasksCount(),
+            totalTasks: this.getTotalTasksCount(),
+            completedTasks: this.getCompletedTasksCount(),
+            unreadNotifications: this.getUnreadNotificationsCount()
+        };
+
+        this.updateState('dashboard.stats', stats);
+        return stats;
+    }
+
+    // Валидация состояния
+    static validateState() {
+        const errors = [];
+
+        // Проверяем обязательные поля
+        if (!this.state.ui) {
+            errors.push('UI state is missing');
+        }
+
+        if (!Array.isArray(this.state.projects)) {
+            errors.push('Projects should be an array');
+        }
+
+        if (!Array.isArray(this.state.tasks)) {
+            errors.push('Tasks should be an array');
+        }
+
+        if (!Array.isArray(this.state.notifications)) {
+            errors.push('Notifications should be an array');
+        }
+
+        return errors;
+    }
+
+    // Сброс к дефолтному состоянию (для тестирования)
+    static resetToDefault() {
+        this.clearState();
+        this.init();
+    }
+
+    // Экспорт состояния для отладки
+    static exportState() {
+        return {
+            state: this.getState(),
+            historySize: this.history.length,
+            subscribers: Array.from(this.subscribers.keys()),
+            initialized: this.initialized
+        };
+    }
+
+    // Импорт состояния (осторожно!)
+    static importState(newState) {
+        if (typeof newState === 'object' && newState !== null) {
+            this.state = this.deepClone(newState);
+            this.notifyAllSubscribers();
+            this.saveState();
+            Utils.log('State imported successfully');
+            return true;
+        }
+        return false;
     }
 }
 
