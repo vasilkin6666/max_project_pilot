@@ -36,7 +36,7 @@ class AuthManager {
         // 1. MAX (Telegram Web App)
         // 2. Тестовая аутентификация (только для разработки)
 
-        if (Utils.isMaxEnvironment() && window.WebApp.initDataUnsafe?.user) {
+        if (Utils.isMaxEnvironment() && window.WebApp?.initDataUnsafe?.user) {
             Utils.log('Attempting MAX authentication');
             const maxSuccess = await this.handleMaxAuth();
             if (maxSuccess) return;
@@ -160,7 +160,7 @@ class AuthManager {
 
         // Сохраняем данные пользователя
         this.currentUser = tokenData.user;
-        this.currentUserId = tokenData.user.id;
+        this.currentUserId = tokenData.user?.id;
         this.isAuthenticated = true;
 
         // Запускаем периодическую проверку токена
@@ -173,7 +173,7 @@ class AuthManager {
         EventManager.emit(APP_EVENTS.USER_LOGIN, this.currentUser);
 
         Utils.log('Authentication successful', {
-            user: this.currentUser.full_name,
+            user: this.currentUser?.full_name,
             id: this.currentUserId
         });
     }
@@ -246,7 +246,7 @@ class AuthManager {
             Utils.log('Token expired, attempting silent re-authentication');
 
             // 2. Пробуем переаутентифицироваться тем же методом
-            if (Utils.isMaxEnvironment() && window.WebApp.initDataUnsafe?.user) {
+            if (Utils.isMaxEnvironment() && window.WebApp?.initDataUnsafe?.user) {
                 // MAX аутентификация
                 const success = await this.handleMaxAuth();
                 if (success) {

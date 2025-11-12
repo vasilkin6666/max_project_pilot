@@ -9,24 +9,30 @@
     -webkit-backdrop-filter: blur(10px);
     border-top: 1px solid var(--border-color);
     height: 60px;
-    z-index: 1000; /* Увеличиваем z-index */
-    transform: none !important; /* Убираем любые трансформации */
+    z-index: 1000;
+    transform: none !important;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 12px;
 }
 
 .nav-item {
     position: relative;
     background: transparent;
     border: none;
-    padding: var(--spacing-sm) var(--spacing-xs);
+    padding: 6px 4px;
     color: var(--text-secondary);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 4px;
     font-size: 0.75rem;
     transition: var(--transition);
     flex: 1;
-    min-height: 60px;
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 .nav-item:hover {
@@ -39,17 +45,19 @@
 }
 
 .nav-item i {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
+    transition: var(--transition);
 }
 
 .nav-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 500;
+    line-height: 1;
 }
 
 .nav-badge {
     position: absolute;
-    top: 8px;
+    top: 6px;
     right: 8px;
     background: var(--danger-color);
     color: white;
@@ -63,6 +71,7 @@
     justify-content: center;
     transform: scale(0.9);
     transition: transform 0.2s ease;
+    z-index: 2;
 }
 
 .nav-item:hover .nav-badge {
@@ -88,6 +97,7 @@
     border: none;
     color: var(--text-secondary);
     transition: var(--transition);
+    cursor: pointer;
 }
 
 .btn-icon:hover {
@@ -104,6 +114,7 @@
     background: transparent;
     border: 2px solid transparent;
     transition: var(--transition);
+    cursor: pointer;
 }
 
 .btn-avatar:hover {
@@ -112,9 +123,21 @@
 
 /* Search overlay */
 .search-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
+    z-index: 1100;
+    display: none;
+}
+
+.search-overlay.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
 }
 
 .search-container {
@@ -124,6 +147,7 @@
     max-height: 80vh;
     display: flex;
     flex-direction: column;
+    box-shadow: var(--shadow-dark);
 }
 
 .search-header {
@@ -263,11 +287,13 @@
     opacity: 0;
     transform: translateY(10px);
     transition: all 0.3s ease;
+    display: none;
 }
 
 .view.active {
     opacity: 1;
     transform: translateY(0);
+    display: block;
 }
 
 /* Quick actions */
@@ -284,32 +310,72 @@
     gap: var(--spacing-sm);
 }
 
+/* Стили для результатов поиска публичных проектов */
+.result-owner {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: var(--spacing-xs) 0 0 0;
+}
+
+.search-result-item .badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+}
+
+/* Animation for active states */
+@keyframes navPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.nav-item.active i {
+    animation: navPulse 0.3s ease;
+}
+
+/* Focus states for accessibility */
+.nav-item:focus-visible,
+.btn-icon:focus-visible,
+.btn-avatar:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.search-input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-color);
+}
+
 /* Responsive navigation */
 @media (max-width: 768px) {
+    .main-content {
+        padding-bottom: 70px;
+        padding-bottom: calc(70px + env(safe-area-inset-bottom));
+    }
 
-  .main-content {
-      padding-bottom: 70px;
-      /* Добавляем safe-area для современных мобильных браузеров */
-      padding-bottom: calc(70px + env(safe-area-inset-bottom));
-  }
-
-  .bottom-nav {
-      height: 56px;
-      /* Учитываем безопасные зоны на iPhone X и новее */
-      padding-bottom: env(safe-area-inset-bottom);
-  }
+    .bottom-nav {
+        height: 56px;
+        padding-bottom: env(safe-area-inset-bottom);
+        padding: 6px 8px;
+    }
 
     .nav-item {
-        min-height: 56px;
-        padding: var(--spacing-xs);
+        min-height: 44px;
+        padding: 4px 2px;
     }
 
     .nav-item i {
-        font-size: 1.125rem;
+        font-size: 1rem;
     }
 
     .nav-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
     }
 
     .header-actions {
@@ -345,53 +411,55 @@
         padding: var(--spacing-sm);
     }
 
+    .bottom-nav {
+        height: 52px;
+        padding: 4px 6px;
+    }
+
     .nav-item {
-        min-height: 52px;
+        min-height: 40px;
+        padding: 2px 1px;
+    }
+
+    .nav-item i {
+        font-size: 0.9rem;
     }
 
     .nav-label {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
+    }
+
+    .nav-badge {
+        width: 16px;
+        height: 16px;
+        font-size: 0.5rem;
+        top: 4px;
+        right: 6px;
     }
 }
 
-/* Animation for active states */
-@keyframes navPulse {
-    0% {
-        transform: scale(1);
+/* Улучшения для тач-устройств */
+@media (hover: none) and (pointer: coarse) {
+    .nav-item {
+        min-height: 44px;
+        min-width: 44px;
     }
-    50% {
-        transform: scale(1.1);
+
+    .btn-icon {
+        min-height: 44px;
+        min-width: 44px;
     }
-    100% {
-        transform: scale(1);
+}
+
+/* Поддержка уменьшенного движения */
+@media (prefers-reduced-motion: reduce) {
+    .nav-item,
+    .btn-icon,
+    .btn-avatar {
+        transition: none;
     }
-}
 
-.nav-item.active i {
-    animation: navPulse 0.3s ease;
-}
-
-/* Focus states for accessibility */
-.nav-item:focus-visible,
-.btn-icon:focus-visible,
-.btn-avatar:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-.search-input:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--primary-color);
-}
-
-/* Стили для результатов поиска публичных проектов */
-.result-owner {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin: var(--spacing-xs) 0 0 0;
-}
-
-.search-result-item .badge {
-    font-size: 0.7rem;
-    padding: 2px 6px;
+    .nav-item.active i {
+        animation: none;
+    }
 }

@@ -9,7 +9,7 @@ class ApiService {
         const urlParams = new URLSearchParams();
 
         Object.keys(params).forEach(key => {
-            if (params[key] !== null && params[key] !== undefined) {
+            if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
                 urlParams.append(key, params[key]);
             }
         });
@@ -133,12 +133,22 @@ class ApiService {
 
     // ==================== ДАШБОРД ====================
     static async getDashboard() {
-        return await this.apiCall('/dashboard/');
+        try {
+            return await this.apiCall('/dashboard/');
+        } catch (error) {
+            Utils.logError('Dashboard API error:', error);
+            // Возвращаем fallback данные
+            return {
+                settings: {},
+                projects: [],
+                recent_tasks: []
+            };
+        }
     }
 
     // ==================== ПРОЕКТЫ ====================
-    static async getProjects() {
-        return await this.apiCall('/projects/');
+    static async getProjects(filters = {}) {
+        return await this.apiCall('/projects/', 'GET', null, filters);
     }
 
     static async createProject(projectData) {
@@ -217,7 +227,7 @@ class ApiService {
     }
 
     static async updateTaskStatus(taskId, status) {
-        return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', null, { status });
+        return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', { status });
     }
 
     // ==================== ЗАВИСИМОСТИ ЗАДАЧ ====================
@@ -289,6 +299,26 @@ class ApiService {
                 }
                 throw error;
             }
+        }
+    }
+
+    // Новый метод для обработки ошибок сети
+    static isNetworkError(error) {
+        return error.message?.includes('network') ||
+               error.message?.includes('Network') ||
+               error.message?.includes('fetch') ||
+               error.name === 'TypeError';
+    }
+
+    // Новый метод для безопасных запросов
+    static async safeApiCall(endpoint, method = 'GET', data = null, params = {}) {
+        try {
+            return await this.apiCall(endpoint, method, data, params);
+        } catch (error) {
+            if (this.isNetworkError(error)) {
+                throw new Error('Проблемы с подключением к интернету. Проверьте соединение.');
+            }
+            throw error;
         }
     }
 }

@@ -3,6 +3,7 @@ const CONFIG = {
     API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api',
     APP_NAME: 'Project Pilot',
     VERSION: '1.0.0',
+    ENV: 'development', // или 'production'
 
     // Настройки кэширования
     CACHE_TTL: {

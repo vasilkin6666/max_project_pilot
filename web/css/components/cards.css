@@ -6,8 +6,8 @@
     background: var(--bg-secondary);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
+    padding: 12px;
+    margin-bottom: 8px;
     transition: var(--transition);
     border: 1px solid var(--border-color);
     position: relative;
@@ -99,7 +99,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 8px;
     gap: var(--spacing-sm);
     position: relative;
 }
@@ -128,7 +128,7 @@
 .task-description {
     font-size: 0.875rem;
     color: var(--text-secondary);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 12px;
     line-height: 1.4;
     overflow: hidden;
     display: -webkit-box;
@@ -159,7 +159,7 @@
     font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
-    flex-shrink: 0; /* Важно: не сжимается */
+    flex-shrink: 0;
 }
 
 .role-badge {
@@ -205,7 +205,7 @@
 .project-stats {
     display: flex;
     gap: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 12px;
 }
 
 .stat {
@@ -225,7 +225,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 8px;
 }
 
 .progress-bar {
@@ -259,7 +259,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: var(--spacing-sm);
+    margin-top: 8px;
 }
 
 .project-status {
@@ -271,7 +271,7 @@
 .task-meta {
     display: flex;
     gap: var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 8px;
 }
 
 .meta-item {
@@ -304,7 +304,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: var(--spacing-md);
+    padding: 12px;
     border-left: 4px solid transparent;
     transition: var(--transition);
 }
@@ -373,7 +373,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-md);
+    padding: 12px;
 }
 
 .member-info {
@@ -385,7 +385,7 @@
 .member-avatar {
     width: 40px;
     height: 40px;
-    border-radius: 50%; /* Убедимся, что тоже круглые */
+    border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-color), var(--info-color));
     display: flex;
     align-items: center;
@@ -393,6 +393,7 @@
     color: white;
     font-weight: 600;
     font-size: 0.875rem;
+    flex-shrink: 0;
 }
 
 .member-details h6 {
@@ -470,24 +471,84 @@
         transparent 100%);
 }
 
+/* Utility Classes для свайпов */
+.swipes-disabled .project-card,
+.swipes-disabled .task-card {
+    transform: none !important;
+    pointer-events: none;
+}
+
+.swipes-disabled .swipe-action {
+    display: none !important;
+}
+
+/* Индикатор загрузки для жестов */
+.swipe-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.swipe-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent);
+    animation: swipeLoading 1.5s infinite;
+}
+
+@keyframes swipeLoading {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Анимации для взаимодействий */
+@keyframes gentleBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.98); }
+}
+
+.long-press-feedback {
+    animation: gentleBounce 0.5s ease;
+}
+
+/* Подсветка для фокуса при навигации с клавиатуры */
+.project-card:focus-visible,
+.task-card:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
+    .project-card,
+    .task-card {
+        padding: 10px;
+        margin-bottom: 8px;
+    }
 
-  .card-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: var(--spacing-sm);
-  }
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+        margin-bottom: 6px;
+    }
 
-  .role-badge {
-      position: absolute;
-      top: 0;
-      right: 0;
-  }
+    .role-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
 
     .project-stats {
         flex-wrap: wrap;
         gap: var(--spacing-sm);
+        margin-bottom: 8px;
     }
 
     .task-meta {
@@ -530,7 +591,8 @@
 @media (max-width: 480px) {
     .project-card,
     .task-card {
-        padding: var(--spacing-sm);
+        padding: 8px;
+        margin-bottom: 6px;
     }
 
     .card-header {
@@ -542,7 +604,7 @@
     .project-title,
     .task-title {
         margin-right: 0;
-        -webkit-line-clamp: 1; /* На мобильных 1 строка */
+        -webkit-line-clamp: 1;
         max-height: 1.4em;
     }
 
@@ -588,11 +650,8 @@
     .task-card {
         transition: none;
     }
-}
 
-/* Подсветка для фокуса при навигации с клавиатуры */
-.project-card:focus-visible,
-.task-card:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
+    .progress-fill {
+        transition: none;
+    }
 }

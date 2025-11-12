@@ -182,7 +182,9 @@ class Utils {
 
     // Логирование
     static log(message, data = null) {
-        console.log(`[LOG] ${new Date().toISOString()} - ${message}`, data || '');
+        if (CONFIG.ENV === 'development') {
+            console.log(`[LOG] ${new Date().toISOString()} - ${message}`, data || '');
+        }
     }
 
     // Логирование ошибок
@@ -245,6 +247,73 @@ class Utils {
         if (total === 0) return 0;
         return Math.round((completed / total) * 100);
     }
+
+    // Новые методы для улучшения UX
+    static formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    static generateGradient(seed) {
+        const colors = [
+            ['#7367f0', '#ce9ffc'],
+            ['#28c76f', '#81fbb8'],
+            ['#ff9f43', '#ffcf71'],
+            ['#ea5455', '#feb692'],
+            ['#00cfe8', '#6ae9ff']
+        ];
+        const index = Math.abs(seed) % colors.length;
+        return colors[index];
+    }
+
+    static sanitizeInput(input) {
+        if (typeof input !== 'string') return '';
+        return input
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;')
+            .replace(/\//g, '&#x2F;');
+    }
+
+    static async copyToClipboard(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (error) {
+            // Fallback для старых браузеров
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                return true;
+            } catch (fallbackError) {
+                return false;
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+    }
+
+    static isOnline() {
+        return navigator.onLine;
+    }
+
+    static getBrowserInfo() {
+        const ua = navigator.userAgent;
+        return {
+            isChrome: /Chrome/.test(ua),
+            isFirefox: /Firefox/.test(ua),
+            isSafari: /Safari/.test(ua),
+            isEdge: /Edge/.test(ua),
+            isMobile: this.isMobile()
+        };
+    }
 }
 
 // Toast уведомления
@@ -261,12 +330,12 @@ class ToastManager {
         };
 
         const toastHTML = `
-            <div id="${toastId}" class="toast toast-${type}" role="alert">
+            <div id="${toastId}" class="toast toast-${type}" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="toast-content">
-                    <i class="fas ${icons[type] || 'fa-info-circle'} toast-icon"></i>
+                    <i class="fas ${icons[type] || 'fa-info-circle'} toast-icon" aria-hidden="true"></i>
                     <div class="toast-message">${Utils.escapeHTML(message)}</div>
-                    <button class="toast-close" onclick="this.parentElement.parentElement.remove()">
-                        <i class="fas fa-times"></i>
+                    <button class="toast-close" onclick="this.parentElement.parentElement.remove()" aria-label="Закрыть">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
@@ -292,6 +361,8 @@ class ToastManager {
         const container = document.createElement('div');
         container.id = 'toast-container';
         container.className = 'toast-container';
+        container.setAttribute('aria-live', 'polite');
+        container.setAttribute('aria-atomic', 'true');
         document.body.appendChild(container);
         return container;
     }
@@ -310,6 +381,46 @@ class ToastManager {
 
     static info(message, duration = 4000) {
         return this.showToast(message, 'info', duration);
+    }
+
+    // Новый метод для прогресс-уведомлений
+    static showProgressToast(message, progress = 0) {
+        const toastId = 'progress-toast-' + Date.now();
+        const toastHTML = `
+            <div id="${toastId}" class="toast toast-info" role="alert">
+                <div class="toast-content">
+                    <i class="fas fa-spinner fa-spin toast-icon"></i>
+                    <div class="toast-message">
+                        <div>${Utils.escapeHTML(message)}</div>
+                        <div class="progress mt-2">
+                            <div class="progress-bar" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const container = document.getElementById('toast-container') || this.createToastContainer();
+        container.insertAdjacentHTML('beforeend', toastHTML);
+
+        return {
+            updateProgress: (newProgress) => {
+                const progressBar = document.querySelector(`#${toastId} .progress-bar`);
+                if (progressBar) {
+                    progressBar.style.width = `${newProgress}%`;
+                }
+            },
+            updateMessage: (newMessage) => {
+                const messageEl = document.querySelector(`#${toastId} .toast-message div:first-child`);
+                if (messageEl) {
+                    messageEl.textContent = newMessage;
+                }
+            },
+            close: () => {
+                const toast = document.getElementById(toastId);
+                if (toast) toast.remove();
+            }
+        };
     }
 }
 

@@ -4,36 +4,44 @@ class DashboardManager {
         try {
             StateManager.setLoading(true);
 
-            const [dashboardData, projectsData, tasksData] = await Promise.all([
-                CacheManager.getWithCache(
-                    'dashboard',
-                    () => ApiService.getDashboard(),
-                    'dashboard'
-                ),
-                CacheManager.getWithCache(
-                    'projects',
-                    () => ApiService.getProjects(),
-                    'projects'
-                ),
-                CacheManager.getWithCache(
-                    'tasks',
-                    () => ApiService.getTasks({ status: 'todo' }),
-                    'tasks'
-                )
-            ]);
+            // Загружаем только дашборд - он уже содержит проекты и статистику
+            const dashboardData = await CacheManager.getWithCache(
+                'dashboard',
+                () => ApiService.getDashboard(),
+                'dashboard'
+            );
+
+            if (!dashboardData) {
+                throw new Error('Не удалось загрузить данные дашборда');
+            }
+
+            // Извлекаем проекты из ответа дашборда
+            const projects = dashboardData.projects || [];
 
             // Обновляем состояние
             StateManager.setState('dashboard', dashboardData);
-            StateManager.setState('projects', projectsData.projects || []);
-            StateManager.setState('tasks', tasksData.tasks || []);
+            StateManager.setState('projects', projects);
 
             // Обновляем UI
             this.updateStats(dashboardData);
-            this.renderProjects(projectsData.projects || []);
-            this.renderPriorityTasks(tasksData.tasks || []);
+            this.renderProjects(projects);
+
+            // Загружаем приоритетные задачи отдельно
+            try {
+                const tasksData = await ApiService.getTasks({ status: 'todo' });
+                const tasks = tasksData.tasks || [];
+                StateManager.setState('tasks', tasks);
+                this.renderPriorityTasks(tasks);
+            } catch (tasksError) {
+                Utils.logError('Error loading tasks:', tasksError);
+                this.renderPriorityTasks([]);
+            }
 
             EventManager.emit(APP_EVENTS.DATA_LOADED);
-            Utils.log('Dashboard loaded successfully');
+            Utils.log('Dashboard loaded successfully', {
+                projects: projects.length,
+                settings: !!dashboardData.settings
+            });
 
         } catch (error) {
             Utils.logError('Dashboard load error:', error);
@@ -45,13 +53,26 @@ class DashboardManager {
     }
 
     static updateStats(data) {
-        const stats = data.summary || {};
+        // Используем данные из dashboard response
+        const projects = data.projects || [];
+
+        // Рассчитываем статистику на основе проектов
+        const totalTasks = projects.reduce((sum, project) => sum + (project.total_tasks || 0), 0);
+        const doneTasks = projects.reduce((sum, project) => sum + (project.done_tasks || 0), 0);
+        const activeProjects = projects.filter(project => {
+            const progress = project.total_tasks > 0 ?
+                Math.round((project.done_tasks / project.total_tasks) * 100) : 0;
+            return progress < 100;
+        }).length;
+
+        // Для просроченных задач нужен отдельный запрос или расчет
+        const overdueTasks = 0; // Временное значение
 
         // Обновляем счетчики
-        this.updateCounter('active-projects-count', stats.active_projects || 0);
-        this.updateCounter('overdue-tasks-count', stats.overdue_tasks || 0);
-        this.updateCounter('total-tasks-count', stats.total_tasks || 0);
-        this.updateCounter('completed-tasks-count', stats.completed_tasks || 0);
+        this.updateCounter('active-projects-count', activeProjects);
+        this.updateCounter('overdue-tasks-count', overdueTasks);
+        this.updateCounter('total-tasks-count', totalTasks);
+        this.updateCounter('completed-tasks-count', doneTasks);
     }
 
     static updateCounter(elementId, count) {
@@ -97,13 +118,18 @@ class DashboardManager {
 
         this.showLoadingState(container);
 
-        // Используем requestAnimationFrame для плавного рендеринга
         requestAnimationFrame(() => {
             container.innerHTML = '';
-            projects.forEach((projectData, index) => {
+
+            // Ограничиваем количество проектов для отображения
+            const projectsToShow = projects.slice(0, 6); // Максимум 6 проектов
+
+            projectsToShow.forEach((projectData, index) => {
                 setTimeout(() => {
                     try {
-                        const cardHTML = this.renderProjectCardWithTemplate(projectData);
+                        // Используем данные из dashboard response
+                        const project = projectData.project || projectData;
+                        const cardHTML = this.renderProjectCardWithTemplate(project);
                         const card = document.createElement('div');
                         card.innerHTML = cardHTML;
 
@@ -111,10 +137,13 @@ class DashboardManager {
                         if (cardElement) {
                             container.appendChild(cardElement);
 
-                            // Добавляем анимацию появления с проверкой существования
-                            if (cardElement.style) {
-                                cardElement.style.animationDelay = `${index * 50}ms`;
-                            }
+                            // Добавляем обработчик клика
+                            cardElement.addEventListener('click', () => {
+                                ProjectsManager.openProjectDetail(project.hash);
+                            });
+
+                            // Анимация появления
+                            cardElement.style.animationDelay = `${index * 50}ms`;
                             cardElement.classList.add('fade-in');
                         }
                     } catch (error) {
@@ -148,6 +177,11 @@ class DashboardManager {
                         const cardElement = card.firstElementChild;
                         if (cardElement) {
                             container.appendChild(cardElement);
+
+                            // Добавляем обработчик клика
+                            cardElement.addEventListener('click', () => {
+                                TasksManager.openTaskDetail(task.id);
+                            });
 
                             // Добавляем анимацию появления с проверкой существования
                             if (cardElement.style) {
@@ -212,12 +246,12 @@ class DashboardManager {
 
     static getEmptyProjectsHTML() {
         return `
-            <div class="empty-state">
+            <div class="empty-state" style="padding: var(--spacing-lg);">
                 <div class="empty-icon">
                     <i class="fas fa-folder-open"></i>
                 </div>
-                <h3>Проектов пока нет</h3>
-                <p>Создайте свой первый проект, чтобы начать работу</p>
+                <h3 style="margin-bottom: var(--spacing-sm);">Проектов пока нет</h3>
+                <p style="margin-bottom: var(--spacing-md);">Создайте свой первый проект, чтобы начать работу</p>
                 <button class="btn btn-primary" onclick="ProjectsManager.showCreateProjectModal()">
                     <i class="fas fa-plus"></i> Создать проект
                 </button>
@@ -227,11 +261,11 @@ class DashboardManager {
 
     static getEmptyTasksHTML() {
         return `
-            <div class="empty-state">
+            <div class="empty-state" style="padding: var(--spacing-lg);">
                 <div class="empty-icon">
                     <i class="fas fa-tasks"></i>
                 </div>
-                <h3>Приоритетных задач нет</h3>
+                <h3 style="margin-bottom: var(--spacing-sm);">Приоритетных задач нет</h3>
                 <p>Все задачи выполнены или не требуют срочного внимания</p>
             </div>
         `;

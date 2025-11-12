@@ -43,12 +43,14 @@ class ProjectsManager {
                     <div class="form-group">
                         <label for="project-title" class="form-label">Название проекта *</label>
                         <input type="text" class="form-control" id="project-title" name="title" required
-                               placeholder="Введите название проекта">
+                               placeholder="Введите название проекта" maxlength="100">
+                        <div class="form-text">Максимум 100 символов</div>
                     </div>
                     <div class="form-group">
                         <label for="project-description" class="form-label">Описание</label>
                         <textarea class="form-control" id="project-description" name="description" rows="3"
-                                  placeholder="Опишите ваш проект (необязательно)"></textarea>
+                                  placeholder="Опишите ваш проект (необязательно)" maxlength="500"></textarea>
+                        <div class="form-text">Максимум 500 символов</div>
                     </div>
                     <div class="form-group">
                         <div class="form-check form-switch">
@@ -306,11 +308,13 @@ class ProjectsManager {
                     <div class="form-group">
                         <label for="edit-project-title" class="form-label">Название проекта *</label>
                         <input type="text" class="form-control" id="edit-project-title" name="title" required
-                               value="${Utils.escapeHTML(project.title)}">
+                               value="${Utils.escapeHTML(project.title)}" maxlength="100">
+                        <div class="form-text">Максимум 100 символов</div>
                     </div>
                     <div class="form-group">
                         <label for="edit-project-description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="edit-project-description" name="description" rows="3">${Utils.escapeHTML(project.description || '')}</textarea>
+                        <textarea class="form-control" id="edit-project-description" name="description" rows="3" maxlength="500">${Utils.escapeHTML(project.description || '')}</textarea>
+                        <div class="form-text">Максимум 500 символов</div>
                     </div>
                     <div class="form-group">
                         <div class="form-check form-switch">
@@ -342,16 +346,7 @@ class ProjectsManager {
                     action: 'submit',
                     onClick: () => this.handleEditProjectSubmit(project.hash)
                 }
-            ],
-            onShow: () => {
-                const form = document.getElementById('edit-project-form');
-                if (form) {
-                    form.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        this.handleEditProjectSubmit(project.hash);
-                    });
-                }
-            }
+            ]
         });
     }
 
@@ -360,8 +355,8 @@ class ProjectsManager {
         if (!form) return;
 
         const formData = new FormData(form);
-        const title = formData.get('title')?.toString().trim();
-        const description = formData.get('description')?.toString().trim();
+        const title = document.getElementById('edit-project-title').value.trim();
+        const description = document.getElementById('edit-project-description').value.trim();
         const isPrivate = !!formData.get('is_private');
         const requiresApproval = !!formData.get('requires_approval');
 
@@ -713,6 +708,28 @@ class ProjectsManager {
                 }
             ]
         });
+    }
+
+    // Новый метод для быстрого создания проекта
+    static async quickCreateProject(title, description = '') {
+        try {
+            const projectData = {
+                title,
+                description,
+                is_private: true,
+                requires_approval: false
+            };
+
+            const result = await ApiService.createProject(projectData);
+
+            if (result && result.project) {
+                await this.loadProjects();
+                return result.project;
+            }
+        } catch (error) {
+            Utils.logError('Quick project creation error:', error);
+            throw error;
+        }
     }
 }
 

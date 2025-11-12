@@ -10,6 +10,20 @@ class ProjectStats(BaseModel):
     todo_tasks: int
     members_count: int
 
+class ProjectMemberResponse(BaseModel):
+    user_id: int
+    role: str
+    max_id: str
+    full_name: str
+    username: Optional[str]
+    joined_at: datetime
+
+class ProjectOwnerResponse(BaseModel):
+    id: int
+    max_id: str
+    full_name: str
+    username: Optional[str]
+
 class ProjectResponse(BaseModel):
     id: int
     title: str
@@ -25,6 +39,10 @@ class ProjectResponse(BaseModel):
     in_progress_tasks: int
     todo_tasks: int
     members_count: int
+    # НОВЫЕ ПОЛЯ:
+    owner_info: ProjectOwnerResponse
+    members: List[ProjectMemberResponse]
+    current_user_role: str
 
 class UserSettingsResponse(BaseModel):
     id: int

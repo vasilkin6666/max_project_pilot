@@ -272,6 +272,70 @@ class UIComponents {
             });
         }
 
+        // ДОБАВЛЕННЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК ПОЛЬЗОВАТЕЛЯ
+        const userMenuBtn = document.getElementById('user-menu-btn');
+        if (userMenuBtn) {
+            userMenuBtn.addEventListener('click', () => {
+                this.showUserMenu();
+            });
+        }
+
+        // Обработчики для кнопок в настройках
+        const exportDataBtn = document.getElementById('export-data-btn');
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', () => {
+                if (typeof PersistenceManager !== 'undefined') {
+                    PersistenceManager.exportData();
+                } else {
+                    ToastManager.error('Менеджер данных недоступен');
+                }
+            });
+        }
+
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        if (clearCacheBtn) {
+            clearCacheBtn.addEventListener('click', () => {
+                if (typeof CacheManager !== 'undefined') {
+                    CacheManager.clear();
+                    ToastManager.success('Кэш очищен');
+                } else {
+                    ToastManager.error('Менеджер кэша недоступен');
+                }
+            });
+        }
+
+        const debugInfoBtn = document.getElementById('debug-info-btn');
+        if (debugInfoBtn) {
+            debugInfoBtn.addEventListener('click', () => {
+                if (typeof App !== 'undefined') {
+                    App.showDebugInfo();
+                }
+            });
+        }
+
+        // Обработчики для кнопок в дашборде
+        const filterBtn = document.getElementById('filter-btn');
+        if (filterBtn) {
+            filterBtn.addEventListener('click', () => {
+                this.showFiltersModal();
+            });
+        }
+
+        const sortBtn = document.getElementById('sort-btn');
+        if (sortBtn) {
+            sortBtn.addEventListener('click', () => {
+                this.showSortModal();
+            });
+        }
+
+        // Показать секцию отладки в development
+        if (CONFIG.ENV === 'development') {
+            const debugSection = document.getElementById('debug-section');
+            if (debugSection) {
+                debugSection.style.display = 'block';
+            }
+        }
+
         // Обработчики глобальных событий
         EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
             this.updateUserInfo(user);
@@ -443,11 +507,7 @@ class UIComponents {
                 text: user.full_name || user.username || 'Пользователь',
                 icon: 'fa-user',
                 action: () => {
-                    if (typeof UsersManager !== 'undefined') {
-                        UsersManager.showUserProfileModal('me');
-                    } else {
-                        this.showView('profile-view');
-                    }
+                    this.showView('settings-view');
                 }
             },
             { type: 'separator' },
@@ -455,7 +515,7 @@ class UIComponents {
                 text: 'Настройки',
                 icon: 'fa-cog',
                 action: () => {
-                    this.showSettingsView();
+                    this.showView('settings-view');
                 }
             },
             { type: 'separator' },
@@ -464,7 +524,9 @@ class UIComponents {
                 icon: 'fa-sign-out-alt',
                 danger: true,
                 action: () => {
-                    App.logout();
+                    if (typeof App !== 'undefined') {
+                        App.logout();
+                    }
                 }
             }
         ];
@@ -487,6 +549,106 @@ class UIComponents {
         if (typeof HapticManager !== 'undefined') {
             HapticManager.buttonPress();
         }
+    }
+
+    // НОВЫЕ МЕТОДЫ ДЛЯ ФИЛЬТРОВ И СОРТИРОВКИ
+    static showFiltersModal() {
+        ModalManager.showModal('filters', {
+            title: 'Фильтры проектов',
+            size: 'small',
+            template: `
+                <div class="filters-modal">
+                    <div class="form-group">
+                        <label class="form-label">Статус проекта</label>
+                        <select class="form-select" id="project-status-filter">
+                            <option value="all">Все проекты</option>
+                            <option value="active">Активные</option>
+                            <option value="completed">Завершенные</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Роль</label>
+                        <select class="form-select" id="project-role-filter">
+                            <option value="all">Все роли</option>
+                            <option value="owner">Владелец</option>
+                            <option value="admin">Админ</option>
+                            <option value="member">Участник</option>
+                        </select>
+                    </div>
+                </div>
+            `,
+            actions: [
+                {
+                    text: 'Сбросить',
+                    type: 'secondary',
+                    action: 'close'
+                },
+                {
+                    text: 'Применить',
+                    type: 'primary',
+                    action: 'submit',
+                    onClick: () => this.applyFilters()
+                }
+            ]
+        });
+    }
+
+    static showSortModal() {
+        ModalManager.showModal('sort', {
+            title: 'Сортировка проектов',
+            size: 'small',
+            template: `
+                <div class="sort-modal">
+                    <div class="form-group">
+                        <label class="form-label">Сортировать по</label>
+                        <select class="form-select" id="project-sort-by">
+                            <option value="title">Названию</option>
+                            <option value="progress">Прогрессу</option>
+                            <option value="tasks">Количеству задач</option>
+                            <option value="updated">Дате обновления</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Порядок</label>
+                        <select class="form-select" id="project-sort-order">
+                            <option value="asc">По возрастанию</option>
+                            <option value="desc">По убыванию</option>
+                        </select>
+                    </div>
+                </div>
+            `,
+            actions: [
+                {
+                    text: 'Отмена',
+                    type: 'secondary',
+                    action: 'close'
+                },
+                {
+                    text: 'Применить',
+                    type: 'primary',
+                    action: 'submit',
+                    onClick: () => this.applySort()
+                }
+            ]
+        });
+    }
+
+    static applyFilters() {
+        const statusFilter = document.getElementById('project-status-filter').value;
+        const roleFilter = document.getElementById('project-role-filter').value;
+
+        // Здесь можно добавить логику фильтрации
+        ToastManager.info('Фильтры применены');
+        ModalManager.closeCurrentModal();
+    }
+
+    static applySort() {
+        const sortBy = document.getElementById('project-sort-by').value;
+        const sortOrder = document.getElementById('project-sort-order').value;
+
+        // Здесь можно добавить логику сортировки
+        ToastManager.info('Сортировка применена');
+        ModalManager.closeCurrentModal();
     }
 
     static updateUserInfo(user) {
@@ -555,7 +717,7 @@ class UIComponents {
     // ==================== РЕНДЕРИНГ ДАННЫХ ====================
 
     static renderProjects(projects) {
-        const container = document.getElementById('projects-container');
+        const container = document.getElementById('projects-list');
         if (!container) return;
 
         if (!projects || projects.length === 0) {

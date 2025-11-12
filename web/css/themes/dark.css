@@ -83,3 +83,71 @@
 [data-theme="dark"] .setting-description {
     color: var(--text-muted);
 }
+
+[data-theme="dark"] .modal-content {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .context-menu {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .search-container {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .bottom-nav {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .nav-item {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .nav-item:hover,
+[data-theme="dark"] .nav-item.active {
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .btn-icon {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .btn-icon:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+/* Улучшение скроллбаров для темной темы */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-hover);
+}
+
+/* Улучшение контрастности для состояний */
+[data-theme="dark"] .subtask-item,
+[data-theme="dark"] .comment-item {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .search-result-item:hover {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .notification-item.unread {
+    background: rgba(115, 103, 240, 0.08);
+}
+
+[data-theme="dark"] .progress-bar {
+    background: var(--bg-tertiary);
+}

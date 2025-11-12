@@ -7,7 +7,7 @@ import logging
 
 from app.api import deps
 from app.models import Project, ProjectMember, Task, User, UserSettings
-from app.schemas.dashboard import DashboardResponse, ProjectResponse, UserSettingsResponse, TaskResponse
+from app.schemas.dashboard import DashboardResponse, ProjectResponse, UserSettingsResponse, TaskResponse, ProjectOwnerResponse, ProjectMemberResponse
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,13 +17,15 @@ router = APIRouter()
 async def _get_project_ids_for_user(
     user: User, session: AsyncSession
 ) -> List[int]:
-    """Возвращает список ID проектов, в которых состоит пользователь."""
+    """Возвращает список ID проектов, в которых состоит пользователь (ЛЮБАЯ роль)."""
     stmt = (
         select(ProjectMember.project_id)
         .where(ProjectMember.user_id == user.id)
     )
     result = await session.execute(stmt)
-    return [row[0] for row in result.fetchall()]
+    project_ids = [row[0] for row in result.fetchall()]
+    logger.info(f"User {user.max_id} is member of projects: {project_ids}")
+    return project_ids
 
 
 async def _get_project_stats(
@@ -78,6 +80,79 @@ async def _get_project_stats(
         }
 
 
+async def _get_project_with_members(
+    project_id: int,
+    current_user_id: int,
+    session: AsyncSession
+) -> dict:
+    """Получить проект с информацией об участниках и владельце"""
+    try:
+        # Получить проект
+        project_stmt = select(Project).where(Project.id == project_id)
+        project_result = await session.execute(project_stmt)
+        project = project_result.scalar_one_or_none()
+
+        if not project:
+            return None
+
+        # Получить владельца
+        owner_stmt = select(User).where(User.id == project.created_by)
+        owner_result = await session.execute(owner_stmt)
+        owner = owner_result.scalar_one_or_none()
+
+        # Получить всех участников с информацией о пользователях
+        members_stmt = (
+            select(ProjectMember, User)
+            .join(User, ProjectMember.user_id == User.id)
+            .where(ProjectMember.project_id == project_id)
+        )
+        members_result = await session.execute(members_stmt)
+        members_data = members_result.all()
+
+        # Найти роль текущего пользователя
+        current_user_role = None
+        members_list = []
+
+        for member, user in members_data:
+            member_data = {
+                "user_id": user.id,
+                "role": member.role,
+                "max_id": user.max_id,
+                "full_name": user.full_name,
+                "username": user.username,
+                "joined_at": member.joined_at
+            }
+            members_list.append(member_data)
+
+            if user.id == current_user_id:
+                current_user_role = member.role
+
+        # Информация о владельце
+        owner_info = None
+        if owner:
+            owner_info = {
+                "id": owner.id,
+                "max_id": owner.max_id,
+                "full_name": owner.full_name,
+                "username": owner.username
+            }
+
+        return {
+            "project": project,
+            "owner_info": owner_info,
+            "members": members_list,
+            "current_user_role": current_user_role
+        }
+    except Exception as e:
+        logger.error(f"Error getting project members for project {project_id}: {str(e)}")
+        return {
+            "project": None,
+            "owner_info": None,
+            "members": [],
+            "current_user_role": None
+        }
+
+
 @router.get("/dashboard/", response_model=DashboardResponse)
 async def get_dashboard(
     current_user: User = Depends(deps.get_current_user),
@@ -86,8 +161,9 @@ async def get_dashboard(
     """
     Возвращает дашборд:
     - настройки пользователя
-    - список проектов (только те, где пользователь участник)
+    - список всех проектов, где пользователь состоит в ЛЮБОЙ роли (владелец/админ/участник/гост)
     - статистика по каждому проекту
+    - информация об участниках каждого проекта
     """
     try:
         logger.info(f"Fetching dashboard data for user: {current_user.max_id}")
@@ -102,28 +178,33 @@ async def get_dashboard(
             logger.warning(f"User settings not found for user: {current_user.id}")
             raise HTTPException(status_code=404, detail="User settings not found")
 
-        # 2. ID проектов пользователя
+        # 2. ID проектов пользователя (ВСЕ проекты, где пользователь есть в любой роли)
         project_ids = await _get_project_ids_for_user(current_user, db)
-        logger.info(f"User {current_user.max_id} has {len(project_ids)} projects")
+        logger.info(f"User {current_user.max_id} is member of {len(project_ids)} projects in any role")
 
         if not project_ids:
+            logger.info(f"User {current_user.max_id} has no projects")
             return DashboardResponse(
                 settings=UserSettingsResponse(**settings.to_dict()),
                 projects=[],
                 recent_tasks=[],
             )
 
-        # 3. Данные проектов
-        projects_stmt = select(Project).where(Project.id.in_(project_ids))
-        projects_result = await db.execute(projects_stmt)
-        projects = projects_result.scalars().all()
-
-        # 4. Статистика по каждому проекту
+        # 3. Данные проектов с участниками
         project_responses = []
-        for project in projects:
+        for project_id in project_ids:
+            # Получаем полную информацию о проекте с участниками
+            project_data = await _get_project_with_members(project_id, current_user.id, db)
+
+            if not project_data or not project_data["project"]:
+                logger.warning(f"Project {project_id} not found or inaccessible")
+                continue
+
+            project = project_data["project"]
             stats = await _get_project_stats(project.id, db)
 
-            project_data = {
+            # Формируем ответ с информацией об участниках
+            project_response_data = {
                 "id": project.id,
                 "title": project.title,
                 "description": project.description,
@@ -138,10 +219,14 @@ async def get_dashboard(
                 "in_progress_tasks": stats["in_progress_tasks"],
                 "todo_tasks": stats["todo_tasks"],
                 "members_count": stats["members_count"],
+                # Информация об участниках:
+                "owner_info": ProjectOwnerResponse(**project_data["owner_info"]) if project_data["owner_info"] else None,
+                "members": [ProjectMemberResponse(**member) for member in project_data["members"]],
+                "current_user_role": project_data["current_user_role"] or "member"
             }
-            project_responses.append(ProjectResponse(**project_data))
+            project_responses.append(ProjectResponse(**project_response_data))
 
-        logger.info(f"Dashboard data fetched successfully for user: {current_user.max_id}")
+        logger.info(f"Dashboard data fetched successfully for user: {current_user.max_id}. Found {len(project_responses)} projects")
         return DashboardResponse(
             settings=UserSettingsResponse(**settings.to_dict()),
             projects=project_responses,

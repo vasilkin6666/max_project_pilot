@@ -1,4 +1,4 @@
-// Основной класс приложения (полная исправленная версия)
+// Основной класс приложения (исправленная версия)
 class App {
     static async init() {
         try {
@@ -114,6 +114,17 @@ class App {
             Utils.log('Search manager initialized');
         }
 
+        // 8. Dashboard Manager
+        if (typeof DashboardManager !== 'undefined') {
+            // Загружаем дашборд после успешной аутентификации
+            EventManager.on(APP_EVENTS.USER_LOGIN, () => {
+                setTimeout(() => {
+                    DashboardManager.loadDashboard();
+                }, 1000);
+            });
+            Utils.log('Dashboard manager initialized');
+        }
+
         // Настройка обработчиков ошибок
         this.setupErrorHandling();
 
@@ -164,14 +175,6 @@ class App {
     }
 
     static setupEventHandlers() {
-        EventManager.on(APP_EVENTS.VIEW_CHANGED, (viewName) => {
-            if (viewName === 'settings-view') {
-                // Загружаем данные пользователя при открытии настроек
-                if (typeof UIComponents !== 'undefined') {
-                    UIComponents.updateAccountSettingsInfo();
-                }
-            }
-        });
         // Обработка изменения темы
         EventManager.on(APP_EVENTS.THEME_CHANGED, (theme) => {
             this.applyTheme(theme);
@@ -226,7 +229,32 @@ class App {
             this.handleNetworkStatusChange(status);
         });
 
+        // Обработка обновления пользователя
+        EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
+            this.updateUserInterface(user);
+        });
+
         Utils.log('Event handlers setup completed');
+    }
+
+    static updateUserInterface(user) {
+        // Обновляем аватар в хедере
+        const userAvatar = document.getElementById('user-avatar');
+        if (userAvatar) {
+            const initials = Utils.getInitials(user.full_name || 'Пользователь');
+            userAvatar.textContent = initials;
+
+            // Добавляем фото если есть
+            if (user.photo_url) {
+                userAvatar.style.backgroundImage = `url(${user.photo_url})`;
+                userAvatar.textContent = '';
+            }
+        }
+
+        // Обновляем информацию в настройках
+        if (typeof UIComponents !== 'undefined') {
+            UIComponents.updateAccountSettingsInfo(user);
+        }
     }
 
     static setupNetworkHandler() {

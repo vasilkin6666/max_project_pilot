@@ -14,20 +14,21 @@
 .form-control,
 .form-select {
     width: 100%;
-    padding: var(--spacing-md);
+    padding: 12px;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     background: var(--bg-secondary);
     color: var(--text-primary);
     font-size: 0.875rem;
     transition: var(--transition);
+    font-family: inherit;
 }
 
 .form-control:focus,
 .form-select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(115, 103, 240, 0.2);
+    box-shadow: 0 0 0 3px rgba(115, 103, 240, 0.2);
     background: var(--bg-secondary);
 }
 
@@ -48,6 +49,7 @@
     align-items: center;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
+    cursor: pointer;
 }
 
 .form-check-input {
@@ -55,12 +57,14 @@
     height: 1em;
     margin-top: 0;
     margin-right: 0;
+    cursor: pointer;
 }
 
 .form-check-label {
     color: var(--text-primary);
     font-weight: 500;
     font-size: 0.875rem;
+    cursor: pointer;
 }
 
 .form-switch .form-check-input {
@@ -74,12 +78,14 @@
     display: inline-block;
     width: 44px;
     height: 24px;
+    flex-shrink: 0;
 }
 
 .switch input {
     opacity: 0;
     width: 0;
     height: 0;
+    position: absolute;
 }
 
 .slider {
@@ -142,13 +148,6 @@ input:checked + .slider:before {
     margin-bottom: 0;
 }
 
-@media (max-width: 768px) {
-    .form-row {
-        flex-direction: column;
-        gap: var(--spacing-sm);
-    }
-}
-
 /* Подзадачи */
 .subtasks-container {
     display: flex;
@@ -187,6 +186,8 @@ input:checked + .slider:before {
     border: none;
     color: var(--text-primary);
     padding: var(--spacing-xs);
+    font-family: inherit;
+    font-size: 0.875rem;
 }
 
 .subtask-content input[type="text"]:focus {
@@ -244,7 +245,7 @@ input:checked + .slider:before {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-sm);
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: 12px 20px;
     border: none;
     border-radius: var(--border-radius);
     font-size: 0.875rem;
@@ -253,6 +254,8 @@ input:checked + .slider:before {
     cursor: pointer;
     transition: var(--transition);
     line-height: 1;
+    font-family: inherit;
+    min-height: 44px;
 }
 
 .btn:disabled {
@@ -262,8 +265,9 @@ input:checked + .slider:before {
 }
 
 .btn-sm {
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: 8px 12px;
     font-size: 0.75rem;
+    min-height: 36px;
 }
 
 .btn-primary {
@@ -367,7 +371,7 @@ input:checked + .slider:before {
 /* Валидация форм */
 .form-control.is-invalid {
     border-color: var(--danger-color);
-    box-shadow: 0 0 0 2px rgba(234, 84, 85, 0.2);
+    box-shadow: 0 0 0 3px rgba(234, 84, 85, 0.2);
 }
 
 .invalid-feedback {
@@ -379,18 +383,19 @@ input:checked + .slider:before {
 
 .form-control.is-valid {
     border-color: var(--success-color);
-    box-shadow: 0 0 0 2px rgba(40, 199, 111, 0.2);
+    box-shadow: 0 0 0 3px rgba(40, 199, 111, 0.2);
 }
 
 /* Адаптивность форм */
 @media (max-width: 768px) {
     .form-control,
     .form-select {
-        padding: var(--spacing-sm);
+        padding: 10px;
     }
 
     .btn {
-        padding: var(--spacing-sm) var(--spacing-md);
+        padding: 10px 16px;
+        min-height: 44px;
     }
 
     .subtask-item {
@@ -399,6 +404,11 @@ input:checked + .slider:before {
 
     .comment-item {
         padding: var(--spacing-sm);
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: var(--spacing-sm);
     }
 }
 
@@ -411,6 +421,11 @@ input:checked + .slider:before {
     .error-state,
     .empty-state {
         padding: var(--spacing-lg);
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -519,23 +534,6 @@ input:checked + .slider:before {
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Адаптивность для настроек */
-@media (max-width: 768px) {
-    .setting-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-sm);
-    }
-
-    .setting-actions {
-        flex-direction: column;
-    }
-
-    .settings-container {
-        padding: var(--spacing-sm);
-    }
-}
-
 /* Стили для шаблонов */
 [type="text/template"] {
     display: none;
@@ -634,4 +632,41 @@ input:checked + .slider:before {
 
 .theme-checkbox:not(:checked) + .theme-label .theme-icon.moon {
     color: white;
+}
+
+/* Адаптивность для настроек */
+@media (max-width: 768px) {
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .setting-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .settings-container {
+        padding: var(--spacing-sm);
+    }
+
+    .theme-toggle-container {
+        justify-content: flex-start;
+    }
+}
+
+/* Улучшения для доступности */
+@media (prefers-reduced-motion: reduce) {
+    .btn,
+    .form-control,
+    .form-select,
+    .slider,
+    .theme-ball {
+        transition: none;
+    }
+
+    .btn-loading::after {
+        animation: none;
+    }
 }
