@@ -15,7 +15,6 @@ class UIComponents {
 
     static async loadTemplates() {
         try {
-            // Загружаем шаблоны из HTML файлов
             const templateFiles = [
                 'templates/project-card.html',
                 'templates/task-card.html',
