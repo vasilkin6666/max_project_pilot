@@ -17,6 +17,61 @@ class UsersManager {
         }
     }
 
+    // Добавить метод для загрузки данных в настройки
+    static async loadUserDataForSettings() {
+        try {
+            const user = AuthManager.getCurrentUser();
+            if (!user) return null;
+
+            // Используем данные из AuthManager или загружаем свежие
+            const userData = await this.loadUserProfile('me');
+            return userData.user || userData;
+        } catch (error) {
+            Utils.logError('Error loading user data for settings:', error);
+            // Возвращаем базовые данные из AuthManager
+            return AuthManager.getCurrentUser();
+        }
+    }
+
+    // Обновить метод в UIComponents для отображения данных пользователя
+    static async updateAccountSettingsInfo() {
+        try {
+            const user = await UsersManager.loadUserDataForSettings();
+            if (!user) return;
+
+            const avatar = document.getElementById('settings-user-avatar');
+            const name = document.getElementById('settings-user-name');
+            const userId = document.getElementById('settings-user-id');
+            const email = document.getElementById('settings-user-email');
+            const role = document.getElementById('settings-user-role');
+
+            if (avatar) {
+                const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
+                avatar.textContent = initials;
+                avatar.style.backgroundImage = user.photo_url ? `url(${user.photo_url})` : '';
+            }
+
+            if (name) {
+                name.textContent = user.full_name || user.username || 'Пользователь';
+            }
+
+            if (userId) {
+                userId.textContent = `ID: ${user.id || 'неизвестен'}`;
+            }
+
+            if (email) {
+                email.textContent = `Email: ${user.email || 'не указан'}`;
+            }
+
+            if (role) {
+                const roleText = user.role ? this.getRoleText(user.role) : 'Участник';
+                role.textContent = `Роль: ${roleText}`;
+            }
+        } catch (error) {
+            Utils.logError('Error updating account settings info:', error);
+        }
+    }
+
     static async loadUserProjects(userId = 'me') {
         try {
             const data = await ApiService.getUserProjects(userId);

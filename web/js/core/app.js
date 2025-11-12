@@ -164,6 +164,14 @@ class App {
     }
 
     static setupEventHandlers() {
+        EventManager.on(APP_EVENTS.VIEW_CHANGED, (viewName) => {
+            if (viewName === 'settings-view') {
+                // Загружаем данные пользователя при открытии настроек
+                if (typeof UIComponents !== 'undefined') {
+                    UIComponents.updateAccountSettingsInfo();
+                }
+            }
+        });
         // Обработка изменения темы
         EventManager.on(APP_EVENTS.THEME_CHANGED, (theme) => {
             this.applyTheme(theme);

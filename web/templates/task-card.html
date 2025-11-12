@@ -17,14 +17,14 @@
 
         <div class="card-content">
             <div class="card-header">
-                <h4 class="task-title">{{title}}</h4>
+                <h4 class="task-title">{{truncate title 60}}</h4>
                 <span class="priority-badge priority-{{priority}}" aria-label="Приоритет: {{priorityText}}">
                     {{priorityText}}
                 </span>
             </div>
 
             <p class="task-description">
-                {{description}}
+                {{truncate description 150}}
             </p>
 
             <div class="task-meta">

@@ -142,9 +142,18 @@ class TasksManager {
         const priority = document.getElementById('task-priority').value;
         const dueDate = document.getElementById('task-due-date').value;
 
-        if (!title) {
-            ToastManager.error('Введите название задачи');
+        // Валидация
+        const titleError = Utils.validateTaskTitle(title);
+        if (titleError) {
+            ToastManager.error(titleError);
             document.getElementById('task-title').focus();
+            return;
+        }
+
+        const descriptionError = Utils.validateTaskDescription(description);
+        if (descriptionError) {
+            ToastManager.error(descriptionError);
+            document.getElementById('task-description').focus();
             return;
         }
 
@@ -514,8 +523,16 @@ class TasksManager {
         const priority = document.getElementById('edit-task-priority').value;
         const dueDate = document.getElementById('edit-task-due-date').value;
 
-        if (!title) {
-            ToastManager.error('Введите название задачи');
+        // Валидация
+        const titleError = Utils.validateTaskTitle(title);
+        if (titleError) {
+            ToastManager.error(titleError);
+            return;
+        }
+
+        const descriptionError = Utils.validateTaskDescription(description);
+        if (descriptionError) {
+            ToastManager.error(descriptionError);
             return;
         }
 
@@ -569,7 +586,7 @@ class TasksManager {
             }
         }
     }
-
+    
     static deleteTaskWithConfirmation(taskId) {
         const task = StateManager.getState('tasks').find(t => t.id == taskId);
         if (!task) return;
@@ -627,7 +644,7 @@ class TasksManager {
             throw error; // Пробрасываем ошибку дальше для обработки в вызывающем коде
         }
     }
-    
+
     // Методы для работы с фильтрами задач
     static async getTasksWithFilters(filters = {}) {
         try {

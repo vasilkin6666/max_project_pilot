@@ -213,6 +213,7 @@ class SearchManager {
         });
     }
 
+    // Заменить метод renderResults в SearchManager
     static renderResults(results) {
         const container = document.getElementById('search-results');
         if (!container) return;
@@ -224,7 +225,38 @@ class SearchManager {
 
         // Группируем результаты по типам
         const grouped = this.groupResultsByType(results);
-        container.innerHTML = this.createResultsHTML(grouped);
+
+        // Создаем HTML для результатов
+        let html = '';
+
+        // Проекты
+        if (grouped.project || grouped['public-project']) {
+            const projects = [...(grouped.project || []), ...(grouped['public-project'] || [])];
+            html += this.createSectionHTML('Проекты', projects);
+        }
+
+        // Задачи
+        if (grouped.task) {
+            html += this.createSectionHTML('Задачи', grouped.task);
+        }
+
+        container.innerHTML = html;
+    }
+
+    // Добавить метод createResultsHTML (если он используется где-то еще)
+    static createResultsHTML(grouped) {
+        let html = '';
+
+        if (grouped.project || grouped['public-project']) {
+            const projects = [...(grouped.project || []), ...(grouped['public-project'] || [])];
+            html += this.createSectionHTML('Проекты', projects);
+        }
+
+        if (grouped.task) {
+            html += this.createSectionHTML('Задачи', grouped.task);
+        }
+
+        return html;
     }
 
     static groupResultsByType(results) {

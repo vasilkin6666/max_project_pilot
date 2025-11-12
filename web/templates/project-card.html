@@ -19,14 +19,14 @@
 
         <div class="card-content">
             <div class="card-header">
-                <h3 class="project-title">{{title}}</h3>
+                <h3 class="project-title">{{truncate title 50}}</h3>
                 <span class="role-badge role-{{role}}" aria-label="Ваша роль: {{roleText}}">
                     {{roleText}}
                 </span>
             </div>
 
             <p class="project-description">
-                {{description}}
+                {{truncate description 120}}
             </p>
 
             <div class="project-stats">

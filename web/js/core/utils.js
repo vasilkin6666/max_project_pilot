@@ -8,6 +8,48 @@ class Utils {
         return div.innerHTML;
     }
 
+    // В класс Utils добавить методы валидации
+    static validateProjectTitle(title) {
+        if (!title || title.trim().length === 0) {
+            return 'Название проекта не может быть пустым';
+        }
+        if (title.length > 100) {
+            return 'Название проекта не должно превышать 100 символов';
+        }
+        return null;
+    }
+
+    static validateProjectDescription(description) {
+        if (description && description.length > 500) {
+            return 'Описание проекта не должно превышать 500 символов';
+        }
+        return null;
+    }
+
+    static validateTaskTitle(title) {
+        if (!title || title.trim().length === 0) {
+            return 'Название задачи не может быть пустым';
+        }
+        if (title.length > 200) {
+            return 'Название задачи не должно превышать 200 символов';
+        }
+        return null;
+    }
+
+    static validateTaskDescription(description) {
+        if (description && description.length > 1000) {
+            return 'Описание задачи не должно превышать 1000 символов';
+        }
+        return null;
+    }
+
+    // Метод для обрезки текста с многоточием
+    static truncateText(text, maxLength) {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    }
+
     // Форматирование даты
     static formatDate(dateString) {
         if (!dateString) return '';

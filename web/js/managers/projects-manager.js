@@ -109,9 +109,18 @@ class ProjectsManager {
         const isPrivate = !!formData.get('is_private');
         const requiresApproval = !!formData.get('requires_approval');
 
-        if (!title) {
-            ToastManager.error('Введите название проекта');
+        // Валидация
+        const titleError = Utils.validateProjectTitle(title);
+        if (titleError) {
+            ToastManager.error(titleError);
             document.getElementById('project-title')?.focus();
+            return;
+        }
+
+        const descriptionError = Utils.validateProjectDescription(description);
+        if (descriptionError) {
+            ToastManager.error(descriptionError);
+            document.getElementById('project-description')?.focus();
             return;
         }
 
@@ -356,8 +365,16 @@ class ProjectsManager {
         const isPrivate = !!formData.get('is_private');
         const requiresApproval = !!formData.get('requires_approval');
 
-        if (!title) {
-            ToastManager.error('Введите название проекта');
+        // Валидация
+        const titleError = Utils.validateProjectTitle(title);
+        if (titleError) {
+            ToastManager.error(titleError);
+            return;
+        }
+
+        const descriptionError = Utils.validateProjectDescription(description);
+        if (descriptionError) {
+            ToastManager.error(descriptionError);
             return;
         }
 

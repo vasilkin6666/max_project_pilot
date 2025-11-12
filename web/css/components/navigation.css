@@ -1,10 +1,16 @@
 /* Стили для навигации */
 .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     background: var(--bg-secondary);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-top: 1px solid var(--border-color);
     height: 60px;
+    z-index: 1000; /* Увеличиваем z-index */
+    transform: none !important; /* Убираем любые трансформации */
 }
 
 .nav-item {
@@ -280,6 +286,19 @@
 
 /* Responsive navigation */
 @media (max-width: 768px) {
+
+  .main-content {
+      padding-bottom: 70px;
+      /* Добавляем safe-area для современных мобильных браузеров */
+      padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+
+  .bottom-nav {
+      height: 56px;
+      /* Учитываем безопасные зоны на iPhone X и новее */
+      padding-bottom: env(safe-area-inset-bottom);
+  }
+
     .nav-item {
         min-height: 56px;
         padding: var(--spacing-xs);

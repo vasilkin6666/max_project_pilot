@@ -115,7 +115,20 @@ class UIComponents {
             });
         }
 
+        this.adjustContentPadding();
+        window.addEventListener('resize', () => this.adjustContentPadding());
+
         Utils.log('Navigation initialized');
+    }
+
+    static adjustContentPadding() {
+        const nav = document.querySelector('.bottom-nav');
+        const mainContent = document.querySelector('.main-content');
+
+        if (nav && mainContent) {
+            const navHeight = nav.offsetHeight;
+            mainContent.style.paddingBottom = `${navHeight + 20}px`;
+        }
     }
 
     static initTheme() {

@@ -222,12 +222,14 @@ body {
     flex: 1;
     padding: var(--spacing-md);
     overflow-y: auto;
-    padding-bottom: 80px; /* Добавляем отступ снизу для навигации */
+    padding-bottom: 80px; /* Увеличиваем отступ для навигации */
+    min-height: calc(100vh - 120px); /* Занимает всю высоту минус header и nav */
 }
 
 /* Views */
 .view {
-  display: none;
+    min-height: 100%;
+    padding-bottom: 20px; /* Дополнительный отступ */
 }
 
 .view.active {
@@ -333,8 +335,8 @@ body {
     justify-content: space-around;
     padding: var(--spacing-sm);
     z-index: 100;
-    /* Убираем transform который мог загораживать контент */
-    transform: none;
+    height: 60px; /* Фиксированная высота */
+    box-sizing: border-box;
 }
 
 .nav-item {
@@ -554,7 +556,12 @@ body {
   }
 
   .main-content {
-    padding: var(--spacing-sm);
+      padding-bottom: 70px; /* Немного меньше для мобильных */
+      min-height: calc(100vh - 110px);
+  }
+
+  .bottom-nav {
+      height: 56px;
   }
 
   .quick-actions {
@@ -584,6 +591,15 @@ body {
 }
 
 @media (max-width: 480px) {
+  .main-content {
+      padding-bottom: 65px;
+      min-height: calc(100vh - 105px);
+  }
+
+  .bottom-nav {
+      height: 52px;
+  }
+
   .dashboard-stats {
     grid-template-columns: 1fr;
   }
@@ -1114,4 +1130,12 @@ body {
 .account-details p {
     margin: 0;
     font-size: 0.875rem;
+}
+
+.projects-grid,
+.tasks-list,
+.notifications-container,
+.settings-container {
+    max-height: none; /* Убираем ограничения высоты */
+    overflow: visible;
 }

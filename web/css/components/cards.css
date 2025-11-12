@@ -101,6 +101,7 @@
     align-items: flex-start;
     margin-bottom: var(--spacing-sm);
     gap: var(--spacing-sm);
+    position: relative;
 }
 
 .share-btn {
@@ -115,13 +116,12 @@
     margin: 0;
     flex: 1;
     margin-right: var(--spacing-sm);
-    /* Ограничение текста по границе */
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 2; /* Максимум 2 строки */
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     line-height: 1.4;
-    max-height: 2.8em; /* 2 строки * line-height */
+    max-height: 2.8em;
 }
 
 .project-description,
@@ -130,12 +130,24 @@
     color: var(--text-secondary);
     margin-bottom: var(--spacing-md);
     line-height: 1.4;
-    /* Ограничение текста по границе */
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 3; /* Максимум 3 строки */
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
-    max-height: 4.2em; /* 3 строки * line-height */
+    max-height: 4.2em;
+}
+
+/* Для модальных окон */
+.modal .project-title,
+.modal .task-title {
+    -webkit-line-clamp: 3;
+    max-height: 4.2em;
+}
+
+.modal .project-description,
+.modal .task-description {
+    -webkit-line-clamp: 5;
+    max-height: 7em;
 }
 
 /* Badges */
@@ -151,12 +163,16 @@
 }
 
 .role-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 0.7rem;
     font-weight: 600;
     white-space: nowrap;
     flex-shrink: 0;
+    z-index: 2;
 }
 
 .role-owner {
@@ -456,6 +472,19 @@
 
 /* Responsive design */
 @media (max-width: 768px) {
+
+  .card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+  }
+
+  .role-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+  }
+
     .project-stats {
         flex-wrap: wrap;
         gap: var(--spacing-sm);
