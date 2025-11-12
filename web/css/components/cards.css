@@ -49,27 +49,32 @@
     font-weight: 600;
     font-size: 0.875rem;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
+    z-index: 1;
 }
 
 .swipe-action.edit-action {
-    left: -80px;
+    left: 0;
     background: var(--warning-color);
+    transform: translateX(-100%);
 }
 
 .swipe-action.delete-action {
-    right: -80px;
+    right: 0;
     background: var(--danger-color);
+    transform: translateX(100%);
 }
 
-.project-card.swipe-left .delete-action,
-.task-card.swipe-left .delete-action {
+.project-card.swipe-left .swipe-action.delete-action,
+.task-card.swipe-left .swipe-action.delete-action {
     opacity: 1;
+    transform: translateX(0);
 }
 
-.project-card.swipe-right .edit-action,
-.task-card.swipe-right .edit-action {
+.project-card.swipe-right .swipe-action.edit-action,
+.task-card.swipe-right .swipe-action.edit-action {
     opacity: 1;
+    transform: translateX(0);
 }
 
 /* Card content */
@@ -77,6 +82,17 @@
     position: relative;
     z-index: 2;
     background: inherit;
+    transition: transform 0.3s ease;
+}
+
+.project-card.swipe-left .card-content,
+.task-card.swipe-left .card-content {
+    transform: translateX(-20px);
+}
+
+.project-card.swipe-right .card-content,
+.task-card.swipe-right .card-content {
+    transform: translateX(20px);
 }
 
 .card-header {
@@ -333,6 +349,70 @@
     gap: var(--spacing-xs);
 }
 
+/* Стили для свайпов */
+.swipe-active {
+    transition: transform 0.2s ease;
+    cursor: grabbing;
+    z-index: 10;
+}
+
+.project-card.swipe-left,
+.task-card.swipe-left {
+    transform: translateX(-80px);
+}
+
+.project-card.swipe-right,
+.task-card.swipe-right {
+    transform: translateX(80px);
+}
+
+/* Состояние при долгом нажатии */
+.project-card.long-press,
+.task-card.long-press {
+    background: var(--bg-tertiary);
+    transform: scale(0.98);
+}
+
+/* Запрет выделения текста при свайпе */
+.project-card,
+.task-card,
+.member-item,
+.notification-item {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: pan-y;
+}
+
+/* Индикатор возможности свайпа */
+.project-card::after,
+.task-card::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 4px;
+    height: 4px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.project-card:hover::after,
+.task-card:hover::after {
+    opacity: 1;
+}
+
+/* Индикатор порога свайпа */
+.swipe-threshold {
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(115, 103, 240, 0.1) 50%,
+        transparent 100%);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .project-stats {
@@ -360,6 +440,21 @@
         margin-left: 0;
         margin-top: var(--spacing-sm);
     }
+
+    /* Адаптивность для свайпов */
+    .swipe-action {
+        width: 70px;
+    }
+
+    .project-card.swipe-left,
+    .task-card.swipe-left {
+        transform: translateX(-70px);
+    }
+
+    .project-card.swipe-right,
+    .task-card.swipe-right {
+        transform: translateX(70px);
+    }
 }
 
 @media (max-width: 480px) {
@@ -378,4 +473,54 @@
     .task-title {
         margin-right: 0;
     }
+
+    /* Адаптивность для свайпов */
+    .swipe-action {
+        width: 60px;
+        font-size: 0.75rem;
+    }
+
+    .project-card.swipe-left,
+    .task-card.swipe-left {
+        transform: translateX(-60px);
+    }
+
+    .project-card.swipe-right,
+    .task-card.swipe-right {
+        transform: translateX(60px);
+    }
+}
+
+/* Адаптивные улучшения для тач-устройств */
+@media (hover: none) and (pointer: coarse) {
+    .project-card,
+    .task-card {
+        min-height: 60px;
+    }
+
+    .swipe-action {
+        width: 80px;
+    }
+
+    /* Увеличиваем область касания для мобильных устройств */
+    .card-content {
+        padding: var(--spacing-md);
+    }
+}
+
+/* Улучшения для доступности */
+@media (prefers-reduced-motion: reduce) {
+    .swipe-active,
+    .swipe-action,
+    .project-card,
+    .task-card {
+        transition: none;
+    }
+}
+
+/* Подсветка для фокуса при навигации с клавиатуры */
+.project-card:focus-visible,
+.task-card:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
