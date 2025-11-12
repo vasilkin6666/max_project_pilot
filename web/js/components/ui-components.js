@@ -16,6 +16,12 @@ class UIComponents {
 
     static async loadTemplates() {
         try {
+            // Проверяем, не загружены ли уже шаблоны
+            if (this.templates.size > 0) {
+                Utils.log('Templates already loaded, skipping');
+                return;
+            }
+
             const templateFiles = [
                 './templates/project-card.html',
                 './templates/task-card.html',
@@ -29,59 +35,62 @@ class UIComponents {
 
             for (const file of templateFiles) {
                 try {
-                    // Используем правильный путь
                     const response = await fetch(file);
                     if (response.ok) {
                         const html = await response.text();
 
-                        // Ищем template в загруженном HTML
-                        const templateMatch = html.match(/<script[^>]*id="([^"]+)"[^>]*type="text\/template"[^>]*>([\s\S]*?)<\/script>/);
+                        // Извлекаем только содержимое script template
+                        const templateMatch = html.match(/<script[^>]*type="text\/template"[^>]*>([\s\S]*?)<\/script>/);
                         if (templateMatch) {
-                            const templateId = templateMatch[1];
-                            const templateContent = templateMatch[2];
+                            const templateContent = templateMatch[1].trim();
+                            // Извлекаем ID из атрибута id
+                            const idMatch = html.match(/<script[^>]*id="([^"]+)"[^>]*type="text\/template"/);
+                            const templateId = idMatch ? idMatch[1] : this.generateTemplateId(file);
+
                             this.templates.set(templateId, templateContent);
                             loadedCount++;
                             console.log(`✅ Loaded template: ${templateId} from ${file}`);
                         } else {
                             // Если не нашли script template, используем весь HTML как шаблон
-                            const fileName = file.split('/').pop().replace('.html', '');
-                            const templateId = `${fileName}-template`;
+                            const templateId = this.generateTemplateId(file);
                             this.templates.set(templateId, html);
                             loadedCount++;
                             console.log(`✅ Loaded entire file as template: ${templateId} from ${file}`);
                         }
                     } else {
                         console.warn(`❌ Failed to load template: ${file}`, response.status);
-                        // Создаем fallback шаблон
                         this.createFallbackTemplate(file);
                     }
                 } catch (error) {
                     Utils.logError(`Error loading template ${file}:`, error);
-                    // Создаем fallback шаблон при ошибке
                     this.createFallbackTemplate(file);
                 }
             }
 
-            // Также загружаем шаблоны из существующих script элементов
+            // Загружаем шаблоны из существующих script элементов
             const templateElements = document.querySelectorAll('script[type="text/template"]');
             for (const element of templateElements) {
                 const id = element.id;
                 const content = element.innerHTML;
-                this.templates.set(id, content);
-                loadedCount++;
-                console.log(`✅ Loaded inline template: ${id}`);
+                if (id && !this.templates.has(id)) {
+                    this.templates.set(id, content);
+                    loadedCount++;
+                    console.log(`✅ Loaded inline template: ${id}`);
+                }
             }
 
             Utils.log('Templates loaded', { count: loadedCount });
-
-            // Проверяем наличие ключевых шаблонов и создаем fallback если нужно
             this.ensureRequiredTemplates();
 
         } catch (error) {
             Utils.logError('Error loading templates:', error);
-            // Создаем базовые fallback шаблоны
             this.createFallbackTemplates();
         }
+    }
+
+    static generateTemplateId(file) {
+        const fileName = file.split('/').pop().replace('.html', '');
+        return `${fileName}-template`;
     }
 
     static ensureRequiredTemplates() {
@@ -922,10 +931,8 @@ class UIComponents {
                 return;
             }
 
-            // Очищаем контейнер безопасно
-            while (container.firstChild) {
-                container.removeChild(container.firstChild);
-            }
+            // Очищаем контейнер
+            container.innerHTML = '';
 
             if (!projects || !Array.isArray(projects) || projects.length === 0) {
                 this.showEmptyState(container, 'Проектов пока нет', 'fa-folder-open', `
@@ -936,11 +943,13 @@ class UIComponents {
                 return;
             }
 
-            // Рендерим проекты с задержкой для анимации
+            // Рендерим проекты
             projects.forEach((projectData, index) => {
                 setTimeout(() => {
                     try {
                         const project = projectData.project || projectData;
+                        console.log('Rendering project card with data:', project);
+
                         const cardHTML = this.renderProjectCardWithTemplate(project);
 
                         if (!cardHTML) {
@@ -948,27 +957,28 @@ class UIComponents {
                             return;
                         }
 
-                        const cardWrapper = document.createElement('div');
-                        cardWrapper.innerHTML = cardHTML;
+                        const cardElement = document.createElement('div');
+                        cardElement.innerHTML = cardHTML.trim();
 
-                        const cardElement = cardWrapper.firstElementChild;
-                        if (!cardElement) {
+                        // Получаем первый элемент (саму карточку)
+                        const projectCard = cardElement.firstElementChild;
+
+                        if (!projectCard) {
                             console.error('Could not create card element for project:', project);
                             return;
                         }
 
-                        // Добавляем анимацию появления
-                        cardElement.style.opacity = '0';
-                        cardElement.style.transform = 'translateY(20px)';
-                        cardElement.classList.add('fade-in');
+                        // Добавляем анимацию
+                        projectCard.style.opacity = '0';
+                        projectCard.style.transform = 'translateY(20px)';
 
-                        container.appendChild(cardElement);
+                        container.appendChild(projectCard);
 
                         // Анимация появления
                         requestAnimationFrame(() => {
-                            cardElement.style.opacity = '1';
-                            cardElement.style.transform = 'translateY(0)';
-                            cardElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                            projectCard.style.opacity = '1';
+                            projectCard.style.transform = 'translateY(0)';
+                            projectCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
                         });
 
                     } catch (error) {
@@ -986,7 +996,7 @@ class UIComponents {
             }
         }
     }
-
+    
     static renderTasks(tasks) {
         const container = document.getElementById('tasks-container');
         if (!container) return;

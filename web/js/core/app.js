@@ -71,69 +71,60 @@ class App {
 
         Utils.log('Starting core systems initialization...');
 
-        // 1. State Manager (только один раз)
-        if (typeof StateManager !== 'undefined' && !StateManager.initialized) {
-            StateManager.init();
-            StateManager.initialized = true;
-            Utils.log('State manager initialized');
+        // Добавляем флаги инициализации для всех менеджеров
+        const managers = [
+            { name: 'StateManager', instance: StateManager },
+            { name: 'CacheManager', instance: CacheManager },
+            { name: 'SwipeManager', instance: SwipeManager },
+            { name: 'HapticManager', instance: HapticManager },
+            { name: 'UsersManager', instance: UsersManager }
+        ];
+
+        // Инициализируем только если не инициализированы
+        for (const manager of managers) {
+            if (typeof manager.instance !== 'undefined' &&
+                (!manager.instance.initialized || typeof manager.instance.initialized === 'undefined')) {
+
+                if (typeof manager.instance.init === 'function') {
+                    manager.instance.init();
+                    manager.instance.initialized = true;
+                    Utils.log(`${manager.name} initialized`);
+                }
+            } else if (manager.instance.initialized) {
+                Utils.log(`${manager.name} already initialized, skipping`);
+            }
         }
 
-        // 2. Cache Manager (только один раз)
-        if (typeof CacheManager !== 'undefined' && !CacheManager.initialized) {
-            CacheManager.init();
-            CacheManager.initialized = true;
-            Utils.log('Cache manager initialized');
-        }
-
-        // 3. Persistence Manager
-        if (typeof PersistenceManager !== 'undefined') {
-            Utils.log('Persistence manager available');
-        }
-
-        // 4. Swipe Manager (только один раз)
-        if (typeof SwipeManager !== 'undefined' && !SwipeManager.initialized) {
-            SwipeManager.init();
-            SwipeManager.initialized = true;
-            Utils.log('Swipe manager initialized');
-        }
-
-        // 5. Haptic Manager (только один раз)
-        if (typeof HapticManager !== 'undefined' && !HapticManager.initialized) {
-            HapticManager.init();
-            HapticManager.initialized = true;
-            Utils.log('Haptic manager initialized');
-        }
-
-        // 6. Users Manager (только один раз)
-        if (typeof UsersManager !== 'undefined' && !UsersManager.initialized) {
-            UsersManager.init();
-            UsersManager.initialized = true;
-            Utils.log('Users manager initialized');
-        }
-
-        // 7. Search Manager
+        // Search Manager (не требует флага)
         if (typeof SearchManager !== 'undefined') {
             SearchManager.buildSearchIndex();
             Utils.log('Search manager initialized');
         }
 
-        // 8. Dashboard Manager
+        // Dashboard Manager (не требует флага)
         if (typeof DashboardManager !== 'undefined') {
             Utils.log('Dashboard manager initialized');
         }
 
-        // Настройка обработчиков ошибок
-        this.setupErrorHandling();
+        // Persistence Manager (только логирование)
+        if (typeof PersistenceManager !== 'undefined') {
+            Utils.log('Persistence manager available');
+        }
 
-        // Настройка обработчиков событий
-        this.setupEventHandlers();
-
-        // Настройка сетевого обработчика
-        this.setupNetworkHandler();
+        // Настройка обработчиков (только один раз)
+        if (!this.eventHandlersSetup) {
+            this.setupErrorHandling();
+            this.setupEventHandlers();
+            this.setupNetworkHandler();
+            this.eventHandlersSetup = true;
+        }
 
         Utils.log('All core systems initialized successfully');
     }
-    
+
+    // Добавьте свойство для отслеживания настройки обработчиков
+    App.eventHandlersSetup = false;
+        
     static setupErrorHandling() {
         // Глобальный обработчик ошибок
         window.addEventListener('error', (event) => {
