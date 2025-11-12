@@ -19,14 +19,14 @@
 
         <div class="card-content">
             <div class="card-header">
-                <h3 class="project-title">{{truncate title 50}}</h3>
+                <h3 class="project-title">{{title}}</h3>
                 <span class="role-badge role-{{role}}" aria-label="Ваша роль: {{roleText}}">
                     {{roleText}}
                 </span>
             </div>
 
             <p class="project-description">
-                {{truncate description 120}}
+                {{description}}
             </p>
 
             <div class="project-stats">
@@ -38,12 +38,13 @@
                     <i class="fas fa-tasks"></i>
                     <span>{{tasksCount}}</span>
                 </div>
-                <div class="stat" aria-label="{{userTasks}} ваших задач">
-                    <i class="fas fa-user-check"></i>
-                    <span>{{userTasks}}</span>
+                <div class="stat" aria-label="{{tasksDone}} выполнено">
+                    <i class="fas fa-check-circle"></i>
+                    <span>{{tasksDone}}</span>
                 </div>
             </div>
 
+            {{#if tasksCount}}
             <div class="progress-container">
                 <div class="progress-bar" role="progressbar"
                      aria-valuenow="{{progress}}"
@@ -53,6 +54,7 @@
                 </div>
                 <span class="progress-text">{{progress}}%</span>
             </div>
+            {{/if}}
 
             <div class="card-footer">
                 <span class="project-status" aria-label="Статус: {{status}}">

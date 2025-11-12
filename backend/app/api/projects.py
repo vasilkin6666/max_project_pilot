@@ -67,10 +67,17 @@ async def create_project(
         )
         db.add(member)
         await db.commit()
-        await db.refresh(project)
+
+        # Получить полную информацию о созданном проекте
+        result = await db.execute(
+            select(Project)
+            .where(Project.id == project.id)
+            .options(selectinload(Project.project_owner))
+        )
+        project_with_owner = result.scalar_one_or_none()
 
         logger.info(f"Project created successfully with hash: {project.hash}")
-        return {"project": project}
+        return {"project": project_with_owner}
 
     except Exception as e:
         logger.error(f"Error creating project: {str(e)}")
@@ -79,7 +86,7 @@ async def create_project(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
         )
-
+        
 @router.get("/")
 async def get_user_projects(
     current_user: User = Depends(get_current_user),

@@ -1,3 +1,4 @@
+//ui-components.js
 // Компоненты пользовательского интерфейса (полная исправленная версия)
 class UIComponents {
     static init() {
@@ -24,18 +25,25 @@ class UIComponents {
                 'templates/modals/settings.html'
             ];
 
+            let loadedCount = 0;
+
             for (const file of templateFiles) {
                 try {
                     const response = await fetch(file);
                     if (response.ok) {
                         const html = await response.text();
-                        // Извлекаем содержимое script template
-                        const templateMatch = html.match(/<script[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/script>/);
+                        const templateMatch = html.match(/<script[^>]*id="([^"]+)"[^>]*type="text\/template"[^>]*>([\s\S]*?)<\/script>/);
                         if (templateMatch) {
                             const templateId = templateMatch[1];
                             const templateContent = templateMatch[2];
                             this.templates.set(templateId, templateContent);
+                            loadedCount++;
+                            console.log(`✅ Loaded template: ${templateId} from ${file}`);
+                        } else {
+                            console.warn(`❌ No template found in: ${file}`);
                         }
+                    } else {
+                        console.warn(`❌ Failed to load template: ${file}`, response.status);
                     }
                 } catch (error) {
                     Utils.logError(`Error loading template ${file}:`, error);
@@ -48,9 +56,22 @@ class UIComponents {
                 const id = element.id;
                 const content = element.innerHTML;
                 this.templates.set(id, content);
+                loadedCount++;
+                console.log(`✅ Loaded inline template: ${id}`);
             }
 
-            Utils.log('Templates loaded', { count: this.templates.size });
+            Utils.log('Templates loaded', { count: loadedCount });
+
+            // Проверяем наличие ключевых шаблонов
+            const requiredTemplates = ['project-card-template', 'task-card-template'];
+            requiredTemplates.forEach(templateId => {
+                if (!this.templates.has(templateId)) {
+                    console.error(`🚨 REQUIRED TEMPLATE MISSING: ${templateId}`);
+                } else {
+                    console.log(`✅ Required template available: ${templateId}`);
+                }
+            });
+
         } catch (error) {
             Utils.logError('Error loading templates:', error);
         }
@@ -60,21 +81,47 @@ class UIComponents {
         const template = this.templates.get(templateId);
         if (!template) {
             Utils.logError(`Template not found: ${templateId}`);
-            return '';
+            return this.createProjectCardFallback(data);
         }
 
         try {
-            return template.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-                const value = this.getNestedValue(data, key.trim());
-                return value !== undefined ? Utils.escapeHTML(String(value)) : '';
+            let result = template;
+
+            // Обработка условных блоков {{#if condition}} ... {{/if}}
+            result = result.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, condition, content) => {
+                const value = this.getNestedValue(data, condition);
+                return value ? content : '';
             });
+
+            // Обработка отрицательных условий {{#unless condition}} ... {{/unless}}
+            result = result.replace(/\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g, (match, condition, content) => {
+                const value = this.getNestedValue(data, condition);
+                return !value ? content : '';
+            });
+
+            // Обработка функций типа truncate title 50
+            result = result.replace(/\{\{truncate\s+(\w+)\s+(\d+)\}\}/g, (match, property, length) => {
+                const text = this.getNestedValue(data, property) || '';
+                return Utils.truncateText(text, parseInt(length));
+            });
+
+            // Простая замена переменных {{variable}}
+            result = result.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+                const trimmedKey = key.trim();
+                const value = this.getNestedValue(data, trimmedKey);
+                return value !== undefined && value !== null ? Utils.escapeHTML(String(value)) : '';
+            });
+
+            return result;
+
         } catch (error) {
             Utils.logError(`Error rendering template ${templateId}:`, error);
-            return '';
+            return this.createProjectCardFallback(data);
         }
     }
 
     static getNestedValue(obj, path) {
+        if (!obj || !path) return '';
         return path.split('.').reduce((current, key) => {
             return current && current[key] !== undefined ? current[key] : '';
         }, obj);
@@ -346,7 +393,21 @@ class UIComponents {
         });
 
         EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
-            this.renderProjects(projects);
+            console.log('PROJECTS_LOADED event received:', projects);
+            // Добавляем небольшую задержку для гарантии что DOM готов
+            setTimeout(() => this.renderProjects(projects), 100);
+        });
+
+        EventManager.on(APP_EVENTS.PROJECTS_UPDATED, (projects) => {
+            console.log('PROJECTS_UPDATED event received:', projects);
+            setTimeout(() => this.renderProjects(projects), 100);
+        });
+
+        EventManager.on(APP_EVENTS.STATE_UPDATED, (newState) => {
+            if (newState.projects && Array.isArray(newState.projects)) {
+                console.log('STATE_UPDATED with projects:', newState.projects);
+                setTimeout(() => this.renderProjects(newState.projects), 150);
+            }
         });
 
         EventManager.on(APP_EVENTS.TASKS_LOADED, (tasks) => {
@@ -717,36 +778,76 @@ class UIComponents {
     // ==================== РЕНДЕРИНГ ДАННЫХ ====================
 
     static renderProjects(projects) {
-        const container = document.getElementById('projects-list');
-        if (!container) return;
+        try {
+            const container = document.getElementById('projects-list');
+            if (!container) {
+                console.warn('Projects container not found');
+                return;
+            }
 
-        if (!projects || projects.length === 0) {
-            this.showEmptyState(container, 'Проектов пока нет', 'fa-folder-open', `
-                <button class="btn btn-primary" onclick="ProjectsManager.showCreateProjectModal()">
-                    <i class="fas fa-plus"></i> Создать проект
-                </button>
-            `);
-            return;
-        }
+            // Очищаем контейнер безопасно
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
 
-        this.showLoadingState(container);
+            if (!projects || !Array.isArray(projects) || projects.length === 0) {
+                this.showEmptyState(container, 'Проектов пока нет', 'fa-folder-open', `
+                    <button class="btn btn-primary" onclick="ProjectsManager.showCreateProjectModal()">
+                        <i class="fas fa-plus"></i> Создать проект
+                    </button>
+                `);
+                return;
+            }
 
-        // Используем requestAnimationFrame для плавного рендеринга
-        requestAnimationFrame(() => {
-            container.innerHTML = '';
+            // Рендерим проекты с задержкой для анимации
             projects.forEach((projectData, index) => {
                 setTimeout(() => {
-                    const cardHTML = this.renderProjectCardWithTemplate(projectData);
-                    const card = document.createElement('div');
-                    card.innerHTML = cardHTML;
-                    container.appendChild(card.firstElementChild);
+                    try {
+                        const project = projectData.project || projectData;
+                        const cardHTML = this.renderProjectCardWithTemplate(project);
 
-                    // Добавляем анимацию появления
-                    card.firstElementChild.style.animationDelay = `${index * 50}ms`;
-                    card.firstElementChild.classList.add('fade-in');
+                        if (!cardHTML) {
+                            console.error('Empty card HTML for project:', project);
+                            return;
+                        }
+
+                        const cardWrapper = document.createElement('div');
+                        cardWrapper.innerHTML = cardHTML;
+
+                        const cardElement = cardWrapper.firstElementChild;
+                        if (!cardElement) {
+                            console.error('Could not create card element for project:', project);
+                            return;
+                        }
+
+                        // Добавляем анимацию появления
+                        cardElement.style.opacity = '0';
+                        cardElement.style.transform = 'translateY(20px)';
+                        cardElement.classList.add('fade-in');
+
+                        container.appendChild(cardElement);
+
+                        // Анимация появления
+                        requestAnimationFrame(() => {
+                            cardElement.style.opacity = '1';
+                            cardElement.style.transform = 'translateY(0)';
+                            cardElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        });
+
+                    } catch (error) {
+                        console.error('Error rendering project card:', error, projectData);
+                    }
                 }, index * 50);
             });
-        });
+
+            Utils.log(`Rendered ${projects.length} projects`);
+        } catch (error) {
+            Utils.logError('Error in renderProjects:', error);
+            const container = document.getElementById('projects-list');
+            if (container) {
+                this.showErrorState(container, 'Ошибка отображения проектов');
+            }
+        }
     }
 
     static renderTasks(tasks) {
@@ -892,16 +993,21 @@ class UIComponents {
     static getRoleText(role) {
         const roles = {
             'owner': 'Владелец',
-            'admin': 'Админ',
+            'admin': 'Администратор',
             'member': 'Участник',
+            'viewer': 'Наблюдатель',
             'guest': 'Гость'
         };
         return roles[role] || role;
     }
 
     static getProjectStatus(project) {
+        if (!project) return 'Неизвестно';
+
         if (project.is_private) {
-            return project.requires_approval ? 'Приватный (требует одобрения)' : 'Приватный';
+            return project.requires_approval
+                ? 'Приватный (требует одобрения)'
+                : 'Приватный';
         }
         return 'Публичный';
     }
@@ -923,66 +1029,173 @@ class UIComponents {
         if (!container) return;
 
         let retryButton = '';
-        if (retryCallback) {
-            const callbackStr = typeof retryCallback === 'function' ? retryCallback.name : retryCallback;
+        if (retryCallback && typeof retryCallback === 'function') {
             retryButton = `
-                <button class="btn btn-primary" onclick="${callbackStr}">
-                    <i class="fas fa-refresh" aria-hidden="true"></i> Попробовать снова
+                <button class="btn btn-primary" onclick="UIComponents.retryAction()">
+                    <i class="fas fa-refresh"></i> Попробовать снова
                 </button>
             `;
         }
 
-        container.innerHTML = `
-            <div class="error-state" aria-live="polite">
-                <div class="error-icon" aria-hidden="true">
-                    <i class="fas fa-exclamation-triangle"></i>
+        try {
+            container.innerHTML = `
+                <div class="error-state">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>${Utils.escapeHTML(message)}</h3>
+                    ${retryButton}
                 </div>
-                <h3>${Utils.escapeHTML(message)}</h3>
-                ${retryButton}
-            </div>
-        `;
+            `;
+        } catch (error) {
+            Utils.logError('Error showing error state:', error);
+        }
+    }
+
+    static retryAction() {
+        if (typeof ProjectsManager !== 'undefined') {
+            ProjectsManager.loadProjects();
+        }
     }
 
     static showEmptyState(container, message = 'Данных пока нет', icon = 'fa-inbox', actionHTML = '') {
-        if (!container) return;
+        if (!container) {
+            console.warn('Container not provided for empty state');
+            return;
+        }
 
-        container.innerHTML = `
-            <div class="empty-state" aria-live="polite">
-                <div class="empty-icon" aria-hidden="true">
-                    <i class="fas ${icon}"></i>
+        try {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <h3>${Utils.escapeHTML(message)}</h3>
+                    ${actionHTML}
                 </div>
-                <h3>${Utils.escapeHTML(message)}</h3>
-                ${actionHTML}
-            </div>
-        `;
+            `;
+        } catch (error) {
+            Utils.logError('Error showing empty state:', error);
+            container.innerHTML = '<div class="empty-state">Ошибка отображения</div>';
+        }
     }
 
     // ==================== ШАБЛОНЫ ====================
 
     static renderProjectCardWithTemplate(projectData) {
-        const project = projectData.project || projectData;
-        const stats = project.stats || {};
-        const role = projectData.role || 'member';
-        const progress = stats.tasks_count > 0
-            ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
-            : 0;
+        try {
+            console.log('Rendering project card with data:', projectData);
 
-        const templateData = {
-            id: project.id,
-            hash: project.hash,
-            title: project.title,
-            description: project.description || 'Без описания',
-            role: role,
-            roleText: this.getRoleText(role),
-            membersCount: stats.members_count || 0,
-            tasksCount: stats.tasks_count || 0,
-            userTasks: stats.user_tasks || 0,
-            progress: progress,
-            status: this.getProjectStatus(project),
-            canInvite: ['owner', 'admin'].includes(role)
-        };
+            if (!projectData) {
+                console.error('Invalid project data:', projectData);
+                return '<div class="project-card error">Ошибка данных проекта</div>';
+            }
 
-        return this.renderTemplate('project-card-template', templateData);
+            const project = projectData.project || projectData;
+            const stats = project.stats || {};
+
+            // Безопасное извлечение данных
+            const title = project.title || 'Без названия';
+            const description = project.description || 'Без описания';
+            const role = project.user_role || projectData.role || 'member';
+            const isPrivate = Boolean(project.is_private);
+            const requiresApproval = Boolean(project.requires_approval);
+
+            const progress = stats.tasks_count > 0
+                ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
+                : 0;
+
+            const templateData = {
+                id: project.id || 'unknown',
+                hash: project.hash || '',
+                title: title,
+                description: description,
+                role: role,
+                roleText: this.getRoleText(role),
+                membersCount: stats.members_count || 0,
+                tasksCount: stats.tasks_count || 0,
+                tasksDone: stats.tasks_done || 0,
+                tasksInProgress: stats.tasks_in_progress || 0,
+                tasksTodo: stats.tasks_todo || 0,
+                progress: progress,
+                isPrivate: isPrivate,
+                requiresApproval: requiresApproval,
+                status: this.getProjectStatus(project),
+                canInvite: ['owner', 'admin'].includes(role)
+            };
+
+            console.log('Template data prepared:', templateData);
+
+            // Используем шаблон
+            const rendered = this.renderTemplate('project-card-template', templateData);
+            console.log('Rendered template:', rendered);
+
+            return rendered || this.createProjectCardFallback(templateData);
+
+        } catch (error) {
+            Utils.logError('Error in renderProjectCardWithTemplate:', error);
+            return this.createProjectCardFallback({title: 'Ошибка загрузки'});
+        }
+    }
+
+    static createProjectCardFallback(project) {
+        return `
+            <div class="project-card" data-project-id="${project.id}" data-project-hash="${project.hash}">
+                <div class="card-header">
+                    <h3 class="project-title">${Utils.escapeHTML(project.title)}</h3>
+                    <div class="project-badges">
+                        <span class="project-privacy ${project.isPrivate ? 'private' : 'public'}">
+                            ${project.isPrivate ? '🔒 Приватный' : '🌐 Публичный'}
+                        </span>
+                        <span class="project-role ${project.role}">
+                            ${project.roleText}
+                        </span>
+                    </div>
+                </div>
+
+                <p class="project-description">
+                    ${Utils.escapeHTML(project.description)}
+                </p>
+
+                <div class="project-stats">
+                    <div class="stat">
+                        <i class="fas fa-users"></i>
+                        <span>${project.membersCount}</span>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-tasks"></i>
+                        <span>${project.tasksCount}</span>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-check-circle"></i>
+                        <span>${project.tasksDone}</span>
+                    </div>
+                </div>
+
+                ${project.tasksCount > 0 ? `
+                    <div class="progress-section">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${project.progress}%"></div>
+                        </div>
+                        <span class="progress-text">${project.progress}%</span>
+                    </div>
+                ` : ''}
+
+                <div class="project-footer">
+                    <div class="task-breakdown">
+                        <span class="task-todo">${project.tasksTodo} к выполнению</span>
+                        <span class="task-in-progress">${project.tasksInProgress} в работе</span>
+                    </div>
+
+                    ${project.canInvite && project.isPrivate ? `
+                        <button class="btn btn-sm btn-outline share-btn"
+                                onclick="ProjectsManager.showInviteDialog('${project.hash}')">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
     }
 
     static renderTaskCardWithTemplate(task) {

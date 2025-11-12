@@ -39,10 +39,9 @@ class ProjectResponse(BaseModel):
     in_progress_tasks: int
     todo_tasks: int
     members_count: int
-    # НОВЫЕ ПОЛЯ:
     owner_info: ProjectOwnerResponse
     members: List[ProjectMemberResponse]
-    current_user_role: str
+    current_user_role: str  # Должно правильно отображать "owner" для создателя
 
 class UserSettingsResponse(BaseModel):
     id: int

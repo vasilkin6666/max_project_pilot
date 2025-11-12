@@ -1,5 +1,28 @@
+//utils.js
 // Утилитарные функции
 class Utils {
+    // Получение вложенного значения из объекта по пути
+    static getNestedValue(obj, path) {
+        return path.split('.').reduce((current, key) => {
+            return current && current[key] !== undefined ? current[key] : '';
+        }, obj);
+    }
+
+    // Форматирование булевых значений для отображения
+    static formatBoolean(value, trueText = 'Да', falseText = 'Нет') {
+        return value ? trueText : falseText;
+    }
+
+    // Генерация случайного цвета на основе строки
+    static generateColorFromString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = hash % 360;
+        return `hsl(${hue}, 70%, 50%)`;
+    }
+
     // Экранирование HTML
     static escapeHTML(text) {
         if (!text) return '';
