@@ -414,14 +414,6 @@ class App {
                 UsersManager.loadCurrentUser?.()
             ]);
 
-            // Проверяем, что проекты загружены
-            const projects = StateManager.getState('projects') || [];
-            if (Array.isArray(projects)) {
-                EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
-            } else {
-                Utils.log('Projects not loaded yet, skipping PROJECTS_LOADED');
-            }
-
             results.forEach((result, i) => {
                 if (result.status === 'rejected') {
                     Utils.logError(`Initial load [${i}] failed:`, result.reason);

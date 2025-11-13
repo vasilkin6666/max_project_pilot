@@ -44,11 +44,6 @@ class DashboardManager {
               }
           }, 150);
 
-          // Безопасный emit — только если projects валиден
-          if (projects.length > 0) {
-              EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
-          }
-
           EventManager.emit(APP_EVENTS.DATA_LOADED);
           Utils.log('Dashboard loaded', { projects: projects.length });
       } catch (error) {
@@ -233,7 +228,7 @@ class DashboardManager {
 
         Utils.log(`Rendered ${projects.length} projects`);
     }
-    
+
     static renderPriorityTasks(tasks) {
         const container = document.getElementById('priority-tasks-list');
         if (!container) return;

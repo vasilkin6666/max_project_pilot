@@ -1,5 +1,6 @@
 //ui-components.js
 class UIComponents {
+
   static init() {
       this.initNavigation();
       this.initTheme();
@@ -12,7 +13,24 @@ class UIComponents {
   }
 
     static templates = new Map();
+    static isInitialized = false;
+    static {
+            let lastRenderedProjects = null;
 
+            EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
+                if (!Array.isArray(projects)) return;
+
+                // Защита от дублей
+                const serialized = JSON.stringify(projects);
+                if (lastRenderedProjects === serialized) {
+                    Utils.log('Projects already rendered, skipping');
+                    return;
+                }
+                lastRenderedProjects = serialized;
+
+                this.renderProjects(projects);
+            });
+        }
     static async loadTemplates() {
         try {
             // Проверяем, не загружены ли уже шаблоны
@@ -641,22 +659,6 @@ class UIComponents {
 
         EventManager.on(APP_EVENTS.NOTIFICATIONS_LOADED, (notifications) => {
             this.updateNotificationBadge(notifications);
-        });
-
-        EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
-            if (!Array.isArray(projects)) {
-                Utils.log('Invalid projects data:', projects);
-                return;
-            }
-            if (typeof APP_EVENTS !== 'undefined') {
-                APP_EVENTS.PROJECTS_LOADED = 'projects:loaded';
-                APP_EVENTS.INITIAL_DATA_LOADED = 'initial:data:loaded';
-            }
-            try {
-                UIComponents.renderProjects(projects);
-            } catch (error) {
-                Utils.logError('Error rendering projects:', error);
-            }
         });
 
         EventManager.on(APP_EVENTS.PROJECTS_UPDATED, (projects) => {
