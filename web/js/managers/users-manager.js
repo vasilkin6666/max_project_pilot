@@ -31,11 +31,6 @@ class UsersManager {
           // Проверяем какие данные нужно обновить
           const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
 
-          // Обновляем фото если его нет или оно из MAX
-          if (maxUser.photo_url && (!currentUser.photo_url || currentUser.photo_url.includes('oneme.ru'))) {
-              updateData.photo_url = maxUser.photo_url;
-          }
-
           // Обновляем имя если оно из MAX и лучше текущего
           if (maxFullName && maxFullName !== 'Пользователь MAX' &&
               (!currentUser.full_name || currentUser.full_name === 'Пользователь MAX')) {
@@ -264,36 +259,19 @@ class UsersManager {
     }
 
     static updateUserUI() {
-        if (!this.currentUser) return;
+        const maxPhoto = AuthManager.maxData?.user?.photo_url;
+        const fallbackPhoto = AuthManager.currentUser?.photo_url;
 
-        // Используем данные из MAX если есть
-        let displayUser = { ...this.currentUser };
-        if (this.maxData && this.maxData.user) {
-            const maxUser = this.maxData.user;
-            displayUser = {
-                ...displayUser,
-                full_name: maxUser.first_name && maxUser.last_name ?
-                    `${maxUser.first_name} ${maxUser.last_name}` : displayUser.full_name,
-                photo_url: maxUser.photo_url || displayUser.photo_url
-            };
+        const photoUrl = maxPhoto || fallbackPhoto;
+
+        if (photoUrl) {
+            userAvatar.style.backgroundImage = `url(${photoUrl})`;
+            userAvatar.textContent = '';
+        } else {
+            userAvatar.style.backgroundImage = '';
+            userAvatar.textContent = Utils.getInitials(displayUser.full_name);
         }
-
-        // Обновляем аватар пользователя
-        const userAvatar = document.getElementById('user-avatar');
-        if (userAvatar) {
-            const initials = Utils.getInitials(displayUser.full_name || 'Пользователь');
-            userAvatar.textContent = initials;
-
-            // Принудительно устанавливаем фото из MAX если есть
-            if (this.maxData?.user?.photo_url) {
-                userAvatar.style.backgroundImage = `url(${this.maxData.user.photo_url})`;
-                userAvatar.textContent = '';
-                userAvatar.style.backgroundSize = 'cover';
-                userAvatar.style.backgroundPosition = 'center';
-            } else {
-                userAvatar.style.backgroundImage = '';
-            }
-        }
+    }
 
     static async loadUserPreferences() {
         try {

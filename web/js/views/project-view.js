@@ -1,19 +1,18 @@
-// Менеджер для полноценного просмотра проекта
+// js/views/project-view.js
 class ProjectView {
     static currentProject = null;
 
     static async openProject(projectHash) {
         try {
-            // Показываем loading
             App.showLoadingOverlay();
 
-            // Загружаем данные проекта
-            const projectData = await ApiService.getProject(projectHash);
-            const tasksData = await ApiService.getProjectTasks(projectHash);
+            const [projectData, tasksData] = await Promise.all([
+                ApiService.getProject(projectHash),
+                ApiService.getProjectTasks(projectHash)
+            ]);
 
             this.currentProject = projectData;
 
-            // Переключаемся на view проекта
             this.showProjectView(projectData, tasksData.tasks || []);
 
             App.hideLoadingOverlay();
@@ -22,7 +21,6 @@ class ProjectView {
             ToastManager.error('Ошибка загрузки проекта');
             App.hideLoadingOverlay();
 
-            // Fallback: открываем старый модальный вид
             if (typeof ProjectsManager !== 'undefined') {
                 ProjectsManager.showProjectDetailModal(await ApiService.getProject(projectHash));
             }
@@ -31,20 +29,17 @@ class ProjectView {
 
     static showProjectView(projectData, tasks) {
         const project = projectData.project || projectData;
-
-        // Определяем роль пользователя
         const currentUserRole = project.current_user_role || project.user_role || 'member';
         const canManage = ['owner', 'admin'].includes(currentUserRole);
         const canCreateTasks = canManage;
         const canViewJoinRequests = canManage;
 
-        // Создаем HTML для view проекта
         const projectHTML = `
             <div class="project-view">
                 <div class="project-header">
                     <button class="btn btn-icon back-btn" onclick="ProjectView.closeProject()">
                         <i class="fas fa-arrow-left"></i>
-                        <span>Назад</span>
+                        <span class="d-none d-sm-inline">Назад</span>
                     </button>
                     <div class="project-title-section">
                         <h1 class="project-title">${Utils.escapeHTML(project.title)}</h1>
@@ -54,7 +49,7 @@ class ProjectView {
                         <div class="project-actions">
                             ${canViewJoinRequests ? `
                                 <button class="btn btn-outline-primary" onclick="JoinRequestsManager.showJoinRequestsModal('${project.hash}')">
-                                    <i class="fas fa-user-plus"></i> Заявки на вступление
+                                    <i class="fas fa-user-plus"></i> Заявки
                                 </button>
                             ` : ''}
                             <button class="btn btn-outline" onclick="ProjectsManager.showMembersManagement('${project.hash}')">
@@ -70,45 +65,34 @@ class ProjectView {
                 <div class="project-content">
                     <div class="project-info-section">
                         <div class="project-description-card">
-                            <h3>Описание проекта</h3>
+                            <h3>Описание</h3>
                             <p class="project-description">${Utils.escapeHTML(project.description || 'Без описания')}</p>
                         </div>
 
                         <div class="project-meta-grid">
                             <div class="meta-card">
-                                <div class="meta-icon">
-                                    <i class="fas fa-users"></i>
-                                </div>
+                                <div class="meta-icon"><i class="fas fa-users"></i></div>
                                 <div class="meta-content">
                                     <div class="meta-value">${project.members?.length || 0}</div>
                                     <div class="meta-label">Участников</div>
                                 </div>
                             </div>
-
                             <div class="meta-card">
-                                <div class="meta-icon">
-                                    <i class="fas fa-tasks"></i>
-                                </div>
+                                <div class="meta-icon"><i class="fas fa-tasks"></i></div>
                                 <div class="meta-content">
                                     <div class="meta-value">${tasks.length}</div>
                                     <div class="meta-label">Задач</div>
                                 </div>
                             </div>
-
                             <div class="meta-card">
-                                <div class="meta-icon">
-                                    <i class="fas fa-user-tag"></i>
-                                </div>
+                                <div class="meta-icon"><i class="fas fa-user-tag"></i></div>
                                 <div class="meta-content">
                                     <div class="meta-value">${UIComponents.getRoleText(currentUserRole)}</div>
                                     <div class="meta-label">Ваша роль</div>
                                 </div>
                             </div>
-
                             <div class="meta-card">
-                                <div class="meta-icon">
-                                    <i class="fas fa-calendar"></i>
-                                </div>
+                                <div class="meta-icon"><i class="fas fa-calendar"></i></div>
                                 <div class="meta-content">
                                     <div class="meta-value">${Utils.formatDate(project.created_at)}</div>
                                     <div class="meta-label">Создан</div>
@@ -119,10 +103,10 @@ class ProjectView {
 
                     <div class="project-tasks-section">
                         <div class="tasks-header">
-                            <h2>Задачи проекта</h2>
+                            <h2>Задачи</h2>
                             ${canCreateTasks ? `
                                 <button class="btn btn-primary" onclick="TasksManager.showCreateTaskModal('${project.hash}')">
-                                    <i class="fas fa-plus"></i> Новая задача
+                                    <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Новая задача</span>
                                 </button>
                             ` : ''}
                         </div>
@@ -135,40 +119,43 @@ class ProjectView {
             </div>
         `;
 
-        // Скрываем main content и показываем project view
-        const mainContent = document.querySelector('.main-content');
-        const bottomNav = document.querySelector('.bottom-nav');
+        // === КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ===
+        // 1. НЕ скрываем main-content
+        // 2. Создаём/получаем контейнер
+        // 3. Вставляем HTML
+        // 4. Показываем контейнер
 
-        if (mainContent) {
-            mainContent.style.display = 'none';
+        let container = document.getElementById('project-view-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'project-view-container';
+            container.className = 'project-view-container';
+            document.querySelector('main').appendChild(container);
         }
 
-        if (bottomNav) {
-            bottomNav.style.display = 'none';
-        }
+        container.innerHTML = projectHTML;
+        container.style.display = 'block';
 
-        const projectViewContainer = document.getElementById('project-view-container') || this.createProjectViewContainer();
-        projectViewContainer.innerHTML = projectHTML;
-        projectViewContainer.style.display = 'block';
+        // Скрываем другие views, но НЕ main-content и НЕ bottom-nav
+        const views = document.querySelectorAll('.view');
+        views.forEach(v => v.classList.remove('active'));
 
-        // Обновляем навигацию
-        this.updateNavigationForProjectView();
+        // Обновляем активный пункт в bottom-nav
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-view') === 'dashboard-view') {
+                item.classList.add('active');
+            }
+        });
 
-        // Добавляем обработчики событий для задач
         this.setupTaskEventHandlers();
     }
 
-    static createProjectViewContainer() {
-        const container = document.createElement('div');
-        container.id = 'project-view-container';
-        container.className = 'project-view-container';
-        document.querySelector('main').appendChild(container);
-        return container;
-    }
-
     static setupTaskEventHandlers() {
-        // Обработчики кликов по задачам
-        document.addEventListener('click', (e) => {
+        // Убираем старые обработчики, чтобы не было дублирования
+        document.removeEventListener('click', this.taskClickHandler);
+        this.taskClickHandler = (e) => {
             const taskCard = e.target.closest('.task-card');
             if (taskCard) {
                 const taskId = taskCard.getAttribute('data-task-id');
@@ -176,9 +163,9 @@ class ProjectView {
                     TasksManager.openTaskDetail(taskId);
                 }
             }
-        });
+        };
+        document.addEventListener('click', this.taskClickHandler);
 
-        // Обработчики свайпов
         if (typeof SwipeManager !== 'undefined') {
             SwipeManager.setupGlobalHandlers();
         }
@@ -188,14 +175,9 @@ class ProjectView {
         if (!tasks || tasks.length === 0) {
             return `
                 <div class="empty-state">
-                    <div class="empty-icon">
-                        <i class="fas fa-tasks"></i>
-                    </div>
-                    <h3>Задач пока нет</h3>
-                    <p>Создайте первую задачу для этого проекта</p>
-                    <button class="btn btn-primary" onclick="TasksManager.showCreateTaskModal('${this.currentProject?.hash}')">
-                        <i class="fas fa-plus"></i> Создать задачу
-                    </button>
+                    <div class="empty-icon"><i class="fas fa-tasks"></i></div>
+                    <h3>Задач нет</h3>
+                    <p>Создайте первую задачу</p>
                 </div>
             `;
         }
@@ -208,14 +190,13 @@ class ProjectView {
                         priorityText: Utils.getPriorityText(task.priority),
                         statusText: Utils.getStatusText(task.status),
                         assignee: task.assignee?.full_name || 'Не назначен',
-                        dueDate: task.due_date ? Utils.formatDate(task.due_date) : 'Нет срока',
+                        dueDate: task.due_date ? Utils.formatDate(task.due_date) : 'Без срока',
                         isOverdue: Utils.isOverdue(task.due_date),
                         hasSubtasks: !!(task.subtasks && task.subtasks.length > 0),
-                        progress: task.subtasks && task.subtasks.length > 0 ?
+                        progress: task.subtasks?.length > 0 ?
                             Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100) : 0
                     };
 
-                    // Используем UIComponents для рендеринга карточки задачи
                     return typeof UIComponents !== 'undefined' ?
                         UIComponents.renderTemplate('task-card-template', taskData) :
                         this.createFallbackTaskCard(taskData);
@@ -255,50 +236,21 @@ class ProjectView {
         `;
     }
 
-    static updateNavigationForProjectView() {
-        // Скрываем bottom navigation при просмотре проекта
-        const bottomNav = document.querySelector('.bottom-nav');
-        if (bottomNav) {
-            bottomNav.style.display = 'none';
-        }
-    }
-
     static closeProject() {
-        const projectViewContainer = document.getElementById('project-view-container');
-        const mainContent = document.querySelector('.main-content');
-        const bottomNav = document.querySelector('.bottom-nav');
-
-        if (projectViewContainer) {
-            projectViewContainer.style.display = 'none';
-            projectViewContainer.innerHTML = ''; // Очищаем контент
+        const container = document.getElementById('project-view-container');
+        if (container) {
+            container.style.display = 'none';
+            container.innerHTML = '';
         }
 
-        if (mainContent) {
-            mainContent.style.display = 'block';
+        // Показываем dashboard
+        const dashboardView = document.getElementById('dashboard-view');
+        if (dashboardView) {
+            dashboardView.classList.add('active');
         }
-
-        if (bottomNav) {
-            bottomNav.style.display = 'flex';
-        }
-
-        // Восстанавливаем активное состояние в навигации
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            if (item.getAttribute('data-view') === 'dashboard-view') {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
 
         this.currentProject = null;
 
-        // Возвращаемся к главному виду
-        if (typeof UIComponents !== 'undefined') {
-            UIComponents.showView('dashboard-view');
-        }
-
-        // Обновляем данные дашборда
         if (typeof DashboardManager !== 'undefined') {
             DashboardManager.loadDashboard();
         }
