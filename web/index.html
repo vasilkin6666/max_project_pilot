@@ -1053,7 +1053,8 @@
                     if (statusFilter) filters.status = statusFilter;
                     if (projectFilter) filters.project_hash = projectFilter;
 
-                    const tasks = await ApiService.getUserTasks(filters);
+                    const response = await ApiService.getUserTasks(filters);
+                    const tasks = response.tasks || []; // Исправлено
                     const container = document.getElementById('myTasksList');
 
                     if (!tasks || tasks.length === 0) {
@@ -1114,7 +1115,8 @@
 
             static async loadProjectMembers(projectHash) {
                 try {
-                    const members = await ApiService.getProjectMembers(projectHash);
+                    const response = await ApiService.getProjectMembers(projectHash);
+                    const members = response.members || []; // Исправлено
                     const container = document.getElementById('projectMembersList');
 
                     if (!members || members.length === 0) {
@@ -1140,7 +1142,8 @@
 
             static async loadProjectTasks(projectHash) {
                 try {
-                    const tasks = await ApiService.getTasks(projectHash);
+                    const response = await ApiService.getTasks(projectHash);
+                    const tasks = response.tasks || []; // Исправлено
                     const container = document.getElementById('projectTasksList');
 
                     if (!tasks || tasks.length === 0) {
@@ -1201,7 +1204,8 @@
 
             static async loadTaskComments(taskId) {
                 try {
-                    const comments = await ApiService.getTaskComments(taskId);
+                    const response = await ApiService.getTaskComments(taskId);
+                    const comments = response.comments || []; // Исправлено
                     const container = document.getElementById('taskCommentsList');
 
                     if (!comments || comments.length === 0) {
@@ -1225,7 +1229,8 @@
 
             static async loadTaskDependencies(taskId) {
                 try {
-                    const dependencies = await ApiService.getTaskDependencies(taskId);
+                    const response = await ApiService.getTaskDependencies(taskId);
+                    const dependencies = response.dependencies || []; // Исправлено
                     const container = document.getElementById('taskDependenciesList');
 
                     if (!dependencies || dependencies.length === 0) {
@@ -1250,7 +1255,8 @@
                 if (!currentProject) return;
 
                 try {
-                    const members = await ApiService.getProjectMembers(currentProject.hash);
+                    const response = await ApiService.getProjectMembers(currentProject.hash);
+                    const members = response.members || []; // Исправлено
                     const container = document.getElementById('projectMembersManagementList');
 
                     if (!members || members.length === 0) {
@@ -1293,7 +1299,8 @@
                 if (!currentProject) return;
 
                 try {
-                    const joinRequests = await ApiService.getProjectJoinRequests(currentProject.hash);
+                    const response = await ApiService.getProjectJoinRequests(currentProject.hash);
+                    const joinRequests = response.requests || []; // Исправлено
                     const container = document.getElementById('joinRequestsList');
 
                     if (!joinRequests || joinRequests.length === 0) {
@@ -1665,7 +1672,8 @@
 
             static async showNotifications() {
                 try {
-                    const notifications = await ApiService.getNotifications();
+                    const response = await ApiService.getNotifications();
+                    const notifications = response.notifications || []; // Исправлено
                     const container = document.getElementById('notificationsList');
 
                     if (!notifications || notifications.length === 0) {
@@ -1722,11 +1730,18 @@
 
             static async handleSaveSettings() {
                 try {
-                    // Обновляем данные пользователя
-                    await ApiService.updateCurrentUser({
-                        full_name: document.getElementById('userFullName').value.trim(),
-                        username: document.getElementById('userUsername').value.trim()
-                    });
+                    const fullName = document.getElementById('userFullName').value.trim();
+                    const username = document.getElementById('userUsername').value.trim();
+
+                    // Создаем объект только с заполненными полями
+                    const userData = {};
+                    if (fullName) userData.full_name = fullName;
+                    if (username) userData.username = username;
+
+                    // Обновляем данные пользователя только если есть что обновлять
+                    if (Object.keys(userData).length > 0) {
+                        await ApiService.updateCurrentUser(userData);
+                    }
 
                     // Обновляем настройки
                     await ApiService.updateUserPreferences({
