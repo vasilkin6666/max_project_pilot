@@ -221,19 +221,22 @@ body {
     flex-shrink: 0;
 }
 
-.user-avatar-large {
-    width: 64px;
-    height: 64px;
+.user-avatar-large,
+#nav-user-avatar {
+    width: 60px;
+    height: 60px;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
     font-weight: bold;
-    font-size: 1.5rem;
+    color: white;
     flex-shrink: 0;
 }
+
 
 .member-avatar {
     width: 40px;

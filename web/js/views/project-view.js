@@ -1,16 +1,13 @@
-// js/views/project-view.js
 class ProjectView {
     static currentProject = null;
     static isOpening = false; /
 
     static async openProject(projectHash) {
-        // ПРОВЕРЯЕМ: уже открыт этот проект?
         if (this.currentProject?.hash === projectHash) {
             Utils.log('Project already open, skipping reload');
             return;
         }
 
-        // ПРОВЕРЯЕМ: уже идёт открытие?
         if (this.isOpening) {
             Utils.log('Project opening in progress, skipping duplicate call');
             return;
@@ -21,7 +18,6 @@ class ProjectView {
         try {
             App.showLoadingOverlay();
 
-            // Делаем ТОЛЬКО ОДИН запрос на проект и задачи
             const [projectData, tasksData] = await Promise.all([
                 ApiService.getProject(projectHash),
                 ApiService.getProjectTasks(projectHash)
@@ -37,12 +33,11 @@ class ProjectView {
             ToastManager.error('Ошибка загрузки проекта');
             App.hideLoadingOverlay();
 
-            // Fallback: модалка
             if (typeof ProjectsManager !== 'undefined') {
                 ProjectsManager.showProjectDetailModal(await ApiService.getProject(projectHash).catch(() => null));
             }
         } finally {
-            this.isOpening = false; // СБРАСЫВАЕМ ФЛАГ
+            this.isOpening = false;
         }
     }
 
@@ -139,12 +134,6 @@ class ProjectView {
             </div>
         `;
 
-        // === КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ===
-        // 1. НЕ скрываем main-content
-        // 2. Создаём/получаем контейнер
-        // 3. Вставляем HTML
-        // 4. Показываем контейнер
-
         let container = document.getElementById('project-view-container');
         if (!container) {
             container = document.createElement('div');
@@ -156,11 +145,9 @@ class ProjectView {
         container.innerHTML = projectHTML;
         container.style.display = 'block';
 
-        // Скрываем другие views, но НЕ main-content и НЕ bottom-nav
         const views = document.querySelectorAll('.view');
         views.forEach(v => v.classList.remove('active'));
 
-        // Обновляем активный пункт в bottom-nav
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             item.classList.remove('active');
@@ -173,7 +160,6 @@ class ProjectView {
     }
 
     static setupTaskEventHandlers() {
-        // Убираем старые обработчики, чтобы не было дублирования
         document.removeEventListener('click', this.taskClickHandler);
         this.taskClickHandler = (e) => {
             const taskCard = e.target.closest('.task-card');
@@ -263,7 +249,6 @@ class ProjectView {
             container.innerHTML = '';
         }
 
-        // Показываем dashboard
         const dashboardView = document.getElementById('dashboard-view');
         if (dashboardView) {
             dashboardView.classList.add('active');

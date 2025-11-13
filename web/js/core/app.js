@@ -6,6 +6,16 @@ class App {
     static themeUpdateDebounce = null;
     static isApplyingTheme = false;
 
+    const applyTheme = (theme) => {
+        if (!theme) theme = 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        StateManager.update('ui', { theme });
+
+        // Сохраняем в настройки
+        UsersManager.patchUserPreferences({ theme })
+            .catch(err => Utils.logError('Failed to save theme', err));
+    };
+
     static async init() {
         try {
             Utils.log('App initialization started');

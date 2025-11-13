@@ -259,20 +259,61 @@ class UsersManager {
     }
 
     static updateUserUI() {
-        const maxPhoto = AuthManager.maxData?.user?.photo_url;
-        const fallbackPhoto = AuthManager.currentUser?.photo_url;
+        const currentUser = this.currentUser;
+        if (!currentUser) return;
 
-        const photoUrl = maxPhoto || fallbackPhoto;
+        const maxUser = this.maxData?.user;
+        const displayUser = {
+            full_name: currentUser.full_name || 'Пользователь',
+            username: currentUser.username ? `@${currentUser.username}` : '',
+            photo_url: (maxUser?.photo_url || currentUser.photo_url) || null
+        };
 
-        if (photoUrl) {
-            userAvatar.style.backgroundImage = `url(${photoUrl})`;
-            userAvatar.textContent = '';
-        } else {
-            userAvatar.style.backgroundImage = '';
-            userAvatar.textContent = Utils.getInitials(displayUser.full_name);
+        // --- НАХОДИМ ВСЕ АВАТАРЫ ---
+        const avatarElements = [
+            document.getElementById('nav-user-avatar'),
+            document.getElementById('settings-user-avatar'),
+            ...document.querySelectorAll('.user-avatar, .user-avatar-large')
+        ].filter(Boolean);
+
+        avatarElements.forEach(avatar => {
+            if (displayUser.photo_url && displayUser.photo_url.includes('oneme.ru')) {
+                avatar.style.backgroundImage = `url(${displayUser.photo_url})`;
+                avatar.style.backgroundColor = 'transparent';
+                avatar.style.backgroundSize = 'cover';
+                avatar.style.backgroundPosition = 'center';
+                avatar.textContent = '';
+            } else {
+                avatar.style.backgroundImage = 'none';
+                avatar.style.backgroundColor = '#e91e63';
+                avatar.textContent = Utils.getInitials(displayUser.full_name); // ТВОЯ ФУНКЦИЯ!
+                avatar.style.color = 'white';
+                avatar.style.fontWeight = 'bold';
+                avatar.style.display = 'flex';
+                avatar.style.alignItems = 'center';
+                avatar.style.justifyContent = 'center';
+                avatar.style.fontSize = '1.2em';
+            }
+        });
+
+        // --- ИМЯ И ЮЗЕРНЕЙМ ---
+        const updateText = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        };
+
+        updateText('nav-user-name', displayUser.full_name);
+        updateText('settings-user-name', displayUser.full_name);
+
+        const usernameEl = document.getElementById('nav-user-username') || document.getElementById('settings-user-username');
+        if (usernameEl) {
+            usernameEl.textContent = displayUser.username;
+            usernameEl.style.display = displayUser.username ? 'block' : 'none';
         }
-    }
 
+        Utils.log('User UI updated', displayUser);
+    }
+    
     static async loadUserPreferences() {
         try {
             const data = await ApiService.getUserPreferences();
