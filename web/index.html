@@ -257,9 +257,9 @@
             </div>
         </div>
     </div>
-    <!-- === ШАБЛОНЫ (вставлять в конец <body>) === -->
     <script type="text/template" id="project-card-template">
-        <div class="project-card" data-project-hash="{{hash}}" tabindex="0" aria-label="Проект {{title}}">
+        <div class="project-card" data-project-hash="{{hash}}" tabindex="0"
+             aria-label="Проект {{title}}">
             <div class="swipe-actions" aria-hidden="true">
                 <div class="swipe-action edit-action" aria-label="Редактировать проект">
                     <i class="fas fa-edit" aria-hidden="true"></i>
@@ -268,14 +268,15 @@
                     <i class="fas fa-trash" aria-hidden="true"></i>
                 </div>
             </div>
+
             <div class="card-content">
                 <div class="card-header">
                     <h5 class="project-title">{{title}}</h5>
                     <span class="project-status">{{statusText}}</span>
                 </div>
-                <p class="project-description">
-                    {{description}}
-                </p>
+
+                <p class="project-description">{{description}}</p>
+
                 <div class="project-stats">
                     <div class="stat">
                         <i class="fas fa-users" aria-hidden="true"></i>
@@ -293,9 +294,12 @@
                         <span class="sr-only">выполнено</span>
                     </div>
                 </div>
+
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{progress}}%" aria-label="Прогресс: {{progress}}%"></div>
+                    <div class="progress-fill" style="width: {{progress}}%"
+                         aria-label="Прогресс: {{progress}}%"></div>
                 </div>
+
                 <div class="project-footer">
                     <span class="progress-text">{{progress}}%</span>
                     {{#if isPrivate}}
@@ -309,21 +313,6 @@
             </div>
         </div>
     </script>
-
-    <!-- Другие шаблоны (по желанию) -->
-    <script type="text/template" id="task-card-template">
-        <div class="task-card" data-task-id="{{id}}" tabindex="0">
-            <div class="card-content">
-                <h4 class="task-title">{{title}}</h4>
-                <span class="priority-badge priority-{{priority}}">{{priorityText}}</span>
-                <p class="task-description">{{description}}</p>
-                <div class="task-meta">
-                    <span>{{assignee}}</span>
-                    <span>{{dueDate}}</span>
-                </div>
-            </div>
-        </div>
-    </script>
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -333,8 +322,8 @@
     <script src="js/core/events.js"></script>
 
     <!-- API -->
-    <script src="js/api/api-service.js"></script>
     <script src="js/api/auth-manager.js"></script>
+    <script src="js/api/api-service.js"></script>
     <script src="js/api/cache-manager.js"></script>
 
     <!-- Store -->

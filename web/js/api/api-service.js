@@ -1,436 +1,226 @@
-// Сервис для работы с API
+// api-service.js
+// ---------------------------------------------------------------
+// 1. ОДИН КЛАСС – никаких «вложенных» static-ов
+// 2. request() + retryOnAuthError
+// 3. Все методы, которые были в старом файле
+// ---------------------------------------------------------------
+
 class ApiService {
-  static async request(url, options = {}, cacheKey = null) {
-      try {
-          // Добавляем токен, если он есть
-          const token = AuthManager.getToken();
-          const headers = {
-              'Content-Type': 'application/json',
-              ...options.headers
-          };
-
-          if (token) {
-              headers['Authorization'] = `Bearer ${token}`;
-          }
-
-          const response = await fetch(url, {
-              ...options,
-              headers
-          });
-
-          // === Обработка 401 с повтором ===
-          if (response.status === 401) {
-              if (options.retryOnAuthError) {
-                  Utils.log('401 Unauthorized → attempting token refresh');
-                  try {
-                      await AuthManager.refreshToken();
-                      // Повторяем запрос с новым токеном
-                      return this.request(url, options, cacheKey);
-                  } catch (refreshError) {
-                      Utils.logError('Token refresh failed:', refreshError);
-                      AuthManager.clearAuth();
-                      App.redirectToLogin?.();
-                      throw { status: 401, message: 'Session expired' };
-                  }
-              } else {
-                  throw { status: 401, message: 'Could not validate credentials' };
-              }
-          }
-
-          // === Обработка других ошибок ===
-          if (!response.ok) {
-              let errorData = {};
-              try {
-                  errorData = await response.json();
-              } catch {
-                  // Если не JSON
-              }
-              throw {
-                  status: response.status,
-                  message: errorData.message || response.statusText || 'Network error',
-                  data: errorData
-              };
-          }
-
-          // === Успешный ответ ===
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-              return await response.json();
-          } else {
-              return await response.text();
-          }
-
-      } catch (error) {
-          // Логируем только реальные ошибки сети
-          if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
-              Utils.logError('API Request failed:', { url, error });
-          }
-          throw error;
-      }
-  }
-
-  // Примеры удобных методов
-  static async get(url, params = {}, cacheKey = null) {
-      const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-      return this.request(url + query, { method: 'GET' }, cacheKey);
-  }
-
-  static async post(url, data = {}, cacheKey = null) {
-      return this.request(url, {
-          method: 'POST',
-          body: JSON.stringify(data)
-      }, cacheKey);
-  }
-
-  static async put(url, data = {}, cacheKey = null) {
-      return this.request(url, {
-          method: 'PUT',
-          body: JSON.stringify(data)
-      }, cacheKey);
-  }
-
-  static async delete(url, cacheKey = null) {
-      return this.request(url, { method: 'DELETE' }, cacheKey);
-  }
-}
-    static async apiCall(endpoint, method = 'GET', data = null, params = {}) {
-        const token = localStorage.getItem('access_token');
-        const baseUrl = CONFIG.API_BASE_URL;
-
-        // Формируем URL с параметрами
-        let url = `${baseUrl}${endpoint}`;
-        const urlParams = new URLSearchParams();
-
-        Object.keys(params).forEach(key => {
-            if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
-                urlParams.append(key, params[key]);
-            }
-        });
-
-        if (urlParams.toString()) {
-            url += `?${urlParams.toString()}`;
-        }
-
-        const headers = {
-            'Content-Type': 'application/json',
-        };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const config = {
-            method,
-            headers,
-            signal: AbortSignal.timeout(CONFIG.API.TIMEOUT)
-        };
-
-        // Для GET и DELETE не добавляем body, для остальных методов добавляем
-        if (data && method !== 'GET' && method !== 'DELETE') {
-            config.body = JSON.stringify(data);
-        }
-
+    // ======================= БАЗОВЫЙ REQUEST =======================
+    static async request(url, options = {}, cacheKey = null) {
         try {
-            Utils.log(`API Call: ${method} ${url}`, data);
+            const token = AuthManager.getToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const response = await fetch(url, config);
+            const response = await fetch(url, { ...options, headers });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                let errorData;
-                try {
-                    errorData = JSON.parse(errorText);
-                } catch {
-                    errorData = { detail: errorText || `HTTP error! status: ${response.status}` };
+            // ---- 401 → refresh + retry ----
+            if (response.status === 401) {
+                if (options.retryOnAuthError) {
+                    Utils.log('401 → attempting token refresh');
+                    try {
+                        await AuthManager.refreshToken();
+                        return this.request(url, options, cacheKey);
+                    } catch (e) {
+                        Utils.logError('Refresh failed', e);
+                        AuthManager.clearAuth();
+                        App.redirectToLogin?.();
+                        throw { status: 401, message: 'Session expired' };
+                    }
                 }
+                throw { status: 401, message: 'Could not validate credentials' };
+            }
 
+            // ---- Другие ошибки ----
+            if (!response.ok) {
+                let data = {};
+                try { data = await response.json(); } catch {}
                 throw {
                     status: response.status,
-                    message: errorData.detail || `HTTP error! status: ${response.status}`,
-                    data: errorData
+                    message: data.message || response.statusText || 'Network error',
+                    data
                 };
             }
 
-            // Для DELETE запросов и 204 No Content
-            if (response.status === 204 || method === 'DELETE') {
-                return { success: true };
+            // ---- Успех ----
+            const ct = response.headers.get('content-type');
+            return ct?.includes('application/json') ? await response.json() : await response.text();
+
+        } catch (err) {
+            if (err.name !== 'TypeError' || !err.message.includes('fetch')) {
+                Utils.logError('API Request failed', { url, err });
             }
-
-            const result = await response.json();
-            Utils.log(`API Response: ${method} ${url}`, result);
-
-            return result;
-          } catch (error) {
-                  Utils.logError(`API Error: ${method} ${url}`, error);
-
-                  if (error.name === 'TimeoutError') {
-                      throw new Error('Превышено время ожидания ответа от сервера');
-                  }
-                  if (error.name === 'AbortError') {
-                      throw new Error('Запрос отменён');
-                  }
-
-                  if (error.status) {
-                      throw new Error(error.message);
-                  }
-
-                  throw error;
-              }
-          }
-
-    static async getUserProjects(userId = 'me') {
-        return await this.apiCall(`/users/${userId}/projects`);
-    }
-
-    static async patchUserPreferences(data) {
-        return await this.apiCall('/users/me/preferences', 'PATCH', data);
-    }
-
-
-    static async getTaskDependencies(taskId) {
-        return await this.apiCall(`/tasks/${taskId}/dependencies`);
-    }
-
-    static async addTaskComment(taskId, content) {
-        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', {
-            content: content
-        });
-    }
-
-    // Улучшенный метод с повторными попытками
-    static async retryWithRefresh(fn, maxRetries = 3) {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                return await fn();
-            } catch (error) {
-                if (error.status === 401 && attempt < maxRetries) {
-                    await AuthManager.refreshToken();
-                    continue;
-                }
-                throw error;
-            }
+            throw err;
         }
     }
 
-    // Безопасный вызов с обработкой сетевых ошибок
-    static async safeApiCall(endpoint, method = 'GET', data = null, params = {}) {
-        try {
-            return await this.apiCall(endpoint, method, data, params);
-        } catch (error) {
-            if (this.isNetworkError(error)) {
-                throw new Error('Проблемы с подключением к интернету. Проверьте соединение.');
-            }
-            throw error;
+    // ======================= УДОБНЫЕ МЕТОДЫ =======================
+    static async get(url, params = {}, cacheKey = null) {
+        const q = params ? `?${new URLSearchParams(params)}` : '';
+        return this.request(url + q, { method: 'GET' }, cacheKey);
+    }
+    static async post(url, data = {}, cacheKey = null) {
+        return this.request(url, { method: 'POST', body: JSON.stringify(data) }, cacheKey);
+    }
+    static async put(url, data = {}, cacheKey = null) {
+        return this.request(url, { method: 'PUT', body: JSON.stringify(data) }, cacheKey);
+    }
+    static async delete(url, cacheKey = null) {
+        return this.request(url, { method: 'DELETE' }, cacheKey);
+    }
+
+    // ======================= УТИЛИТЫ =======================
+    static async apiCall(endpoint, method = 'GET', data = null, params = {}) {
+        const token = localStorage.getItem('access_token');
+        const base = CONFIG.API_BASE_URL;
+        let url = `${base}${endpoint}`;
+        const p = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => v != null && v !== '' && p.append(k, v));
+        if (p.toString()) url += `?${p}`;
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const cfg = { method, headers, signal: AbortSignal.timeout(CONFIG.API.TIMEOUT) };
+        if (data && !['GET', 'DELETE'].includes(method)) cfg.body = JSON.stringify(data);
+
+        Utils.log(`API Call: ${method} ${url}`, data);
+        const resp = await fetch(url, cfg);
+
+        if (!resp.ok) {
+            let txt = await resp.text(), err = { detail: txt };
+            try { err = JSON.parse(txt); } catch {}
+            throw { status: resp.status, message: err.detail || resp.statusText, data: err };
+        }
+
+        if (resp.status === 204 || method === 'DELETE') return { success: true };
+        const json = await resp.json();
+        Utils.log(`API Response: ${method} ${url}`, json);
+        return json;
+    }
+
+    static async retryWithRefresh(fn, max = 3) {
+        for (let i = 1; i <= max; i++) {
+            try { return await fn(); }
+            catch (e) { if (e.status === 401 && i < max) await AuthManager.refreshToken(); else throw e; }
         }
     }
 
-    static isNetworkError(error) {
-        return error.message?.includes('network') ||
-               error.message?.includes('Network') ||
-               error.message?.includes('fetch') ||
-               error.name === 'TypeError';
+    static isNetworkError(e) {
+        return /network|fetch/i.test(e?.message) || e?.name === 'TypeError';
     }
 
-    // ==================== АУТЕНТИФИКАЦИЯ ====================
+    // ======================= АУТЕНТИФИКАЦИЯ =======================
     static async getAuthToken(maxId, fullName, username = '') {
-        return await this.apiCall('/auth/token', 'POST', {
-            max_id: maxId,
-            full_name: fullName,
-            username: username
-        });
+        return this.apiCall('/auth/token', 'POST', { max_id: maxId, full_name: fullName, username });
     }
 
-    // ==================== ПОЛЬЗОВАТЕЛИ ====================
-    static async getCurrentUser() {
-        return await this.apiCall('/users/me');
-    }
+    // ======================= ПОЛЬЗОВАТЕЛЬ =======================
+    static async getCurrentUser() { return this.apiCall('/users/me'); }
+    static async updateCurrentUser(data) { return this.apiCall('/users/me', 'PUT', data); }
+    static async getUserById(id) { return this.apiCall(`/users/${id}`); }
 
-    static async updateCurrentUser(data) {
-        if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-            throw new Error('No data provided for update');
-        }
+    // ======================= ПРЕДПОЧТЕНИЯ =======================
+    static async getUserPreferences() { return this.apiCall('/users/me/preferences'); }
+    static async updateUserPreferences(d) { return this.apiCall('/users/me/preferences', 'PUT', d); }
+    static async resetUserPreferences() { return this.apiCall('/users/me/preferences/reset', 'PUT'); }
 
-        return this.apiCall('PUT', '/users/me', data);
-    }
-
-    static cleanRequestData(data) {
-        const cleaned = {};
-        for (const [key, value] of Object.entries(data)) {
-            if (value !== null && value !== undefined && value !== '') {
-                cleaned[key] = value;
-            }
-        }
-        return cleaned;
-    }
-
-    // ДОБАВЛЕННЫЕ МЕТОДЫ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ
-    static async getUserById(userId) {
-        return await this.apiCall(`/users/${userId}`);
-    }
-
-
-    static async getRootEndpoint() {
-        return await this.apiCall('/');
-    }
-
-    // ==================== НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ ====================
-    static async getUserPreferences() {
-        return await this.apiCall('/users/me/preferences');
-    }
-
-    static async updateUserPreferences(data) {
-        return await this.apiCall('/users/me/preferences', 'PUT', data);
-    }
-
-    static async resetUserPreferences() {
-        return await this.apiCall('/users/me/preferences/reset', 'PUT');
-    }
-
-    // ==================== ДАШБОРД ====================
+    // ======================= ДАШБОРД =======================
     static async getDashboard() {
-        try {
-            return await this.apiCall('/dashboard/');
-        } catch (error) {
-            Utils.logError('Dashboard API error:', error);
-            // Возвращаем fallback данные
-            return {
-                settings: {},
-                projects: [],
-                recent_tasks: []
-            };
+        try { return await this.apiCall('/dashboard/'); }
+        catch (e) {
+            Utils.logError('Dashboard API error', e);
+            return { settings: {}, projects: [], recent_tasks: [] };
         }
     }
 
-    // ==================== ПРОЕКТЫ ====================
-    static async getProjects(filters = {}) {
-        return await this.apiCall('/projects/', 'GET', null, filters);
+    // ======================= ПРОЕКТЫ =======================
+    static async getProjects(filters = {}) { return this.apiCall('/projects/', 'GET', null, filters); }
+    static async createProject(d) { return this.apiCall('/projects/', 'POST', d); }
+    static async getProject(hash) { return this.apiCall(`/projects/${hash}`); }
+    static async updateProject(hash, d) { return this.apiCall(`/projects/${hash}`, 'PUT', d); }
+    static async deleteProject(hash) { return this.apiCall(`/projects/${hash}`, 'DELETE'); }
+    static async getProjectSummary(hash) { return this.apiCall(`/projects/${hash}/summary`); }
+
+    // ======================= УЧАСТНИКИ =======================
+    static async getProjectMembers(hash) { return this.apiCall(`/projects/${hash}/members`); }
+    static async updateMemberRole(hash, uid, role) { return this.apiCall(`/projects/${hash}/members/${uid}`, 'PUT', { role }); }
+    static async removeMember(hash, uid) { return this.apiCall(`/projects/${hash}/members/${uid}`, 'DELETE'); }
+
+    // ======================= ПРИСОЕДИНЕНИЕ =======================
+    static async joinProject(hash) { return this.apiCall(`/projects/${hash}/join`, 'POST'); }
+    static async getJoinRequests(hash) { return this.apiCall(`/projects/${hash}/join-requests`); }
+    static async approveJoinRequest(hash, rid) { return this.apiCall(`/projects/${hash}/join-requests/${rid}/approve`, 'POST'); }
+    static async rejectJoinRequest(hash, rid) { return this.apiCall(`/projects/${hash}/join-requests/${rid}/reject`, 'POST'); }
+    static async regenerateInvite(hash) { return this.apiCall(`/projects/${hash}/regenerate-invite`, 'POST'); }
+
+    // ======================= ЗАДАЧИ =======================
+    static async getTasks(filters = {}) { return this.apiCall('/tasks/', 'GET', null, filters); }
+    static async createTask(d) { return this.apiCall('/tasks/', 'POST', d); }
+    static async getTask(id) { return this.apiCall(`/tasks/${id}`); }
+    static async updateTask(id, d) { return this.apiCall(`/tasks/${id}`, 'PUT', d); }
+    static async deleteTask(id) { return this.apiCall(`/tasks/${id}`, 'DELETE'); }
+    static async updateTaskStatus(id, s) { return this.apiCall(`/tasks/${id}/status`, 'PUT', { status: s }); }
+
+    // ======================= ЗАВИСИМОСТИ =======================
+    static async addTaskDependency(tid, depId) {
+        return this.apiCall(`/tasks/${tid}/dependencies`, 'POST', { depends_on_id: depId });
     }
 
-    static async createProject(projectData) {
-        return await this.apiCall('/projects/', 'POST', projectData);
+    // ======================= КОММЕНТАРИИ =======================
+    static async getTaskComments(tid) { return this.apiCall(`/tasks/${tid}/comments`); }
+    static async addTaskComment(tid, content) {
+        return this.apiCall(`/tasks/${tid}/comments`, 'POST', { content });
     }
 
-    static async getProject(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}`);
-    }
+    // ======================= ЗАДАЧИ ПРОЕКТА =======================
+    static async getProjectTasks(hash) { return this.apiCall(`/tasks/projects/${hash}/tasks`); }
 
-    static async updateProject(projectHash, updateData) {
-        return await this.apiCall(`/projects/${projectHash}`, 'PUT', updateData);
-    }
+    // ======================= УВЕДОМЛЕНИЯ =======================
+    static async getNotifications() { return this.apiCall('/notifications/'); }
+    static async markAllNotificationsRead() { return this.apiCall('/notifications/mark_all_read', 'PUT'); }
 
-    static async deleteProject(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}`, 'DELETE');
-    }
+    // ======================= HEALTH =======================
+    static async healthCheck() { return this.apiCall('/health'); }
+    static async apiHealthCheck() { return this.apiCall('/api/health'); }
 
-    static async getProjectSummary(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}/summary`);
-    }
-
-    // ==================== УЧАСТНИКИ ПРОЕКТА ====================
-    static async getProjectMembers(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}/members`);
-    }
-
-    static async updateMemberRole(projectHash, userId, role) {
-        return await this.apiCall(`/projects/${projectHash}/members/${userId}`, 'PUT', { role });
-    }
-
-    static async removeMember(projectHash, userId) {
-        return await this.apiCall(`/projects/${projectHash}/members/${userId}`, 'DELETE');
-    }
-
-    // ==================== ПРИСОЕДИНЕНИЕ К ПРОЕКТУ ====================
-    static async joinProject(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}/join`, 'POST');
-    }
-
-    static async getJoinRequests(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}/join-requests`);
-    }
-
-    static async approveJoinRequest(projectHash, requestId) {
-        return await this.apiCall(`/projects/${projectHash}/join-requests/${requestId}/approve`, 'POST');
-    }
-
-    static async rejectJoinRequest(projectHash, requestId) {
-        return await this.apiCall(`/projects/${projectHash}/join-requests/${requestId}/reject`, 'POST');
-    }
-
-    static async regenerateInvite(projectHash) {
-        return await this.apiCall(`/projects/${projectHash}/regenerate-invite`, 'POST');
-    }
-
-    // ==================== ЗАДАЧИ ====================
-    static async getTasks(filters = {}) {
-        return await this.apiCall('/tasks/', 'GET', null, filters);
-    }
-
-    static async createTask(taskData) {
-        return await this.apiCall('/tasks/', 'POST', taskData);
-    }
-
-    static async getTask(taskId) {
-        return await this.apiCall(`/tasks/${taskId}`);
-    }
-
-    static async updateTask(taskId, updateData) {
-        return await this.apiCall(`/tasks/${taskId}`, 'PUT', updateData);
-    }
-
-    static async deleteTask(taskId) {
-        return await this.apiCall(`/tasks/${taskId}`, 'DELETE');
-    }
-
-    static async updateTaskStatus(taskId, status) {
-        return await this.apiCall(`/tasks/${taskId}/status`, 'PUT', { status });
-    }
-
-    // ==================== ЗАВИСИМОСТИ ЗАДАЧ ====================
-
-    static async addTaskDependency(taskId, dependsOnId) {
-        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', {
-            depends_on_id: dependsOnId
-        });
-    }
-
-    // ==================== КОММЕНТАРИИ К ЗАДАЧАМ ====================
-    static async getTaskComments(taskId) {
-        return await this.apiCall(`/tasks/${taskId}/comments`);
-    }
-
-    // ==================== ЗАДАЧИ ПРОЕКТА ====================
-    static async getProjectTasks(projectHash) {
-        return await this.apiCall(`/tasks/projects/${projectHash}/tasks`);
-    }
-
-    // ==================== УВЕДОМЛЕНИЯ ====================
-    static async getNotifications() {
-        return await this.apiCall('/notifications/');
-    }
-
-    static async markAllNotificationsRead() {
-        return await this.apiCall('/notifications/mark_all_read', 'PUT');
-    }
-
-    // ==================== HEALTH CHECKS ====================
-    static async healthCheck() {
-        return await this.apiCall('/health');
-    }
-
-    static async apiHealthCheck() {
-        return await this.apiCall('/api/health');
-    }
-
-    // ==================== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ====================
+    // ======================= ТОКЕН =======================
     static async validateToken() {
-        try {
-            await this.getCurrentUser();
-            return true;
-        } catch (error) {
-            return false;
+        try { await this.getCurrentUser(); return true; }
+        catch { return false; }
+    }
+
+    // ======================= ПРОЕКТЫ ПОЛЬЗОВАТЕЛЯ =======================
+    static async getUserProjects(userId = 'me') {
+        return this.apiCall(`/users/${userId}/projects`);
+    }
+
+    // ======================= ПРЕДПОЧТЕНИЯ =======================
+    static async patchUserPreferences(data) {
+        return this.apiCall('/users/me/preferences', 'PATCH', data);
+    }
+
+    // ======================= ЗАВИСИМОСТИ ЗАДАЧ =======================
+    static async getTaskDependencies(taskId) {
+        return this.apiCall(`/tasks/${taskId}/dependencies`);
+    }
+
+    // ======================= КОРНЕВОЙ ЭНДПОИНТ =======================
+    static async getRootEndpoint() { return this.apiCall('/'); }
+
+    // ======================= ОЧИСТКА ДАННЫХ =======================
+    static cleanRequestData(data) {
+        const out = {};
+        for (const [k, v] of Object.entries(data)) {
+            if (v != null && v !== '') out[k] = v;
         }
+        return out;
     }
 }
 
-// Создаем псевдонимы для обратной совместимости
+// Глобальный алиас (для старого кода)
 window.ApiService = ApiService;
