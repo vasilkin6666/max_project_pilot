@@ -11,8 +11,9 @@ class App {
         this.isApplyingTheme = true;
 
         try {
-            // ← Объявляем переменную, чтобы не было ReferenceError
+            // ← КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: finalTheme объявлена здесь
             const finalTheme = theme || CONFIG.UI.THEME.LIGHT;
+
             const lightTheme = document.getElementById('theme-light');
             const darkTheme  = document.getElementById('theme-dark');
 
@@ -32,7 +33,7 @@ class App {
             localStorage.setItem('theme', finalTheme);
             this.forceThemeApplication(finalTheme);
 
-            // Сохраняем предпочтения пользователя (если уже залогинен)
+            // Синхронизация с сервером (если залогинен)
             setTimeout(async () => {
                 if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
                     try {
@@ -45,11 +46,13 @@ class App {
                     }
                 }
             }, 2000);
+
+            Utils.log(`Theme applied: ${finalTheme}`);
+        } catch (error) {
+            Utils.logError('Error in applyTheme:', error);
         } finally {
             setTimeout(() => { this.isApplyingTheme = false; }, 1000);
         }
-
-        Utils.log(`Theme changed to: ${finalTheme}`);
     }
 
     static forceThemeApplication(theme) {
@@ -115,14 +118,14 @@ class App {
             await this.checkSystemRequirements();
             await this.initializeCore();
 
-            // 1. Сначала аутентификация – токен обязателен для всех запросов
+            // 1. Аутентификация — обязательна ДО любого API
             await AuthManager.initializeUser();
 
-            // 2. Тема – берём сохранённую или светлую
+            // 2. ТЕМА — безопасно, finalTheme объявлена внутри applyTheme
             const savedTheme = StateManager.getState('ui.theme') ||
                                localStorage.getItem('theme') ||
                                CONFIG.UI.THEME.LIGHT;
-            this.applyTheme(savedTheme);
+            this.applyTheme(savedTheme); // ← finalTheme внутри метода
 
             // 3. UI-компоненты
             if (typeof UIComponents === 'undefined') {
@@ -403,7 +406,6 @@ class App {
         try {
             Utils.log('Starting initial data load...');
 
-            // Параллельная загрузка ключевых данных
             const results = await Promise.allSettled([
                 DashboardManager.loadDashboard(),
                 NotificationsManager.loadNotifications(),
@@ -412,20 +414,17 @@ class App {
                 UsersManager.loadCurrentUser?.()
             ]);
 
-            // Логируем результаты
-            results.forEach((result, idx) => {
+            results.forEach((result, i) => {
                 if (result.status === 'rejected') {
-                    Utils.logError(`Initial load failed [${idx}]:`, result.reason);
+                    Utils.logError(`Initial load [${i}] failed:`, result.reason);
                 }
             });
 
-            // Эмитируем событие завершения (даже если были ошибки)
             EventManager.emit(APP_EVENTS.INITIAL_DATA_LOADED);
-
             Utils.log('Initial data load completed');
         } catch (error) {
             Utils.logError('Critical error in loadInitialData:', error);
-            ToastManager?.error('Не удалось загрузить данные приложения');
+            ToastManager?.error('Не удалось загрузить данные');
             EventManager.emit(APP_EVENTS.DATA_ERROR, error);
         }
     }
@@ -451,7 +450,7 @@ class App {
 
     static async syncData() {
         if (!AuthManager.isUserAuthenticated()) {
-            Utils.log('Sync skipped: user not authenticated');
+            Utils.log('Sync skipped: not authenticated');
             return;
         }
 
@@ -465,9 +464,9 @@ class App {
                 TasksManager.refreshTasks?.()
             ]);
 
-            results.forEach((result, idx) => {
+            results.forEach((result, i) => {
                 if (result.status === 'rejected') {
-                    Utils.logError(`Sync failed [${idx}]:`, result.reason);
+                    Utils.logError(`Sync [${i}] failed:`, result.reason);
                 }
             });
 
@@ -475,7 +474,7 @@ class App {
             Utils.log('Data sync completed');
         } catch (error) {
             Utils.logError('Sync error:', error);
-            ToastManager?.error('Ошибка синхронизации данных');
+            ToastManager?.error('Ошибка синхронизации');
         }
     }
 

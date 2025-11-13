@@ -5,8 +5,7 @@ class DashboardManager {
           StateManager.setLoading(true);
           Utils.log('Loading dashboard...');
 
-          // Попытка взять из кэша
-          let dashboardData = await CacheManager.getWithCache(
+          const dashboardData = await CacheManager.getWithCache(
               'dashboard',
               () => ApiService.getDashboard(),
               'dashboard'
@@ -16,46 +15,39 @@ class DashboardManager {
               throw new Error('Не удалось загрузить данные дашборда');
           }
 
-          // Извлекаем проекты
           const projects = dashboardData.projects || [];
 
-          // Обновляем состояние
           StateManager.setState('dashboard', dashboardData);
           StateManager.setState('projects', projects);
 
-          // Обновляем UI
           this.updateStats(dashboardData);
           this.renderProjects(projects);
 
-          // Приоритетные задачи (отдельный запрос)
+          // Приоритетные задачи
           try {
               const tasksData = await ApiService.getTasks({ status: 'todo', limit: 10 });
               const tasks = tasksData.tasks || [];
               StateManager.setState('tasks', tasks);
               this.renderPriorityTasks(tasks);
-          } catch (tasksError) {
-              Utils.logError('Failed to load priority tasks:', tasksError);
+          } catch (e) {
+              Utils.logError('Failed to load priority tasks:', e);
               this.renderPriorityTasks([]);
           }
 
-          // Применяем тему (без ReferenceError)
+          // Тема — безопасно
           setTimeout(() => {
               try {
-                  const currentTheme = App.getCurrentTheme();
-                  App.applyTheme(currentTheme); // finalTheme объявлена внутри
-              } catch (themeError) {
-                  Utils.logError('Failed to apply theme after dashboard load:', themeError);
+                  const theme = App.getCurrentTheme();
+                  App.applyTheme(theme); // finalTheme объявлена внутри
+              } catch (e) {
+                  Utils.logError('Theme apply failed in dashboard:', e);
               }
           }, 150);
 
           EventManager.emit(APP_EVENTS.DATA_LOADED);
           EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
 
-          Utils.log('Dashboard loaded successfully', {
-              projects: projects.length,
-              hasSettings: !!dashboardData.settings
-          });
-
+          Utils.log('Dashboard loaded', { projects: projects.length });
       } catch (error) {
           Utils.logError('Dashboard load error:', error);
           EventManager.emit(APP_EVENTS.DATA_ERROR, error);
@@ -64,7 +56,7 @@ class DashboardManager {
           StateManager.setLoading(false);
       }
   }
-
+  
     static updateStats(data) {
         // Используем данные из dashboard response
         const projects = data.projects || [];
