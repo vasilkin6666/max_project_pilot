@@ -655,7 +655,7 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
         this.showErrorToast('Ошибка загрузки приложения');
     }
 
-    // В методе applyTheme() заменить:
+    // В app.js исправляем applyTheme
     static applyTheme(theme) {
         // Предотвращаем циклические вызовы
         if (this.isApplyingTheme) {
@@ -694,25 +694,27 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
                 if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
                     try {
                         const currentPrefs = await UsersManager.loadUserPreferences();
+                        // Сохраняем только если тема изменилась
                         if (currentPrefs.theme !== theme) {
                             await UsersManager.patchUserPreferences({ theme });
                         }
                     } catch (error) {
+                        // Игнорируем ошибки сохранения темы - это не критично
                         Utils.logError('Failed to save theme preference:', error);
                     }
                 }
-            }, 1000); // Увеличиваем задержку
+            }, 2000); // Увеличиваем задержку до 2 секунд
 
         } finally {
             // Сбрасываем флаг с задержкой чтобы предотвратить циклические вызовы
             setTimeout(() => {
                 this.isApplyingTheme = false;
-            }, 500);
+            }, 1000);
         }
 
         Utils.log(`Theme changed to: ${theme}`);
     }
-
+    
     static forceThemeApplication(theme) {
         // Принудительно обновляем основные элементы
         const mainContent = document.querySelector('.main-content');

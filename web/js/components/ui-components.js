@@ -995,7 +995,7 @@ class UIComponents {
             maxId.textContent = `MAX ID: ${displayMaxId}`;
         }
     }
-    
+
     static setupGlobalHandlers() {
         // Обработка кликов по внешним ссылкам
         document.addEventListener('click', (e) => {
@@ -1250,14 +1250,18 @@ class UIComponents {
         // Используем MAX данные если есть
         let displayUser = { ...user };
         const maxData = AuthManager.maxData;
+
         if (maxData && maxData.user) {
             const maxUser = maxData.user;
-            displayUser = {
-                ...displayUser,
-                full_name: maxUser.first_name && maxUser.last_name ?
-                    `${maxUser.first_name} ${maxUser.last_name}` : displayUser.full_name,
-                photo_url: maxUser.photo_url || displayUser.photo_url
-            };
+            const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
+
+            // Приоритет у MAX данных для отображения
+            if (maxFullName && maxFullName !== 'Пользователь MAX') {
+                displayUser.full_name = maxFullName;
+            }
+            if (maxUser.photo_url) {
+                displayUser.photo_url = maxUser.photo_url;
+            }
         }
 
         const userNameEl = document.getElementById('user-name');
@@ -1266,17 +1270,17 @@ class UIComponents {
 
         if (userNameEl) {
             userNameEl.textContent = displayUser.full_name || displayUser.username || 'Пользователь';
-            userNameEl.setAttribute('title', displayUser.full_name || displayUser.username || 'Пользователь');
         }
 
         if (userAvatarEl) {
             const initials = Utils.getInitials(displayUser.full_name || displayUser.username || 'Пользователь');
             userAvatarEl.textContent = initials;
-            userAvatarEl.setAttribute('aria-label', `Аватар пользователя ${displayUser.full_name || displayUser.username}`);
 
             if (displayUser.photo_url) {
                 userAvatarEl.style.backgroundImage = `url(${displayUser.photo_url})`;
                 userAvatarEl.textContent = '';
+            } else {
+                userAvatarEl.style.backgroundImage = '';
             }
         }
 
@@ -1284,9 +1288,17 @@ class UIComponents {
             const initials = Utils.getInitials(displayUser.full_name || displayUser.username || 'Пользователь');
             userInitialsEl.textContent = initials;
         }
+
+        // Обновляем MAX ID в настройках если есть элемент
+        const maxIdElement = document.getElementById('settings-max-id');
+        if (maxIdElement) {
+            const maxId = AuthManager.getMaxUserId();
+            if (maxId) {
+                maxIdElement.textContent = `MAX ID: ${maxId}`;
+            }
+        }
     }
-
-
+    
     static updateNotificationBadge(notifications) {
         const badge = document.getElementById('notifications-badge');
         const navBadge = document.getElementById('nav-notification-count');

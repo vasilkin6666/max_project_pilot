@@ -169,7 +169,24 @@ class ApiService {
     }
 
     static async updateCurrentUser(data) {
-        return await this.apiCall('/users/me', 'PUT', data);
+        // Очищаем данные перед отправкой
+        const cleanData = this.cleanRequestData(data);
+
+        if (Object.keys(cleanData).length === 0) {
+            throw new Error('No valid data provided for update');
+        }
+
+        return await this.apiCall('/users/me', 'PUT', cleanData);
+    }
+
+    static cleanRequestData(data) {
+        const cleaned = {};
+        for (const [key, value] of Object.entries(data)) {
+            if (value !== null && value !== undefined && value !== '') {
+                cleaned[key] = value;
+            }
+        }
+        return cleaned;
     }
 
     // ДОБАВЛЕННЫЕ МЕТОДЫ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ

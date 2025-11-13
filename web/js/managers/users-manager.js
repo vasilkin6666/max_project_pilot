@@ -213,26 +213,44 @@ class UsersManager {
         }
     }
 
+    // В users-manager.js исправляем метод updateUserProfile
     static async updateUserProfile(updateData) {
         try {
-            const result = await ApiService.updateCurrentUser(updateData);
+            // Очищаем данные от null/undefined значений
+            const cleanData = Utils.cleanObject(updateData);
 
+            // Проверяем что есть данные для обновления
+            if (Object.keys(cleanData).length === 0) {
+                Utils.log('No valid data to update');
+                return null;
+            }
+
+            const result = await ApiService.updateCurrentUser(cleanData);
             if (result && result.user) {
                 // Обновляем текущего пользователя в AuthManager
                 if (typeof AuthManager !== 'undefined') {
                     AuthManager.currentUser = { ...AuthManager.currentUser, ...result.user };
                     EventManager.emit(APP_EVENTS.USER_UPDATE, AuthManager.currentUser);
                 }
-
                 ToastManager.success('Профиль обновлен');
                 HapticManager.success();
                 return result.user;
             }
-
             throw new Error('Не удалось обновить профиль');
         } catch (error) {
             Utils.logError('Error updating user profile:', error);
-            ToastManager.error('Ошибка обновления профиля: ' + error.message);
+
+            // Более информативное сообщение об ошибке
+            let errorMessage = 'Ошибка обновления профиля';
+            if (error.message?.includes('No data provided')) {
+                errorMessage = 'Нет данных для обновления';
+            } else if (error.message?.includes('400')) {
+                errorMessage = 'Неверный формат данных';
+            } else {
+                errorMessage += ': ' + error.message;
+            }
+
+            ToastManager.error(errorMessage);
             HapticManager.error();
             throw error;
         }

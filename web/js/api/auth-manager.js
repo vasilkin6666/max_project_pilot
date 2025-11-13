@@ -68,13 +68,18 @@ class AuthManager {
             const token = localStorage.getItem('access_token');
             const tokenExpiry = localStorage.getItem('token_expiry');
 
+            let userLoaded = false;
             if (token && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
                 // Токен есть и не истек - пробуем загрузить пользователя
-                const userLoaded = await this.loadCurrentUser();
+                userLoaded = await this.loadCurrentUser();
                 if (userLoaded) {
                     Utils.log('User authenticated via existing token');
-                    // Обновляем данные из MAX если есть
-                    await this.updateUserFromMaxData();
+                    // Обновляем данные из MAX если есть (без блокировки инициализации)
+                    setTimeout(() => {
+                        this.updateUserFromMaxData().catch(error => {
+                            Utils.logError('Non-critical error updating from MAX data:', error);
+                        });
+                    }, 3000);
                     return;
                 }
             }
@@ -302,49 +307,60 @@ class AuthManager {
     }
 
 
-        static async updateUserFromMaxData() {
-            if (!this.maxData || !this.maxData.user || !this.isAuthenticated) {
-                return;
-            }
-
-            try {
-                const maxUser = this.maxData.user;
-                const updateData = {};
-
-                // Обновляем фото если его нет или оно из MAX
-                if (maxUser.photo_url && (!this.currentUser.photo_url || this.currentUser.photo_url.includes('oneme.ru'))) {
-                    updateData.photo_url = maxUser.photo_url;
-                }
-
-                // Обновляем имя если оно из MAX
-                const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
-                if (maxFullName && maxFullName !== 'Пользователь MAX' &&
-                    (!this.currentUser.full_name || this.currentUser.full_name === 'Пользователь MAX')) {
-                    updateData.full_name = maxFullName;
-                }
-
-                // Обновляем username если его нет
-                if (maxUser.username && !this.currentUser.username) {
-                    updateData.username = maxUser.username;
-                }
-
-                // Если есть изменения - обновляем профиль
-                if (Object.keys(updateData).length > 0) {
-                    Utils.log('Updating user profile from MAX data:', updateData);
-
-                    if (typeof UsersManager !== 'undefined') {
-                        await UsersManager.updateUserProfile(updateData);
-                    } else {
-                        // Fallback: обновляем локально
-                        this.currentUser = { ...this.currentUser, ...updateData };
-                        EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
-                    }
-                }
-
-            } catch (error) {
-                Utils.logError('Error updating user from MAX data:', error);
-            }
+    // В auth-manager.js исправляем метод updateUserFromMaxData
+    static async updateUserFromMaxData() {
+        if (!this.maxData || !this.maxData.user || !this.isAuthenticated) {
+            return;
         }
+
+        try {
+            const maxUser = this.maxData.user;
+            const currentUser = this.currentUser;
+            const updateData = {};
+
+            // Проверяем нужно ли обновлять фото
+            const hasMaxPhoto = maxUser.photo_url && maxUser.photo_url.includes('oneme.ru');
+            const hasCurrentPhoto = currentUser.photo_url;
+            const shouldUpdatePhoto = hasMaxPhoto && (!hasCurrentPhoto || !hasCurrentPhoto.includes('oneme.ru'));
+
+            // Проверяем нужно ли обновлять имя
+            const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
+            const shouldUpdateName = maxFullName && maxFullName !== 'Пользователь MAX' &&
+                                   (!currentUser.full_name || currentUser.full_name === 'Пользователь MAX');
+
+            if (shouldUpdatePhoto) {
+                updateData.photo_url = maxUser.photo_url;
+            }
+
+            if (shouldUpdateName) {
+                updateData.full_name = maxFullName;
+            }
+
+            // Обновляем username если его нет
+            if (maxUser.username && !currentUser.username) {
+                updateData.username = maxUser.username;
+            }
+
+            // Если есть изменения - обновляем профиль
+            if (Object.keys(updateData).length > 0) {
+                Utils.log('Updating user profile from MAX data:', updateData);
+
+                if (typeof UsersManager !== 'undefined') {
+                    await UsersManager.updateUserProfile(updateData);
+                } else {
+                    // Fallback: обновляем локально
+                    this.currentUser = { ...this.currentUser, ...updateData };
+                    EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
+                }
+            } else {
+                Utils.log('No updates needed from MAX data');
+            }
+
+        } catch (error) {
+            Utils.logError('Error updating user from MAX data:', error);
+            // Не показываем ошибку пользователю - это не критично
+        }
+    }
 
         static async loadCurrentUser() {
             try {
