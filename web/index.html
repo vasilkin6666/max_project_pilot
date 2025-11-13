@@ -866,16 +866,16 @@
                 return this.delete(`/projects/${projectHash}/members/${userId}`);
             }
 
-            static async getProjectJoinRequests(projectHash) {
-                return this.get(`/projects/${projectHash}/join-requests`);
-            }
-
             static async approveJoinRequest(projectHash, requestId) {
                 return this.post(`/projects/${projectHash}/join-requests/${requestId}/approve`);
             }
 
             static async rejectJoinRequest(projectHash, requestId) {
                 return this.post(`/projects/${projectHash}/join-requests/${requestId}/reject`);
+            }
+
+            static async getProjectJoinRequests(projectHash) {
+                return this.get(`/projects/${projectHash}/join-requests`);
             }
 
             static async joinProject(projectHash) {
@@ -1869,28 +1869,43 @@
                     if (!joinRequests || joinRequests.length === 0) {
                         container.innerHTML = '<p>Заявок на вступление нет</p>';
                     } else {
-                        container.innerHTML = joinRequests.map(request => `
-                            <div style="padding: 15px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-weight: bold;">${this.escapeHtml(request.user_full_name)}</div>
-                                        <div style="color: #666; font-size: 14px;">
-                                            Заявка подана: ${new Date(request.created_at).toLocaleString()}
+                        container.innerHTML = joinRequests.map(request => {
+                            // ИСПРАВЛЕНО: Правильное получение данных пользователя и даты
+                            const userData = request.user || request;
+                            const displayName = (userData.full_name && userData.full_name.trim() !== '')
+                                ? userData.full_name
+                                : (request.user_full_name && request.user_full_name.trim() !== '')
+                                ? request.user_full_name
+                                : `Пользователь #${request.user_id || userData.id}`;
+
+                            // ИСПРАВЛЕНО: Правильное форматирование даты
+                            const requestDate = request.requested_at || request.created_at;
+                            const formattedDate = requestDate ? new Date(requestDate).toLocaleString() : 'Дата не указана';
+
+                            return `
+                                <div style="padding: 15px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: bold;">${this.escapeHtml(displayName)}</div>
+                                            <div style="color: #666; font-size: 14px;">
+                                                Заявка подана: ${formattedDate}
+                                                ${request.status ? ` | Статус: ${request.status}` : ''}
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; gap: 10px;">
+                                            <button onclick="App.approveJoinRequest(${request.id})"
+                                                    style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                                Одобрить
+                                            </button>
+                                            <button onclick="App.rejectJoinRequest(${request.id})"
+                                                    style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                                Отклонить
+                                            </button>
                                         </div>
                                     </div>
-                                    <div style="display: flex; gap: 10px;">
-                                        <button onclick="App.approveJoinRequest(${request.id})"
-                                                style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                            Одобрить
-                                        </button>
-                                        <button onclick="App.rejectJoinRequest(${request.id})"
-                                                style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                            Отклонить
-                                        </button>
-                                    </div>
                                 </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
                     }
 
                     this.showView('joinRequestsView');
@@ -1905,12 +1920,26 @@
                 if (!currentProject) return;
 
                 try {
+                    console.log('Approving join request:', requestId, 'for project:', currentProject.hash);
+
                     await ApiService.approveJoinRequest(currentProject.hash, requestId);
                     this.showSuccess('Заявка одобрена!');
-                    await this.showJoinRequests(); // Перезагружаем список
+
+                    // Перезагружаем список заявок и участников
+                    await this.showJoinRequests();
+
+                    // Обновляем список участников проекта
+                    if (currentProject && currentProject.hash) {
+                        await this.loadProjectMembers(currentProject.hash);
+                    }
+
                 } catch (error) {
                     console.error('Error approving join request:', error);
-                    this.showError('Ошибка одобрения заявки: ' + error.message);
+                    if (error.message.includes('404')) {
+                        this.showError('Заявка не найдена. Возможно, она уже была обработана.');
+                    } else {
+                        this.showError('Ошибка одобрения заявки: ' + error.message);
+                    }
                 }
             }
 
@@ -1918,12 +1947,33 @@
                 if (!currentProject) return;
 
                 try {
+                    console.log('Rejecting join request:', requestId, 'for project:', currentProject.hash);
+
                     await ApiService.rejectJoinRequest(currentProject.hash, requestId);
                     this.showSuccess('Заявка отклонена!');
                     await this.showJoinRequests(); // Перезагружаем список
+
                 } catch (error) {
                     console.error('Error rejecting join request:', error);
-                    this.showError('Ошибка отклонения заявки: ' + error.message);
+                    if (error.message.includes('404')) {
+                        this.showError('Заявка не найдена. Возможно, она уже была обработана.');
+                    } else {
+                        this.showError('Ошибка отклонения заявки: ' + error.message);
+                    }
+                }
+            }
+
+            static async refreshProjectData() {
+                if (!currentProject || !currentProject.hash) return;
+
+                try {
+                    const projectData = await ApiService.getProject(currentProject.hash);
+                    currentProject = projectData.project || projectData;
+                    currentProject.members = projectData.members || [];
+
+                    console.log('Project data refreshed:', currentProject);
+                } catch (error) {
+                    console.error('Error refreshing project data:', error);
                 }
             }
 
