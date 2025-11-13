@@ -15,14 +15,11 @@
         <!-- Header -->
         <div style="padding: 10px; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
             <h1 style="margin: 0;">Project Pilot</h1>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <button id="notificationsBtn" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            <div style="display: flex; gap: 10px;">
+                <button id="notificationsBtn" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     Уведомления
                 </button>
-                <button id="joinRequestsBtn" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Заявки
-                </button>
-                <button id="settingsBtn" style="padding: 6px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <button id="settingsBtn" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     Настройки
                 </button>
                 <button id="createProjectBtn" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -54,49 +51,60 @@
                 </div>
             </div>
 
-            <!-- Project Detail View -->
+            <!-- Project Details View -->
             <div id="projectView" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <div>
-                        <button onclick="App.showDashboard()" style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                            ← Назад
-                        </button>
-                        <h2 id="projectTitle" style="display: inline-block; margin: 0; margin-left: 10px;"></h2>
-                    </div>
+                    <h2 id="projectTitleHeader">Название проекта</h2>
                     <div style="display: flex; gap: 10px;">
-                        <button id="editProjectBtn" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <button id="editProjectBtn" style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
                             Редактировать
                         </button>
-                        <button id="deleteProjectBtn" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <button id="deleteProjectBtn" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
                             Удалить
+                        </button>
+                        <button onclick="App.showDashboard()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Назад
                         </button>
                     </div>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <p id="projectDescription"></p>
+                    <p id="projectDescriptionText">Описание проекта</p>
                     <div style="display: flex; gap: 15px; font-size: 14px; color: #666;">
-                        <span>Хеш проекта: <strong id="projectHash"></strong></span>
-                        <span>Статус: <strong id="projectPrivacy"></strong></span>
-                        <span>Участников: <strong id="projectMembersCount"></strong></span>
+                        <span>Участников: <span id="projectMembersCount">0</span></span>
+                        <span>Всего задач: <span id="projectTotalTasks">0</span></span>
+                        <span>Выполнено: <span id="projectDoneTasks">0</span></span>
+                        <span>В работе: <span id="projectInProgressTasks">0</span></span>
                     </div>
                 </div>
 
-                <div>
+                <!-- Project Members -->
+                <div style="margin-bottom: 20px;">
                     <h3>Участники проекта</h3>
                     <div id="projectMembersList">
                         <!-- Members will be loaded here -->
                     </div>
                 </div>
 
-                <div style="margin-top: 30px;">
+                <!-- Project Tasks -->
+                <div>
                     <h3>Задачи проекта</h3>
-                    <button id="createTaskBtn" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 15px;">
-                        Создать задачу
-                    </button>
                     <div id="projectTasksList">
                         <!-- Tasks will be loaded here -->
                     </div>
+                </div>
+            </div>
+
+            <!-- Join Requests View -->
+            <div id="joinRequestsView" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Заявки на вступление</h2>
+                    <button onclick="App.showDashboard()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Назад
+                    </button>
+                </div>
+                <div id="joinRequestsList">
+                    <!-- Join requests will be loaded here -->
                 </div>
             </div>
         </div>
@@ -113,11 +121,11 @@
             <form id="createProjectForm">
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px;">Название проекта *</label>
-                    <input type="text" id="projectTitleInput" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <input type="text" id="projectTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px;">Описание</label>
-                    <textarea id="projectDescriptionInput" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                    <textarea id="projectDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
                 </div>
             </form>
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -152,6 +160,11 @@
                         <input type="checkbox" id="editProjectIsPrivate"> Приватный проект
                     </label>
                 </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">
+                        <input type="checkbox" id="editProjectRequiresApproval"> Требуется одобрение для вступления
+                    </label>
+                </div>
             </form>
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                 <button onclick="App.hideModal('editProjectModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -171,7 +184,7 @@
                 <h3 style="margin: 0;">Удалить проект</h3>
                 <button onclick="App.hideModal('deleteProjectModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
             </div>
-            <p>Вы уверены, что хотите удалить проект "<strong id="deleteProjectName"></strong>"? Это действие нельзя отменить.</p>
+            <p>Вы уверены, что хотите удалить проект "<span id="deleteProjectName"></span>"? Это действие нельзя отменить.</p>
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                 <button onclick="App.hideModal('deleteProjectModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     Отмена
@@ -189,7 +202,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0;">Уведомления</h3>
                 <div>
-                    <button onclick="App.markAllNotificationsRead()" style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    <button onclick="App.markAllNotificationsRead()" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
                         Прочитать все
                     </button>
                     <button onclick="App.hideModal('notificationsModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
@@ -201,20 +214,7 @@
         </div>
     </div>
 
-    <!-- Join Requests Modal -->
-    <div id="joinRequestsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 600px; max-height: 80vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Заявки на вступление</h3>
-                <button onclick="App.hideModal('joinRequestsModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-            <div id="joinRequestsList">
-                <!-- Join requests will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- User Settings Modal -->
+    <!-- Settings Modal -->
     <div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 500px; max-height: 80vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -223,7 +223,7 @@
             </div>
             <form id="settingsForm">
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Полное имя</label>
+                    <label style="display: block; margin-bottom: 5px;">Имя</label>
                     <input type="text" id="userFullName" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 </div>
                 <div style="margin-bottom: 15px;">
@@ -231,34 +231,36 @@
                     <input type="text" id="userUsername" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 </div>
                 <div style="margin-bottom: 15px;">
-                    <h4>Настройки уведомлений</h4>
+                    <label style="display: block; margin-bottom: 5px;">Тема</label>
+                    <select id="userTheme" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="light">Светлая</option>
+                        <option value="dark">Темная</option>
+                        <option value="auto">Авто</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="notificationsEnabled"> Включить уведомления
-                    </label>
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="emailNotifications"> Email уведомления
-                    </label>
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="pushNotifications"> Push уведомления
+                        <input type="checkbox" id="userNotificationsEnabled"> Уведомления включены
                     </label>
                 </div>
                 <div style="margin-bottom: 15px;">
-                    <h4>Настройки отображения</h4>
                     <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="compactView"> Компактный вид
-                    </label>
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="showCompletedTasks"> Показывать выполненные задачи
+                        <input type="checkbox" id="userCompactView"> Компактный вид
                     </label>
                 </div>
             </form>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="App.hideModal('settingsModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Отмена
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button onclick="App.resetUserPreferences()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Сбросить настройки
                 </button>
-                <button onclick="App.handleSaveSettings()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Сохранить
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="App.hideModal('settingsModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Отмена
+                    </button>
+                    <button onclick="App.handleSaveSettings()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Сохранить
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -269,7 +271,7 @@
             API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
         };
 
-        // Глобальные переменные состояния
+        // Глобальные переменные
         let currentProject = null;
         let currentUser = null;
 
@@ -391,6 +393,13 @@
                 });
             }
 
+            static async patch(endpoint, data) {
+                return this.request(endpoint, {
+                    method: 'PATCH',
+                    body: JSON.stringify(data)
+                });
+            }
+
             static async delete(endpoint) {
                 return this.request(endpoint, { method: 'DELETE' });
             }
@@ -429,6 +438,18 @@
                 return this.get(`/projects/${projectHash}/members`);
             }
 
+            static async getProjectJoinRequests(projectHash) {
+                return this.get(`/projects/${projectHash}/join-requests`);
+            }
+
+            static async approveJoinRequest(projectHash, requestId) {
+                return this.post(`/projects/${projectHash}/join-requests/${requestId}/approve`);
+            }
+
+            static async rejectJoinRequest(projectHash, requestId) {
+                return this.post(`/projects/${projectHash}/join-requests/${requestId}/reject`);
+            }
+
             // Task endpoints
             static async getTasks(projectHash) {
                 return this.get(`/tasks/projects/${projectHash}/tasks`);
@@ -455,13 +476,8 @@
                 return this.put('/users/me/preferences', preferences);
             }
 
-            // Notifications endpoints
-            static async getNotifications() {
-                return this.get('/notifications/');
-            }
-
-            static async markAllNotificationsRead() {
-                return this.put('/notifications/mark_all_read');
+            static async resetUserPreferences() {
+                return this.put('/users/me/preferences/reset');
             }
 
             // Dashboard endpoints
@@ -469,10 +485,13 @@
                 return this.get('/dashboard/');
             }
 
-            // Join requests endpoints (нужно будет добавить соответствующие методы когда API будет готово)
-            static async getJoinRequests() {
-                // Заглушка - в реальном приложении здесь будет вызов API
-                return { requests: [] };
+            // Notifications endpoints
+            static async getNotifications() {
+                return this.get('/notifications/');
+            }
+
+            static async markAllNotificationsRead() {
+                return this.put('/notifications/mark_all_read');
             }
         }
 
@@ -578,15 +597,277 @@
                     this.showNotifications();
                 });
 
-                // Заявки
-                document.getElementById('joinRequestsBtn').addEventListener('click', () => {
-                    this.showJoinRequests();
-                });
-
                 // Настройки
                 document.getElementById('settingsBtn').addEventListener('click', () => {
                     this.showSettings();
                 });
+
+                // Редактирование проекта
+                document.getElementById('editProjectBtn').addEventListener('click', () => {
+                    this.showEditProjectModal();
+                });
+
+                // Удаление проекта
+                document.getElementById('deleteProjectBtn').addEventListener('click', () => {
+                    this.showDeleteProjectModal();
+                });
+            }
+
+            static showView(viewId) {
+                // Скрываем все вью
+                document.getElementById('dashboardView').style.display = 'none';
+                document.getElementById('projectView').style.display = 'none';
+                document.getElementById('joinRequestsView').style.display = 'none';
+
+                // Показываем нужную вью
+                document.getElementById(viewId).style.display = 'block';
+            }
+
+            static showDashboard() {
+                this.showView('dashboardView');
+                this.loadData();
+            }
+
+            static async openProject(projectHash) {
+                try {
+                    console.log('Opening project:', projectHash);
+
+                    const projectData = await ApiService.getProject(projectHash);
+                    currentProject = projectData.project || projectData;
+
+                    // Обновляем заголовок и описание
+                    document.getElementById('projectTitleHeader').textContent = currentProject.title;
+                    document.getElementById('projectDescriptionText').textContent = currentProject.description || 'Без описания';
+
+                    // Обновляем статистику
+                    document.getElementById('projectMembersCount').textContent = currentProject.members_count || 0;
+                    document.getElementById('projectTotalTasks').textContent = currentProject.total_tasks || 0;
+                    document.getElementById('projectDoneTasks').textContent = currentProject.done_tasks || 0;
+                    document.getElementById('projectInProgressTasks').textContent = currentProject.in_progress_tasks || 0;
+
+                    // Загружаем участников
+                    await this.loadProjectMembers(projectHash);
+
+                    // Загружаем задачи
+                    await this.loadProjectTasks(projectHash);
+
+                    // Показываем вью проекта
+                    this.showView('projectView');
+
+                } catch (error) {
+                    console.error('Error opening project:', error);
+                    this.showError('Ошибка открытия проекта: ' + error.message);
+                }
+            }
+
+            static async loadProjectMembers(projectHash) {
+                try {
+                    const members = await ApiService.getProjectMembers(projectHash);
+                    const container = document.getElementById('projectMembersList');
+
+                    if (!members || members.length === 0) {
+                        container.innerHTML = '<p>Участников нет</p>';
+                        return;
+                    }
+
+                    container.innerHTML = members.map(member => `
+                        <div style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;">
+                            <div style="font-weight: bold;">${this.escapeHtml(member.full_name)}</div>
+                            <div style="color: #666; font-size: 14px;">
+                                Роль: ${member.role} |
+                                Username: ${member.username || 'не указан'}
+                            </div>
+                        </div>
+                    `).join('');
+
+                } catch (error) {
+                    console.error('Error loading project members:', error);
+                    document.getElementById('projectMembersList').innerHTML = '<p>Ошибка загрузки участников</p>';
+                }
+            }
+
+            static async loadProjectTasks(projectHash) {
+                try {
+                    const tasks = await ApiService.getTasks(projectHash);
+                    const container = document.getElementById('projectTasksList');
+
+                    if (!tasks || tasks.length === 0) {
+                        container.innerHTML = '<p>Задач нет</p>';
+                        return;
+                    }
+
+                    container.innerHTML = tasks.map(task => `
+                        <div style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;">
+                            <div style="font-weight: bold;">${this.escapeHtml(task.title)}</div>
+                            <div style="color: #666; font-size: 14px;">
+                                Статус: ${task.status} |
+                                Приоритет: ${task.priority}
+                                ${task.due_date ? `| Срок: ${new Date(task.due_date).toLocaleDateString()}` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+
+                } catch (error) {
+                    console.error('Error loading project tasks:', error);
+                    document.getElementById('projectTasksList').innerHTML = '<p>Ошибка загрузки задач</p>';
+                }
+            }
+
+            static showEditProjectModal() {
+                if (!currentProject) return;
+
+                document.getElementById('editProjectTitle').value = currentProject.title;
+                document.getElementById('editProjectDescription').value = currentProject.description || '';
+                document.getElementById('editProjectIsPrivate').checked = currentProject.is_private;
+                document.getElementById('editProjectRequiresApproval').checked = currentProject.requires_approval;
+
+                this.showModal('editProjectModal');
+            }
+
+            static async handleUpdateProject() {
+                if (!currentProject) return;
+
+                const title = document.getElementById('editProjectTitle').value.trim();
+                const description = document.getElementById('editProjectDescription').value.trim();
+                const isPrivate = document.getElementById('editProjectIsPrivate').checked;
+                const requiresApproval = document.getElementById('editProjectRequiresApproval').checked;
+
+                if (!title) {
+                    this.showError('Введите название проекта');
+                    return;
+                }
+
+                try {
+                    await ApiService.updateProject(currentProject.hash, {
+                        title,
+                        description,
+                        is_private: isPrivate,
+                        requires_approval: requiresApproval
+                    });
+
+                    this.hideModal('editProjectModal');
+                    await this.openProject(currentProject.hash); // Перезагружаем проект
+                    this.showSuccess('Проект обновлен успешно!');
+
+                } catch (error) {
+                    console.error('Error updating project:', error);
+                    this.showError('Ошибка обновления проекта: ' + error.message);
+                }
+            }
+
+            static showDeleteProjectModal() {
+                if (!currentProject) return;
+
+                document.getElementById('deleteProjectName').textContent = currentProject.title;
+                this.showModal('deleteProjectModal');
+            }
+
+            static async handleDeleteProject() {
+                if (!currentProject) return;
+
+                try {
+                    await ApiService.deleteProject(currentProject.hash);
+
+                    this.hideModal('deleteProjectModal');
+                    this.showDashboard();
+                    this.showSuccess('Проект удален успешно!');
+
+                } catch (error) {
+                    console.error('Error deleting project:', error);
+                    this.showError('Ошибка удаления проекта: ' + error.message);
+                }
+            }
+
+            static async showNotifications() {
+                try {
+                    const notifications = await ApiService.getNotifications();
+                    const container = document.getElementById('notificationsList');
+
+                    if (!notifications || notifications.length === 0) {
+                        container.innerHTML = '<p>Уведомлений нет</p>';
+                    } else {
+                        container.innerHTML = notifications.map(notification => `
+                            <div style="padding: 10px; border-bottom: 1px solid #ccc;">
+                                <div style="font-weight: bold;">${this.escapeHtml(notification.title || 'Уведомление')}</div>
+                                <div style="color: #666;">${this.escapeHtml(notification.message || '')}</div>
+                                <div style="font-size: 12px; color: #999;">${new Date(notification.created_at).toLocaleString()}</div>
+                            </div>
+                        `).join('');
+                    }
+
+                    this.showModal('notificationsModal');
+
+                } catch (error) {
+                    console.error('Error loading notifications:', error);
+                    this.showError('Ошибка загрузки уведомлений: ' + error.message);
+                }
+            }
+
+            static async markAllNotificationsRead() {
+                try {
+                    await ApiService.markAllNotificationsRead();
+                    this.hideModal('notificationsModal');
+                    this.showSuccess('Все уведомления отмечены как прочитанные!');
+                } catch (error) {
+                    console.error('Error marking notifications as read:', error);
+                    this.showError('Ошибка отметки уведомлений: ' + error.message);
+                }
+            }
+
+            static async showSettings() {
+                try {
+                    // Загружаем данные пользователя
+                    const userData = await ApiService.getCurrentUser();
+                    const preferences = await ApiService.getUserPreferences();
+
+                    // Заполняем форму
+                    document.getElementById('userFullName').value = userData.full_name || '';
+                    document.getElementById('userUsername').value = userData.username || '';
+                    document.getElementById('userTheme').value = preferences.theme || 'light';
+                    document.getElementById('userNotificationsEnabled').checked = preferences.notifications_enabled;
+                    document.getElementById('userCompactView').checked = preferences.compact_view;
+
+                    this.showModal('settingsModal');
+
+                } catch (error) {
+                    console.error('Error loading settings:', error);
+                    this.showError('Ошибка загрузки настроек: ' + error.message);
+                }
+            }
+
+            static async handleSaveSettings() {
+                try {
+                    // Обновляем данные пользователя
+                    await ApiService.updateCurrentUser({
+                        full_name: document.getElementById('userFullName').value.trim(),
+                        username: document.getElementById('userUsername').value.trim()
+                    });
+
+                    // Обновляем настройки
+                    await ApiService.updateUserPreferences({
+                        theme: document.getElementById('userTheme').value,
+                        notifications_enabled: document.getElementById('userNotificationsEnabled').checked,
+                        compact_view: document.getElementById('userCompactView').checked
+                    });
+
+                    this.hideModal('settingsModal');
+                    this.showSuccess('Настройки сохранены успешно!');
+
+                } catch (error) {
+                    console.error('Error saving settings:', error);
+                    this.showError('Ошибка сохранения настроек: ' + error.message);
+                }
+            }
+
+            static async resetUserPreferences() {
+                try {
+                    await ApiService.resetUserPreferences();
+                    this.hideModal('settingsModal');
+                    this.showSuccess('Настройки сброшены к значениям по умолчанию!');
+                } catch (error) {
+                    console.error('Error resetting preferences:', error);
+                    this.showError('Ошибка сброса настроек: ' + error.message);
+                }
             }
 
             static showModal(modalId) {
@@ -598,8 +879,8 @@
             }
 
             static async handleCreateProject() {
-                const title = document.getElementById('projectTitleInput').value.trim();
-                const description = document.getElementById('projectDescriptionInput').value.trim();
+                const title = document.getElementById('projectTitle').value.trim();
+                const description = document.getElementById('projectDescription').value.trim();
 
                 if (!title) {
                     this.showError('Введите название проекта');
@@ -630,314 +911,6 @@
                 } catch (error) {
                     console.error('Error creating project:', error);
                     this.showError('Ошибка создания проекта: ' + error.message);
-                }
-            }
-
-            static async openProject(projectHash) {
-                try {
-                    console.log('Opening project:', projectHash);
-
-                    const projectData = await ApiService.getProject(projectHash);
-                    currentProject = projectData.project || projectData;
-
-                    // Показываем детали проекта
-                    this.showProjectDetail(currentProject);
-
-                    // Загружаем участников проекта
-                    await this.loadProjectMembers(projectHash);
-
-                    // Загружаем задачи проекта
-                    await this.loadProjectTasks(projectHash);
-
-                } catch (error) {
-                    console.error('Error opening project:', error);
-                    this.showError('Ошибка открытия проекта: ' + error.message);
-                }
-            }
-
-            static showProjectDetail(project) {
-                // Скрываем дашборд и показываем детали проекта
-                document.getElementById('dashboardView').style.display = 'none';
-                document.getElementById('projectView').style.display = 'block';
-
-                // Заполняем информацию о проекте
-                document.getElementById('projectTitle').textContent = project.title;
-                document.getElementById('projectDescription').textContent = project.description || 'Описание отсутствует';
-                document.getElementById('projectHash').textContent = project.hash;
-                document.getElementById('projectPrivacy').textContent = project.is_private ? 'Приватный' : 'Публичный';
-                document.getElementById('projectMembersCount').textContent = project.members_count || 0;
-
-                // Настраиваем кнопки редактирования и удаления
-                document.getElementById('editProjectBtn').onclick = () => this.showEditProjectModal(project);
-                document.getElementById('deleteProjectBtn').onclick = () => this.showDeleteProjectModal(project);
-            }
-
-            static async loadProjectMembers(projectHash) {
-                try {
-                    const membersData = await ApiService.getProjectMembers(projectHash);
-                    this.renderProjectMembers(membersData);
-                } catch (error) {
-                    console.error('Error loading project members:', error);
-                    this.showError('Ошибка загрузки участников проекта');
-                }
-            }
-
-            static renderProjectMembers(membersData) {
-                const container = document.getElementById('projectMembersList');
-                const members = membersData.members || membersData || [];
-
-                if (members.length === 0) {
-                    container.innerHTML = '<p>Участников нет</p>';
-                    return;
-                }
-
-                container.innerHTML = members.map(member => `
-                    <div style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;">
-                        <div style="font-weight: bold;">${this.escapeHtml(member.full_name)}</div>
-                        <div style="color: #666; font-size: 14px;">
-                            Роль: ${member.role} | MAX ID: ${member.max_id}
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            static async loadProjectTasks(projectHash) {
-                try {
-                    const tasksData = await ApiService.getTasks(projectHash);
-                    this.renderProjectTasks(tasksData);
-                } catch (error) {
-                    console.error('Error loading project tasks:', error);
-                    this.showError('Ошибка загрузки задач проекта');
-                }
-            }
-
-            static renderProjectTasks(tasksData) {
-                const container = document.getElementById('projectTasksList');
-                const tasks = tasksData.tasks || tasksData || [];
-
-                if (tasks.length === 0) {
-                    container.innerHTML = '<p>Задач пока нет</p>';
-                    return;
-                }
-
-                container.innerHTML = tasks.map(task => `
-                    <div style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;">
-                        <div style="font-weight: bold;">${this.escapeHtml(task.title)}</div>
-                        <div style="color: #666; font-size: 14px;">
-                            Статус: ${task.status} | Приоритет: ${task.priority}
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            static showDashboard() {
-                document.getElementById('projectView').style.display = 'none';
-                document.getElementById('dashboardView').style.display = 'block';
-                currentProject = null;
-            }
-
-            static showEditProjectModal(project) {
-                document.getElementById('editProjectTitle').value = project.title;
-                document.getElementById('editProjectDescription').value = project.description || '';
-                document.getElementById('editProjectIsPrivate').checked = project.is_private;
-                this.showModal('editProjectModal');
-            }
-
-            static async handleUpdateProject() {
-                if (!currentProject) return;
-
-                const title = document.getElementById('editProjectTitle').value.trim();
-                const description = document.getElementById('editProjectDescription').value.trim();
-                const is_private = document.getElementById('editProjectIsPrivate').checked;
-
-                if (!title) {
-                    this.showError('Введите название проекта');
-                    return;
-                }
-
-                try {
-                    await ApiService.updateProject(currentProject.hash, {
-                        title,
-                        description,
-                        is_private
-                    });
-
-                    this.hideModal('editProjectModal');
-                    await this.openProject(currentProject.hash); // Перезагружаем проект
-                    this.showSuccess('Проект обновлен успешно!');
-
-                } catch (error) {
-                    console.error('Error updating project:', error);
-                    this.showError('Ошибка обновления проекта: ' + error.message);
-                }
-            }
-
-            static showDeleteProjectModal(project) {
-                document.getElementById('deleteProjectName').textContent = project.title;
-                this.showModal('deleteProjectModal');
-            }
-
-            static async handleDeleteProject() {
-                if (!currentProject) return;
-
-                try {
-                    await ApiService.deleteProject(currentProject.hash);
-
-                    this.hideModal('deleteProjectModal');
-                    this.showDashboard();
-                    await this.loadData(); // Перезагружаем список проектов
-                    this.showSuccess('Проект удален успешно!');
-
-                } catch (error) {
-                    console.error('Error deleting project:', error);
-                    this.showError('Ошибка удаления проекта: ' + error.message);
-                }
-            }
-
-            static async showNotifications() {
-                try {
-                    const notifications = await ApiService.getNotifications();
-                    this.renderNotifications(notifications);
-                    this.showModal('notificationsModal');
-                } catch (error) {
-                    console.error('Error loading notifications:', error);
-                    this.showError('Ошибка загрузки уведомлений');
-                }
-            }
-
-            static renderNotifications(notificationsData) {
-                const container = document.getElementById('notificationsList');
-                const notifications = notificationsData.notifications || notificationsData || [];
-
-                if (notifications.length === 0) {
-                    container.innerHTML = '<p>Уведомлений нет</p>';
-                    return;
-                }
-
-                container.innerHTML = notifications.map(notification => `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                        <div style="font-weight: bold;">${this.escapeHtml(notification.title || 'Уведомление')}</div>
-                        <div style="color: #666; font-size: 14px;">${this.escapeHtml(notification.message || '')}</div>
-                        <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                            ${new Date(notification.created_at).toLocaleString()}
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            static async markAllNotificationsRead() {
-                try {
-                    await ApiService.markAllNotificationsRead();
-                    this.showSuccess('Все уведомления отмечены как прочитанные');
-                    this.hideModal('notificationsModal');
-                } catch (error) {
-                    console.error('Error marking notifications as read:', error);
-                    this.showError('Ошибка при обновлении уведомлений');
-                }
-            }
-
-            static async showJoinRequests() {
-                try {
-                    const joinRequests = await ApiService.getJoinRequests();
-                    this.renderJoinRequests(joinRequests);
-                    this.showModal('joinRequestsModal');
-                } catch (error) {
-                    console.error('Error loading join requests:', error);
-                    this.showError('Ошибка загрузки заявок');
-                }
-            }
-
-            static renderJoinRequests(joinRequestsData) {
-                const container = document.getElementById('joinRequestsList');
-                const requests = joinRequestsData.requests || joinRequestsData || [];
-
-                if (requests.length === 0) {
-                    container.innerHTML = '<p>Заявок на вступление нет</p>';
-                    return;
-                }
-
-                container.innerHTML = requests.map(request => `
-                    <div style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
-                        <div style="font-weight: bold;">${this.escapeHtml(request.user_name || 'Пользователь')}</div>
-                        <div style="color: #666; font-size: 14px;">
-                            Проект: ${this.escapeHtml(request.project_name || 'Неизвестный проект')}
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <button onclick="App.approveJoinRequest(${request.id})" style="padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">
-                                Принять
-                            </button>
-                            <button onclick="App.rejectJoinRequest(${request.id})" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                Отклонить
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            static async approveJoinRequest(requestId) {
-                // Заглушка - в реальном приложении здесь будет вызов API
-                this.showSuccess(`Заявка ${requestId} принята`);
-            }
-
-            static async rejectJoinRequest(requestId) {
-                // Заглушка - в реальном приложении здесь будет вызов API
-                this.showSuccess(`Заявка ${requestId} отклонена`);
-            }
-
-            static async showSettings() {
-                try {
-                    const userData = await ApiService.getCurrentUser();
-                    const preferences = await ApiService.getUserPreferences();
-
-                    this.renderSettings(userData, preferences);
-                    this.showModal('settingsModal');
-                } catch (error) {
-                    console.error('Error loading settings:', error);
-                    this.showError('Ошибка загрузки настроек');
-                }
-            }
-
-            static renderSettings(userData, preferences) {
-                document.getElementById('userFullName').value = userData.full_name || '';
-                document.getElementById('userUsername').value = userData.username || '';
-
-                if (preferences) {
-                    document.getElementById('notificationsEnabled').checked = preferences.notifications_enabled || false;
-                    document.getElementById('emailNotifications').checked = preferences.email_notifications || false;
-                    document.getElementById('pushNotifications').checked = preferences.push_notifications || false;
-                    document.getElementById('compactView').checked = preferences.compact_view || false;
-                    document.getElementById('showCompletedTasks').checked = preferences.show_completed_tasks || false;
-                }
-            }
-
-            static async handleSaveSettings() {
-                try {
-                    const fullName = document.getElementById('userFullName').value.trim();
-                    const username = document.getElementById('userUsername').value.trim();
-
-                    // Обновляем данные пользователя
-                    await ApiService.updateCurrentUser({
-                        full_name: fullName,
-                        username: username
-                    });
-
-                    // Обновляем настройки
-                    const preferences = {
-                        notifications_enabled: document.getElementById('notificationsEnabled').checked,
-                        email_notifications: document.getElementById('emailNotifications').checked,
-                        push_notifications: document.getElementById('pushNotifications').checked,
-                        compact_view: document.getElementById('compactView').checked,
-                        show_completed_tasks: document.getElementById('showCompletedTasks').checked
-                    };
-
-                    await ApiService.updateUserPreferences(preferences);
-
-                    this.hideModal('settingsModal');
-                    this.showSuccess('Настройки сохранены успешно!');
-
-                } catch (error) {
-                    console.error('Error saving settings:', error);
-                    this.showError('Ошибка сохранения настроек: ' + error.message);
                 }
             }
 
