@@ -11,12 +11,9 @@ class DashboardManager {
               'dashboard'
           );
 
-          if (!dashboardData) {
-              throw new Error('Не удалось загрузить данные дашборда');
-          }
+          if (!dashboardData) throw new Error('Не удалось загрузить дашборд');
 
           const projects = Array.isArray(dashboardData.projects) ? dashboardData.projects : [];
-
           StateManager.setState('dashboard', dashboardData);
           StateManager.setState('projects', projects);
 
@@ -34,13 +31,13 @@ class DashboardManager {
               this.renderPriorityTasks([]);
           }
 
-          // Тема — безопасно
+          // Применение темы
           setTimeout(() => {
               try {
                   const theme = App.getCurrentTheme();
                   App.applyTheme(theme);
               } catch (e) {
-                  Utils.logError('Theme apply failed in dashboard:', e);
+                  Utils.logError('Theme apply failed:', e);
               }
           }, 150);
 
@@ -49,7 +46,7 @@ class DashboardManager {
       } catch (error) {
           Utils.logError('Dashboard load error:', error);
           EventManager.emit(APP_EVENTS.DATA_ERROR, error);
-          this.showErrorState();
+          this.showErrorState(document.getElementById('dashboard-view'));
       } finally {
           StateManager.setLoading(false);
       }

@@ -173,6 +173,57 @@
             </div>
         </main>
 
+        <template id="project-card-template">
+            <div class="project-card" data-project-hash="{{hash}}" onclick="ProjectsManager.openProject('{{hash}}')">
+                <div class="card-header">
+                    <h3 class="project-title">{{title}}</h3>
+                    <span class="project-role">{{roleText}}</span>
+                </div>
+                <p class="project-description">{{description}}</p>
+
+                <div class="project-stats">
+                    <div class="stat"><i class="fas fa-users"></i> {{membersCount}}</div>
+                    <div class="stat"><i class="fas fa-tasks"></i> {{tasksCount}}</div>
+                    <div class="stat"><i class="fas fa-check-circle"></i> {{progress}}%</div>
+                </div>
+
+                <div class="project-progress">
+                    <div class="progress-bar"><div class="progress-fill" style="width:{{progress}}%"></div></div>
+                </div>
+
+                {{#canInvite}}
+                <button class="btn btn-sm btn-outline invite-btn" onclick="event.stopPropagation(); ProjectsManager.showInviteModal('{{hash}}')">
+                    <i class="fas fa-user-plus"></i> Пригласить
+                </button>
+                {{/canInvite}}
+            </div>
+        </template>
+
+        <template id="task-card-template">
+            <div class="task-card" data-task-id="{{id}}" onclick="TasksManager.openTaskDetail({{id}})">
+                <div class="card-header">
+                    <h4 class="task-title">{{title}}</h4>
+                    <span class="priority-badge priority-{{priority}}">{{priorityText}}</span>
+                </div>
+                <p class="task-description">{{description}}</p>
+
+                <div class="task-meta">
+                    <div class="meta-item"><i class="fas fa-user"></i> {{assignee}}</div>
+                    <div class="meta-item {{#isOverdue}}overdue{{/isOverdue}}"><i class="fas fa-clock"></i> {{dueDate}}</div>
+                </div>
+
+                <div class="task-footer">
+                    <span class="status-badge status-{{status}}">{{statusText}}</span>
+                    {{#hasSubtasks}}
+                    <div class="task-progress">
+                        <span class="progress-text">{{progress}}%</span>
+                        <div class="progress-bar small"><div class="progress-fill" style="width:{{progress}}%"></div></div>
+                    </div>
+                    {{/hasSubtasks}}
+                </div>
+            </div>
+        </template>
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav" aria-label="Основная навигация">
             <button class="nav-item active" data-view="dashboard-view" aria-label="Главная">

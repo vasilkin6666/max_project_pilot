@@ -14,23 +14,6 @@ class UIComponents {
 
     static templates = new Map();
     static isInitialized = false;
-    static {
-            let lastRenderedProjects = null;
-
-            EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
-                if (!Array.isArray(projects)) return;
-
-                // Защита от дублей
-                const serialized = JSON.stringify(projects);
-                if (lastRenderedProjects === serialized) {
-                    Utils.log('Projects already rendered, skipping');
-                    return;
-                }
-                lastRenderedProjects = serialized;
-
-                this.renderProjects(projects);
-            });
-        }
     static async loadTemplates() {
         try {
             // Проверяем, не загружены ли уже шаблоны
@@ -335,20 +318,15 @@ class UIComponents {
     }
 
     static initNavigation() {
-        // Навигация по вкладкам
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
-
                 const viewName = item.getAttribute('data-view');
                 if (viewName) {
                     this.showView(viewName);
-
-                    // Обновляем активное состояние
                     navItems.forEach(nav => nav.classList.remove('active'));
                     item.classList.add('active');
-
                     if (typeof HapticManager !== 'undefined') {
                         HapticManager.light();
                     }
@@ -356,10 +334,11 @@ class UIComponents {
             });
         });
 
-        // Кнопка создания проекта теперь в header
+        // Кнопка создания проекта
         const createProjectBtn = document.getElementById('create-project-btn');
         if (createProjectBtn) {
-            createProjectBtn.addEventListener('click', () => {
+            createProjectBtn.addEventListener('click', async () => {
+                await this.preloadModalTemplates();
                 if (typeof ProjectsManager !== 'undefined') {
                     ProjectsManager.showCreateProjectModal();
                 } else {
@@ -370,7 +349,6 @@ class UIComponents {
 
         this.adjustContentPadding();
         window.addEventListener('resize', () => this.adjustContentPadding());
-
         Utils.log('Navigation initialized');
     }
 
@@ -495,41 +473,6 @@ class UIComponents {
     }
 
     static initEventListeners() {
-        // Навигация по вкладкам
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-
-                const viewName = item.getAttribute('data-view');
-                if (viewName) {
-                    this.showView(viewName);
-
-                    // Обновляем активное состояние
-                    navItems.forEach(nav => nav.classList.remove('active'));
-                    item.classList.add('active');
-
-                    if (typeof HapticManager !== 'undefined') {
-                        HapticManager.light();
-                    }
-                }
-            });
-        });
-
-        // Кнопка создания проекта теперь в header - ДОБАВЛЕНА ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ШАБЛОНОВ
-        const createProjectBtn = document.getElementById('create-project-btn');
-        if (createProjectBtn) {
-            createProjectBtn.addEventListener('click', async () => {
-                // Предварительная загрузка шаблонов перед открытием модального окна
-                await this.preloadModalTemplates();
-                if (typeof ProjectsManager !== 'undefined') {
-                    ProjectsManager.showCreateProjectModal();
-                } else {
-                    Utils.logError('ProjectsManager not available');
-                }
-            });
-        }
-
         // Кнопка уведомлений
         const notificationsBtn = document.getElementById('notifications-btn');
         if (notificationsBtn) {
@@ -537,32 +480,28 @@ class UIComponents {
                 this.showView('notifications-view');
                 document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
                 document.querySelector('.nav-item[data-view="notifications-view"]')?.classList.add('active');
-                HapticManager.buttonPress();
+                if (typeof HapticManager !== 'undefined') HapticManager.buttonPress();
             });
         }
 
-        // ИСПРАВЛЕННАЯ КНОПКА ЗАЯВОК НА ВСТУПЛЕНИЕ
+        // Кнопка заявок на вступление
         const joinRequestsBtn = document.getElementById('join-requests-btn');
         if (joinRequestsBtn) {
             joinRequestsBtn.addEventListener('click', async () => {
-                // Показываем заявки для всех проектов, где пользователь имеет права
                 const projects = StateManager.getState('projects') || [];
-                const userProjectsWithAccess = projects.filter(project => {
-                    const role = project.current_user_role || project.user_role;
+                const userProjectsWithAccess = projects.filter(p => {
+                    const role = p.current_user_role || p.user_role;
                     return ['owner', 'admin'].includes(role);
                 });
-
                 if (userProjectsWithAccess.length === 0) {
                     ToastManager.info('У вас нет проектов с правами для управления заявками');
                     return;
                 }
-
-                // Показываем модальное окно со списком проектов для управления заявками
                 this.showJoinRequestsProjectsModal(userProjectsWithAccess);
             });
         }
 
-        // Кнопка "Прочитать все" в уведомлениях
+        // Прочитать все уведомления
         const markAllReadBtn = document.getElementById('mark-all-read-btn');
         if (markAllReadBtn) {
             markAllReadBtn.addEventListener('click', () => {
@@ -574,11 +513,10 @@ class UIComponents {
             });
         }
 
-        // Кнопка настроек - ДОБАВЛЕНА ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ШАБЛОНОВ
+        // Кнопка настроек
         const settingsBtn = document.getElementById('settings-btn');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', async () => {
-                // Предварительная загрузка шаблонов перед открытием настроек
                 await this.preloadModalTemplates();
                 if (typeof UsersManager !== 'undefined') {
                     UsersManager.showPreferencesModal();
@@ -588,123 +526,65 @@ class UIComponents {
             });
         }
 
-        // ДОБАВЛЕННЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК ПОЛЬЗОВАТЕЛЯ
+        // Кнопка меню пользователя
         const userMenuBtn = document.getElementById('user-menu-btn');
         if (userMenuBtn) {
-            userMenuBtn.addEventListener('click', () => {
-                this.showUserMenu();
-            });
+            userMenuBtn.addEventListener('click', () => this.showUserMenu());
         }
 
-        // Обработчики для кнопок в настройках
-        const exportDataBtn = document.getElementById('export-data-btn');
-        if (exportDataBtn) {
-            exportDataBtn.addEventListener('click', () => {
-                if (typeof PersistenceManager !== 'undefined') {
-                    PersistenceManager.exportData();
-                } else {
-                    ToastManager.error('Менеджер данных недоступен');
-                }
-            });
-        }
-
-        const clearCacheBtn = document.getElementById('clear-cache-btn');
-        if (clearCacheBtn) {
-            clearCacheBtn.addEventListener('click', () => {
-                if (typeof CacheManager !== 'undefined') {
-                    CacheManager.clear();
-                    ToastManager.success('Кэш очищен');
-                } else {
-                    ToastManager.error('Менеджер кэша недоступен');
-                }
-            });
-        }
-
-        const debugInfoBtn = document.getElementById('debug-info-btn');
-        if (debugInfoBtn) {
-            debugInfoBtn.addEventListener('click', () => {
-                if (typeof App !== 'undefined') {
-                    App.showDebugInfo();
-                }
-            });
-        }
-
-        // Обработчики для кнопок в дашборде
-        const filterBtn = document.getElementById('filter-btn');
-        if (filterBtn) {
-            filterBtn.addEventListener('click', () => {
-                this.showFiltersModal();
-            });
-        }
-
-        const sortBtn = document.getElementById('sort-btn');
-        if (sortBtn) {
-            sortBtn.addEventListener('click', () => {
-                this.showSortModal();
-            });
-        }
-
-        // Показать секцию отладки в development
-        if (CONFIG.ENV === 'development') {
-            const debugSection = document.getElementById('debug-section');
-            if (debugSection) {
-                debugSection.style.display = 'block';
+        // Экспорт / очистка / отладка
+        ['export-data-btn', 'clear-cache-btn', 'debug-info-btn'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    if (id === 'export-data-btn' && typeof PersistenceManager !== 'undefined') {
+                        PersistenceManager.exportData();
+                    } else if (id === 'clear-cache-btn' && typeof CacheManager !== 'undefined') {
+                        CacheManager.clear();
+                        ToastManager.success('Кэш очищен');
+                    } else if (id === 'debug-info-btn' && typeof App !== 'undefined') {
+                        App.showDebugInfo();
+                    }
+                });
             }
-        }
-
-        // Обработчики глобальных событий
-        EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
-            this.updateUserInfo(user);
         });
 
-        EventManager.on(APP_EVENTS.NOTIFICATIONS_LOADED, (notifications) => {
+        // Фильтры и сортировка
+        document.getElementById('filter-btn')?.addEventListener('click', () => this.showFiltersModal());
+        document.getElementById('sort-btn')?.addEventListener('click', () => this.showSortModal());
+
+        // Отладочная секция
+        if (CONFIG.ENV === 'development') {
+            const debugSection = document.getElementById('debug-section');
+            if (debugSection) debugSection.style.display = 'block';
+        }
+
+        // === Глобальные события ===
+        EventManager.on(APP_EVENTS.USER_UPDATE, user => {
+            this.updateUserInfo(user);
+            this.updateAccountSettingsInfo(user);
+        });
+
+        EventManager.on(APP_EVENTS.NOTIFICATIONS_LOADED, notifications => {
             this.updateNotificationBadge(notifications);
         });
 
-        EventManager.on(APP_EVENTS.PROJECTS_UPDATED, (projects) => {
-            console.log('PROJECTS_UPDATED event received:', projects);
-            setTimeout(() => this.renderProjects(projects), 100);
+        EventManager.on(APP_EVENTS.PROJECTS_UPDATED, projects => {
+            if (Array.isArray(projects)) this.renderProjects(projects);
         });
 
-        EventManager.on(APP_EVENTS.STATE_UPDATED, (newState) => {
+        EventManager.on(APP_EVENTS.STATE_UPDATED, newState => {
             if (newState.projects && Array.isArray(newState.projects)) {
-                console.log('STATE_UPDATED with projects:', newState.projects);
-                setTimeout(() => this.renderProjects(newState.projects), 150);
+                setTimeout(() => this.renderProjects(newState.projects), 100);
             }
         });
 
-        EventManager.on(APP_EVENTS.TASKS_LOADED, (tasks) => {
-            this.renderTasks(tasks);
-        });
-
-        EventManager.on(APP_EVENTS.THEME_CHANGED, (theme) => {
-            this.updateThemeUI(theme);
-        });
-
-        EventManager.on(APP_EVENTS.NETWORK_STATUS_CHANGED, (status) => {
-            this.updateNetworkStatusUI(status);
-        });
-
-        EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
-            this.updateUserInfo(user);
-            this.updateAccountSettingsInfo(user); // Новый метод
-        });
-
-        // ДОБАВЛЕНЫ ОБРАБОТЧИКИ ДЛЯ СОБЫТИЙ ШАБЛОНОВ
-        EventManager.on(APP_EVENTS.MODAL_OPENED, (modalId) => {
-            Utils.log(`Modal opened: ${modalId}`);
-            this.handleModalOpened(modalId); // ВЫЗОВ НОВОГО МЕТОДА
-        });
-
-        EventManager.on(APP_EVENTS.MODAL_CLOSED, (modalId) => {
-            Utils.log(`Modal closed: ${modalId}`);
-            this.handleModalClosed(modalId); // ВЫЗОВ НОВОГО МЕТОДА
-        });
-
-        EventManager.on(APP_EVENTS.DATA_LOADED, () => {
-            // При загрузке данных убедиться что основные шаблоны доступны
-            this.ensureRequiredTemplates();
-        });
+        EventManager.on(APP_EVENTS.TASKS_LOADED, tasks => this.renderTasks(tasks));
+        EventManager.on(APP_EVENTS.THEME_CHANGED, theme => this.updateThemeUI(theme));
+        EventManager.on(APP_EVENTS.NETWORK_STATUS_CHANGED, status => this.updateNetworkStatusUI(status));
+        EventManager.on(APP_EVENTS.MODAL_OPENED, modalId => this.handleModalOpened(modalId));
+        EventManager.on(APP_EVENTS.MODAL_CLOSED, modalId => this.handleModalClosed(modalId));
+        EventManager.on(APP_EVENTS.DATA_LOADED, () => this.ensureRequiredTemplates());
 
         Utils.log('Event listeners initialized');
     }
@@ -1316,80 +1196,64 @@ class UIComponents {
     // ==================== РЕНДЕРИНГ ДАННЫХ ====================
 
     static renderProjects(projects) {
-        try {
-            const container = document.getElementById('projects-list');
-            if (!container) {
-                console.warn('Projects container not found');
-                return;
-            }
-
-            if (!projects || !Array.isArray(projects)) {
-                console.warn('Invalid projects data:', projects);
-                this.showEmptyState(container, 'Проектов пока нет');
-                return;
-            }
-
-            container.innerHTML = '';
-
-            // Рендерим проекты
-            projects.forEach((projectData, index) => {
-                setTimeout(() => {
-                    try {
-                        const project = projectData.project || projectData;
-                        const cardHTML = this.renderProjectCardWithTemplate(project);
-
-                        if (!cardHTML) {
-                            console.error('Empty card HTML for project:', project);
-                            return;
-                        }
-
-                        const cardElement = document.createElement('div');
-                        cardElement.innerHTML = cardHTML.trim();
-                        const projectCard = cardElement.firstElementChild;
-
-                        if (!projectCard) {
-                            console.error('Could not create card element for project:', project);
-                            return;
-                        }
-
-                        // Добавляем обработчик клика для открытия полноэкранного view
-                        projectCard.addEventListener('click', (e) => {
-                            // Предотвращаем срабатывание при клике на кнопки внутри карточки
-                            if (e.target.closest('button')) return;
-
-                            if (typeof ProjectView !== 'undefined') {
-                                ProjectView.openProject(project.hash);
-                            } else {
-                                // Fallback на старый метод
-                                ProjectsManager.openProjectDetail(project.hash);
-                            }
-                        });
-
-                        projectCard.style.opacity = '0';
-                        projectCard.style.transform = 'translateY(20px)';
-
-                        container.appendChild(projectCard);
-
-                        requestAnimationFrame(() => {
-                            projectCard.style.opacity = '1';
-                            projectCard.style.transform = 'translateY(0)';
-                            projectCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                        });
-
-                    } catch (error) {
-                        console.error('Error rendering project card:', error, projectData);
-                    }
-                }, index * 50);
-            });
-
-            Utils.log(`Rendered ${projects.length} projects`);
-        } catch (error) {
-            Utils.logError('Error in renderProjects:', error);
-            const container = document.getElementById('projects-list');
-            if (container) {
-                this.showErrorState(container, 'Ошибка отображения проектов');
-            }
+        const container = document.getElementById('projects-list');
+        if (!container) {
+            console.warn('Projects container not found');
+            return;
         }
+
+        if (!Array.isArray(projects) || projects.length === 0) {
+            this.showEmptyState(container, 'Проектов пока нет');
+            return;
+        }
+
+        container.innerHTML = '';
+        let lastRendered = null;
+
+        projects.forEach((projectData, index) => {
+            const project = projectData.project || projectData;
+            const serialized = JSON.stringify(project);
+            if (lastRendered === serialized) {
+                Utils.log('Project already rendered, skipping');
+                return;
+            }
+            lastRendered = serialized;
+
+            setTimeout(() => {
+                try {
+                    const cardHTML = this.renderProjectCardWithTemplate(project);
+                    if (!cardHTML) return;
+
+                    const cardElement = document.createElement('div');
+                    cardElement.innerHTML = cardHTML.trim();
+                    const projectCard = cardElement.firstElementChild;
+                    if (!projectCard) return;
+
+                    projectCard.addEventListener('click', (e) => {
+                        if (e.target.closest('button, .swipe-action')) return;
+                        if (typeof ProjectView !== 'undefined') {
+                            ProjectView.openProject(project.hash);
+                        } else if (typeof ProjectsManager !== 'undefined') {
+                            ProjectsManager.openProjectDetail(project.hash);
+                        }
+                    });
+
+                    projectCard.style.opacity = '0';
+                    projectCard.style.transform = 'translateY(20px)';
+                    container.appendChild(projectCard);
+
+                    requestAnimationFrame(() => {
+                        projectCard.style.opacity = '1';
+                        projectCard.style.transform = 'translateY(0)';
+                        projectCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    });
+                } catch (error) {
+                    console.error('Error rendering project:', error, projectData);
+                }
+            }, index * 50);
+        });
+
+        Utils.log(`Rendered ${projects.length} projects`);
     }
 
     static renderTasks(tasks) {
@@ -1600,71 +1464,42 @@ class UIComponents {
     }
     static renderProjectCardWithTemplate(projectData) {
         try {
-            console.log('Rendering project card with data:', projectData);
-
-            if (!projectData) {
-                console.error('Invalid project data:', projectData);
-                return '<div class="project-card error">Ошибка данных проекта</div>';
-            }
+            if (!projectData) return '<div class="project-card error">Ошибка данных</div>';
 
             const project = projectData.project || projectData;
             const stats = project.stats || {};
 
-            // Безопасное извлечение данных с приоритетом роли
             const title = project.title || 'Без названия';
             const description = project.description || 'Без описания';
 
-            // Определяем роль с приоритетами
+            // Приоритет роли: current_user_role > user_role > projectData.role
             let role = 'member';
-            if (project.user_role) {
-                role = project.user_role;
-            } else if (project.current_user_role) {
-                role = project.current_user_role;
-            } else if (projectData.role) {
-                role = projectData.role;
-            }
-
-            const isPrivate = Boolean(project.is_private);
-            const requiresApproval = Boolean(project.requires_approval);
+            if (project.current_user_role) role = project.current_user_role;
+            else if (project.user_role) role = project.user_role;
+            else if (projectData.role) role = projectData.role;
 
             const progress = stats.tasks_count > 0
                 ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
                 : 0;
 
             const templateData = {
-                id: project.id || 'unknown',
                 hash: project.hash || '',
-                title: title,
-                description: description,
-                role: role,
-                roleText: this.getRoleText(role),
+                title,
+                description,
+                statusText: this.getProjectStatus(project),
                 membersCount: stats.members_count || 0,
                 tasksCount: stats.tasks_count || 0,
                 tasksDone: stats.tasks_done || 0,
-                tasksInProgress: stats.tasks_in_progress || 0,
-                tasksTodo: stats.tasks_todo || 0,
-                progress: progress,
-                isPrivate: isPrivate,
-                requiresApproval: requiresApproval,
-                status: this.getProjectStatus(project),
+                progress,
+                isPrivate: !!project.is_private,
                 canInvite: ['owner', 'admin'].includes(role)
             };
 
-            console.log('Template data prepared:', templateData);
-
-            // Используем шаблон
             const rendered = this.renderTemplate('project-card-template', templateData);
-
-            if (!rendered) {
-                console.warn('Template rendering returned empty, using fallback');
-                return this.createProjectCardFallback(templateData);
-            }
-
-            return rendered;
-
+            return rendered || this.createProjectCardFallback(templateData);
         } catch (error) {
-            Utils.logError('Error in renderProjectCardWithTemplate:', error);
-            return this.createProjectCardFallback({title: 'Ошибка загрузки'});
+            Utils.logError('renderProjectCardWithTemplate error:', error);
+            return this.createProjectCardFallback({ title: 'Ошибка' });
         }
     }
 

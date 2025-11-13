@@ -653,6 +653,11 @@ if (typeof APP_EVENTS !== 'undefined') {
 
 // ---------- ЗАПУСК ----------
 document.addEventListener('DOMContentLoaded', () => {
+    UIComponents.init();          // <-- собирает все <template>
+    AuthManager.initializeUser();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('error', ev => Utils.logError('Global error caught:', ev.error));
     window.addEventListener('unhandledrejection', ev => Utils.logError('Unhandled promise rejection:', ev.reason));
 
