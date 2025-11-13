@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.database import get_db
-from app.models import User, Project, ProjectMember, Task, TaskAssignee, Comment, TaskDependency
+from app.models import User, Project, ProjectMember, Task, Comment, TaskDependency
 from app.api.deps import get_current_user
 from app.models.enums import ProjectRole, TaskStatus, TaskPriority
 from pydantic import BaseModel
@@ -11,7 +11,6 @@ from typing import Optional, List
 from datetime import datetime
 import logging
 
-# Add logger
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -23,7 +22,7 @@ class TaskCreate(BaseModel):
     description: str = ""
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
-    assigned_to_ids: List[int] = []
+    assigned_to_id: Optional[int] = None  # Один исполнитель
     parent_task_id: Optional[int] = None
     depends_on_ids: List[int] = []
     due_date: Optional[str] = None
@@ -33,7 +32,7 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
-    assigned_to_ids: Optional[List[int]] = None
+    assigned_to_id: Optional[int] = None  # Один исполнитель
     parent_task_id: Optional[int] = None
     due_date: Optional[str] = None
 
@@ -123,6 +122,13 @@ async def create_task(
             if not parent_task or parent_task.project_id != project.id:
                 raise HTTPException(status_code=400, detail="Invalid parent task")
 
+        # Проверка исполнителя
+        if task_data.assigned_to_id:
+            # Проверяем, что исполнитель является участником проекта
+            assignee_access = await check_project_access(project.id, task_data.assigned_to_id, db)
+            if not assignee_access:
+                raise HTTPException(status_code=400, detail="Assignee must be a project member")
+
         task = Task(
             title=task_data.title,
             description=task_data.description,
@@ -130,6 +136,7 @@ async def create_task(
             priority=task_data.priority,
             project_id=project.id,
             created_by=current_user.id,
+            assigned_to_id=task_data.assigned_to_id,  # Один исполнитель
             parent_task_id=task_data.parent_task_id
         )
         if task_data.due_date:
@@ -138,11 +145,6 @@ async def create_task(
         db.add(task)
         await db.commit()
         await db.refresh(task)
-
-        # Назначить исполнителей
-        for user_id in task_data.assigned_to_ids:
-            assignee = TaskAssignee(task_id=task.id, user_id=user_id)
-            db.add(assignee)
 
         # Добавить зависимости
         for dep_id in task_data.depends_on_ids:
@@ -157,6 +159,7 @@ async def create_task(
 
     except Exception as e:
         logger.error(f"Error creating task: {str(e)}")
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
@@ -185,6 +188,16 @@ async def update_task(
         if not can_edit and task.created_by != current_user.id:
             raise HTTPException(status_code=403, detail="No permission to edit this task")
 
+        # Проверка исполнителя
+        if task_data.assigned_to_id is not None:
+            if task_data.assigned_to_id == 0:  # Сброс назначения
+                task_data.assigned_to_id = None
+            elif task_data.assigned_to_id:
+                # Проверяем, что исполнитель является участником проекта
+                assignee_access = await check_project_access(task.project_id, task_data.assigned_to_id, db)
+                if not assignee_access:
+                    raise HTTPException(status_code=400, detail="Assignee must be a project member")
+
         # Обновление полей
         update_fields = {}
         if task_data.title is not None:
@@ -195,6 +208,8 @@ async def update_task(
             update_fields["status"] = task_data.status
         if task_data.priority is not None:
             update_fields["priority"] = task_data.priority
+        if task_data.assigned_to_id is not None:
+            update_fields["assigned_to_id"] = task_data.assigned_to_id
         if task_data.parent_task_id is not None:
             # Проверка родительской задачи
             if task_data.parent_task_id:
@@ -203,19 +218,13 @@ async def update_task(
                     raise HTTPException(status_code=400, detail="Invalid parent task")
             update_fields["parent_task_id"] = task_data.parent_task_id
         if task_data.due_date is not None:
-            update_fields["due_date"] = datetime.fromisoformat(task_data.due_date.replace('Z', '+00:00'))
+            if task_data.due_date:
+                update_fields["due_date"] = datetime.fromisoformat(task_data.due_date.replace('Z', '+00:00'))
+            else:
+                update_fields["due_date"] = None
 
         for field, value in update_fields.items():
             setattr(task, field, value)
-
-        # Обновление исполнителей
-        if task_data.assigned_to_ids is not None:
-            # Удалить старых исполнителей
-            await db.execute(TaskAssignee.__table__.delete().where(TaskAssignee.task_id == task_id))
-            # Добавить новых
-            for user_id in task_data.assigned_to_ids:
-                assignee = TaskAssignee(task_id=task.id, user_id=user_id)
-                db.add(assignee)
 
         await db.commit()
         await db.refresh(task)
@@ -225,6 +234,7 @@ async def update_task(
 
     except Exception as e:
         logger.error(f"Error updating task: {str(e)}")
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
@@ -472,7 +482,7 @@ async def delete_task(
             if task.created_by != current_user.id:
                 raise HTTPException(status_code=403, detail="Access denied")
 
-        await db.execute(TaskAssignee.__table__.delete().where(TaskAssignee.task_id == task.id))
+        # Удалить зависимости
         await db.execute(TaskDependency.__table__.delete().where(
             (TaskDependency.task_id == task_id) | (TaskDependency.depends_on_id == task_id)
         ))

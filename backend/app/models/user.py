@@ -15,7 +15,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Упрощенные отношения - убираем конфликтующие backref
+    # Relationships
     owned_projects = relationship(
         "Project",
         foreign_keys="Project.created_by",
@@ -40,10 +40,11 @@ class User(Base):
         back_populates="task_creator"
     )
 
-    # Задачи, назначенные пользователю
+    # Задачи, назначенные пользователю (ОДИН исполнитель)
     assigned_tasks = relationship(
-        "TaskAssignee",
-        back_populates="assignee_user"
+        "Task",
+        foreign_keys="Task.assigned_to_id",
+        back_populates="assigned_user"
     )
 
     # Комментарии пользователя

@@ -2021,9 +2021,7 @@
                 if (!currentProject || !currentTask) return;
 
                 const title = document.getElementById('subtaskTitle').value.trim();
-                // Описание всегда пустое для подзадачи
                 const description = "";
-                // Приоритет и срок выполнения наследуются от родительской задачи
                 const priority = currentTask.priority || 'medium';
                 const dueDate = currentTask.due_date || null;
                 const assignedTo = document.getElementById('subtaskAssignedTo').value;
@@ -2036,19 +2034,18 @@
                 try {
                     const taskData = {
                         title,
-                        description, // Всегда пустая строка
+                        description,
                         project_hash: currentProject.hash,
-                        priority, // Наследуется от родителя
+                        priority,
                         status: 'todo',
-                        parent_task_id: currentTask.id // Устанавливаем родительскую задачу
+                        parent_task_id: currentTask.id
                     };
 
-                    // Наследуем срок выполнения от родительской задачи
                     if (dueDate) {
                         taskData.due_date = dueDate;
                     }
 
-                    // ИСПРАВЛЕНО: Правильное назначение исполнителя
+                    // ИСПРАВЛЕНО: используем assigned_to_id вместо assigned_to_ids
                     if (assignedTo) {
                         taskData.assigned_to_id = parseInt(assignedTo);
                     }
@@ -2059,7 +2056,6 @@
                     this.hideModal('createSubtaskModal');
                     document.getElementById('createSubtaskForm').reset();
 
-                    // Перезагружаем подзадачи
                     await this.loadSubtasks(currentTask.id);
                     this.showSuccess('Подзадача создана успешно!');
 
@@ -2096,7 +2092,7 @@
                     if (dueDate) taskData.due_date = dueDate;
                     if (parentTaskId) taskData.parent_task_id = parseInt(parentTaskId);
 
-                    // ИСПРАВЛЕНО: Правильное назначение исполнителя
+                    // ИСПРАВЛЕНО: используем assigned_to_id вместо assigned_to_ids
                     if (assignedTo) {
                         taskData.assigned_to_id = parseInt(assignedTo);
                     }
@@ -2176,14 +2172,14 @@
                         taskData.due_date = null;
                     }
 
-                    // ИСПРАВЛЕНО: Если нужно обновить назначение, добавить assigned_to_id
-                    // (пока оставляем текущее значение)
+                    // ИСПРАВЛЕНО: если нужно обновить назначение, используем assigned_to_id
+                    // (можно добавить поле в форму редактирования)
 
                     console.log('Updating task:', currentTask.id, taskData);
                     await ApiService.updateTask(currentTask.id, taskData);
 
                     this.hideModal('editTaskModal');
-                    await this.openTask(currentTask.id); // Перезагружаем задачу
+                    await this.openTask(currentTask.id);
                     this.showSuccess('Задача обновлена успешно!');
 
                 } catch (error) {
@@ -2191,7 +2187,7 @@
                     this.showError('Ошибка обновления задачи: ' + error.message);
                 }
             }
-
+            
             static async assignTaskToUser(userId) {
                 if (!currentTask || !currentTask.id) return;
 

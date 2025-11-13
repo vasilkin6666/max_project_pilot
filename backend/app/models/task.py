@@ -15,17 +15,17 @@ class Task(Base):
     priority = Column(String, default=TaskPriority.MEDIUM)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
-    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Один исполнитель
     due_date = Column(DateTime(timezone=True), nullable=True)
     parent_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Используем back_populates
+    # Relationships
     task_project = relationship("Project", back_populates="tasks")
     task_creator = relationship("User", foreign_keys=[created_by], back_populates="created_tasks")
-    assignees = relationship("TaskAssignee", back_populates="assignee_task", cascade="all, delete-orphan")
+    assigned_user = relationship("User", foreign_keys=[assigned_to_id], back_populates="assigned_tasks")  # Один исполнитель
     comments = relationship("Comment", back_populates="comment_task", cascade="all, delete-orphan")
 
     # Отношение для родительской задачи и подзадач
@@ -64,18 +64,6 @@ class TaskDependency(Base):
 
     dependency_task = relationship("Task", foreign_keys=[task_id], back_populates="dependencies")
     dependent_task = relationship("Task", foreign_keys=[depends_on_id], back_populates="dependents")
-
-class TaskAssignee(Base):
-    __tablename__ = "task_assignees"
-
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
-    __table_args__ = (UniqueConstraint('task_id', 'user_id', name='unique_task_assignee'),)
-
-    assignee_task = relationship("Task", back_populates="assignees")
-    assignee_user = relationship("User", foreign_keys=[user_id], back_populates="assigned_tasks")
 
 class Comment(Base):
     __tablename__ = "comments"
