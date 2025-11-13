@@ -53,43 +53,51 @@ class App {
     }
 
     static activateUnusedComponents() {
-        // Сетевой статус
-        this.initNetworkStatus();
+        try {
+            // Сетевой статус
+            this.initNetworkStatus();
 
-        // Расширенные свайпы
-        if (typeof SwipeManager !== 'undefined') {
-            SwipeManager.setupMemberSwipes();
-            SwipeManager.setupNotificationSwipes();
-        }
+            // Расширенные свайпы
+            if (typeof SwipeManager !== 'undefined') {
+                SwipeManager.setupMemberSwipes();
+                SwipeManager.setupNotificationSwipes();
+            }
 
-        // Тактильная обратная связь
-        if (typeof HapticManager !== 'undefined') {
-            HapticManager.initHapticIntegration();
-        }
+            // Тактильная обратная связь
+            if (typeof HapticManager !== 'undefined') {
+                HapticManager.initHapticIntegration();
+            }
 
-        // Валидация
-        if (typeof Utils !== 'undefined') {
-            Utils.initValidationSystem();
-        }
+            // Валидация
+            if (typeof Utils !== 'undefined') {
+                Utils.initValidationSystem();
+            }
 
-        // Настройки
-        if (typeof UsersManager !== 'undefined') {
-            UsersManager.initSettingsIntegration();
-        }
+            // Настройки
+            if (typeof UsersManager !== 'undefined') {
+                UsersManager.initSettingsIntegration();
+            }
 
-        // Фильтры
-        if (typeof TasksManager !== 'undefined') {
-            TasksManager.initTaskFilters();
-        }
+            // Фильтры
+            if (typeof TasksManager !== 'undefined') {
+                TasksManager.initTaskFilters();
+            }
 
-        // Статистика
-        if (typeof DashboardManager !== 'undefined') {
-            DashboardManager.initAdvancedStats();
-        }
+            // Статистика - С ОБРАБОТКОЙ ОШИБОК
+            if (typeof DashboardManager !== 'undefined') {
+                try {
+                    DashboardManager.initAdvancedStats();
+                } catch (error) {
+                    Utils.logError('Error initializing dashboard stats:', error);
+                }
+            }
 
-        // Разрешения
-        if (typeof AuthManager !== 'undefined') {
-            AuthManager.initPermissionSystem();
+            // Разрешения
+            if (typeof AuthManager !== 'undefined') {
+                AuthManager.initPermissionSystem();
+            }
+        } catch (error) {
+            Utils.logError('Error activating unused components:', error);
         }
     }
 
@@ -665,6 +673,7 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
         this.showErrorToast('Ошибка загрузки приложения');
     }
 
+    // В методе applyTheme() заменить:
     static applyTheme(theme) {
         // Предотвращаем циклические вызовы
         if (this.isApplyingTheme) {
@@ -697,14 +706,19 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
         // Принудительно применяем тему ко всем элементам
         this.forceThemeApplication(theme);
 
-        // Сохраняем тему в настройках пользователя с задержкой
-        setTimeout(() => {
+        // Сохраняем тему в настройках пользователя с задержкой и проверкой изменений
+        setTimeout(async () => {
             if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
-                UsersManager.patchUserPreferences({ theme }).catch((error) => {
+                try {
+                    const currentPrefs = await UsersManager.loadUserPreferences();
+                    if (currentPrefs.theme !== theme) {
+                        await UsersManager.patchUserPreferences({ theme });
+                    }
+                } catch (error) {
                     Utils.logError('Failed to save theme preference:', error);
-                }).finally(() => {
+                } finally {
                     this.isApplyingTheme = false;
-                });
+                }
             } else {
                 this.isApplyingTheme = false;
             }

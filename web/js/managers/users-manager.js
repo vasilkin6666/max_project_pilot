@@ -204,7 +204,13 @@ class UsersManager {
 
     static async patchUserPreferences(preferences) {
         // Проверяем, не является ли запрос дублирующим
-        const currentPrefs = await this.loadUserPreferences();
+        let currentPrefs;
+        try {
+            currentPrefs = await this.loadUserPreferences();
+        } catch (error) {
+            currentPrefs = {};
+        }
+
         const hasChanges = Object.keys(preferences).some(key =>
             currentPrefs[key] !== preferences[key]
         );

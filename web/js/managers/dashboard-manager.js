@@ -73,6 +73,57 @@ class DashboardManager {
         this.updateCounter('overdue-tasks-count', overdueTasks);
         this.updateCounter('total-tasks-count', totalTasks);
         this.updateCounter('completed-tasks-count', doneTasks);
+
+        // Возвращаем статистику для использования в других методах
+        return {
+            activeProjects,
+            overdueTasks,
+            totalTasks,
+            completedTasks: doneTasks,
+            totalProjects: projects.length
+        };
+    }
+
+    // Добавить в класс DashboardManager после updateStats() метода:
+    static updateStatsDisplay(stats) {
+        // Обновляем счетчики в UI
+        this.updateCounter('active-projects-count', stats.activeProjects || 0);
+        this.updateCounter('overdue-tasks-count', stats.overdueTasks || 0);
+        this.updateCounter('total-tasks-count', stats.totalTasks || 0);
+        this.updateCounter('completed-tasks-count', stats.completedTasks || 0);
+
+        // Обновляем дополнительные счетчики если они есть
+        const urgentTasksEl = document.getElementById('urgent-tasks-count');
+        const totalProjectsEl = document.getElementById('total-projects-count');
+
+        if (urgentTasksEl) {
+            this.updateCounter('urgent-tasks-count', stats.urgentTasks || 0);
+        }
+
+        if (totalProjectsEl) {
+            this.updateCounter('total-projects-count', stats.totalProjects || 0);
+        }
+
+        // Обновляем прогресс-бары если есть
+        this.updateProgressBars(stats);
+    }
+
+    static updateProgressBars(stats) {
+        // Обновляем прогресс выполнения задач если есть соответствующие элементы
+        const completionRateEl = document.getElementById('completion-rate');
+        if (completionRateEl) {
+            const completionRate = stats.totalTasks > 0 ?
+                Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0;
+            const progressBar = completionRateEl.querySelector('.progress-fill');
+            if (progressBar) {
+                progressBar.style.width = `${completionRate}%`;
+            }
+
+            const progressText = completionRateEl.querySelector('.progress-text');
+            if (progressText) {
+                progressText.textContent = `${completionRate}%`;
+            }
+        }
     }
 
     static updateCounter(elementId, count) {
@@ -83,15 +134,38 @@ class DashboardManager {
         }
     }
 
+    // В начало метода initAdvancedStats() добавить:
     static initAdvancedStats() {
-        // Периодическое обновление статистики
-        setInterval(() => {
-            this.updateDashboardStats();
-        }, 30000); // Каждые 30 секунд
+        // Добавляем обработку ошибок
+        try {
+            // Периодическое обновление статистики
+            setInterval(() => {
+                try {
+                    this.updateDashboardStats();
+                } catch (error) {
+                    Utils.logError('Error in periodic stats update:', error);
+                }
+            }, 30000); // Каждые 30 секунд
 
-        // Слушатель для обновления при изменении данных
-        EventManager.on(APP_EVENTS.PROJECTS_LOADED, () => this.refreshStats());
-        EventManager.on(APP_EVENTS.TASKS_LOADED, () => this.refreshStats());
+            // Слушатель для обновления при изменении данных
+            EventManager.on(APP_EVENTS.PROJECTS_LOADED, () => {
+                try {
+                    this.refreshStats();
+                } catch (error) {
+                    Utils.logError('Error refreshing stats on projects loaded:', error);
+                }
+            });
+
+            EventManager.on(APP_EVENTS.TASKS_LOADED, () => {
+                try {
+                    this.refreshStats();
+                } catch (error) {
+                    Utils.logError('Error refreshing stats on tasks loaded:', error);
+                }
+            });
+        } catch (error) {
+            Utils.logError('Error initializing advanced stats:', error);
+        }
     }
 
     static updateDashboardStats() {
@@ -107,7 +181,7 @@ class DashboardManager {
             urgentTasks: this.getUrgentTasksCount(tasks)
         };
 
-        // Обновляем UI
+        // Обновляем UI - ИСПРАВЛЕННАЯ СТРОКА:
         this.updateStatsDisplay(stats);
 
         // Сохраняем в state
