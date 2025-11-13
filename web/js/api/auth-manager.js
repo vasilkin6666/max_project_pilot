@@ -5,6 +5,7 @@ class AuthManager {
     static isAuthenticated = false;
     static tokenRefreshInterval = null;
     static maxData = null;
+    static isLoadingUser = false; // Добавьте эту строку
 
     static initPermissionSystem() {
         EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
@@ -18,7 +19,9 @@ class AuthManager {
 
         Utils.log('Permission system initialized');
     }
-
+    static getToken() {
+        return localStorage.getItem('access_token');
+    }
     static extractMaxDataFromUrl() {
         try {
             // Парсим данные из хэша URL
@@ -324,6 +327,14 @@ class AuthManager {
     }
 
     static async loadCurrentUser() {
+        // Защита от повторных вызовов
+        if (this.isLoadingUser) {
+            Utils.log('User load already in progress, skipping');
+            return false;
+        }
+
+        this.isLoadingUser = true;
+
         try {
             const userData = await ApiService.getCurrentUser();
             this.currentUser = userData;
@@ -340,14 +351,23 @@ class AuthManager {
 
         } catch (error) {
             Utils.logError('Failed to load current user:', error);
+
             // Если ошибка аутентификации - очищаем токен
             if (error.status === 401 || error.message?.includes('401')) {
                 Utils.log('Token invalid, clearing authentication data');
                 this.clearAuthData();
-                // Перезагружаем страницу для повторной аутентификации
-                setTimeout(() => window.location.reload(), 1000);
+
+                // Не перезагружаем страницу сразу, даем пользователю возможность взаимодействовать
+                setTimeout(() => {
+                    if (!this.isAuthenticated) {
+                        window.location.reload();
+                    }
+                }, 2000);
             }
             return false;
+        } finally {
+            // Снимаем блокировку независимо от результата
+            this.isLoadingUser = false;
         }
     }
 

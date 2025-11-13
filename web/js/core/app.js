@@ -49,6 +49,31 @@ class App {
         }
     }
 
+    // В класс App добавьте этот метод
+    static handleCriticalError(error) {
+        console.error('Critical error:', error);
+
+        // Показываем пользователю сообщение об ошибке
+        const appContainer = document.getElementById('app');
+        if (appContainer) {
+            appContainer.innerHTML = `
+                <div class="error-container" style="padding: 2rem; text-align: center;">
+                    <div class="error-icon" style="font-size: 4rem; color: var(--danger-color); margin-bottom: 1rem;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h2 style="color: var(--text-primary); margin-bottom: 1rem;">Критическая ошибка</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Приложение не может быть запущено. Пожалуйста, перезагрузите страницу.</p>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        <i class="fas fa-refresh"></i> Перезагрузить
+                    </button>
+                </div>
+            `;
+        }
+
+        // Скрываем loading overlay
+        this.hideLoadingOverlay();
+    }
+
     static forceThemeApplication(theme) {
         const mainContent = document.querySelector('.main-content');
         const notificationsView = document.getElementById('notifications-view');
@@ -104,6 +129,7 @@ class App {
     }
 
     // ---------- ИНИЦИАЛИЗАЦИЯ ----------
+    // Замените существующий блок init
     static async init() {
         try {
             Utils.log('App initialization started');
@@ -122,14 +148,37 @@ class App {
                 await this.loadInitialData();
                 this.startBackgroundProcesses();
             } else {
-                Utils.log('User not authenticated, skipping data load');
-                this.showAuthScreen?.();
+                Utils.log('User not authenticated, showing auth screen');
+                this.showAuthScreen();
             }
 
         } catch (error) {
             Utils.logError('App initialization failed:', error);
             this.handleCriticalError(error);
         }
+    }
+
+    // Добавьте метод showAuthScreen
+    static showAuthScreen() {
+        const appContainer = document.getElementById('app');
+        if (!appContainer) return;
+
+        appContainer.innerHTML = `
+            <div class="auth-screen" style="padding: 2rem; text-align: center;">
+                <div class="auth-icon" style="font-size: 4rem; color: var(--primary-color); margin-bottom: 1rem;">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h1 style="color: var(--text-primary); margin-bottom: 1rem;">Project Pilot</h1>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Управление проектами в MAX</p>
+                <div class="auth-actions">
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        <i class="fas fa-refresh"></i> Попробовать снова
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.hideLoadingOverlay();
     }
 
     static async checkSystemRequirements() {
@@ -394,9 +443,13 @@ class App {
         }
     }
 
+    // Замените существующий метод isAuthenticated
     static isAuthenticated() {
-        // Проверяем токен и флаг
-        return !!AuthManager.getToken() && StateManager.getState('user') !== null;
+        const token = AuthManager.getToken && AuthManager.getToken();
+        const user = StateManager.getState('user');
+
+        // Проверяем наличие токена и пользователя в состоянии
+        return !!token && !!user;
     }
 
     static startBackgroundProcesses() {
@@ -605,12 +658,13 @@ if (typeof APP_EVENTS !== 'undefined') {
 
 // ---------- ЗАПУСК ----------
 // ЗАМЕНИТЕ существующие обработчики на этот код:
+// Замените существующий обработчик DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // 1. Сначала инициализируем UI компоненты и шаблоны
         await UIComponents.init();
 
-        // 2. Применяем тему сразу (без ожидания полной инициализации)
+        // 2. Применяем тему сразу
         const theme = App.getCurrentTheme();
         App.applyTheme(theme);
 
@@ -618,11 +672,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         await AuthManager.initializeUser();
 
         // 4. Запускаем основную инициализацию приложения
-        setTimeout(() => App.init(), 300);
+        await App.init();
 
     } catch (error) {
         console.error('Initialization failed:', error);
-        App.handleInitError(error);
+        // Используем handleCriticalError вместо handleInitError
+        if (typeof App !== 'undefined' && App.handleCriticalError) {
+            App.handleCriticalError(error);
+        } else {
+            // Fallback если App еще не доступен
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.innerHTML = `
+                    <div class="error-container">
+                        <h2>Ошибка загрузки</h2>
+                        <p>Пожалуйста, перезагрузите страницу</p>
+                        <button onclick="location.reload()">Перезагрузить</button>
+                    </div>
+                `;
+            }
+        }
     }
 });
 

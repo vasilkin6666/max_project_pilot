@@ -1,6 +1,11 @@
 // Менеджер дашборда
 class DashboardManager {
   static async loadDashboard() {
+    if (typeof AuthManager === 'undefined' || !AuthManager.getToken) {
+        Utils.log('AuthManager not available, skipping dashboard load');
+        StateManager.setLoading(false);
+        return;
+    }
       try {
           StateManager.setLoading(true);
           Utils.log('Loading dashboard...');
