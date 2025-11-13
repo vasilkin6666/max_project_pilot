@@ -1214,6 +1214,18 @@
                 document.getElementById('deleteTaskBtn').addEventListener('click', () => {
                     this.showDeleteTaskModal();
                 });
+
+                const debugBtn = document.createElement('button');
+                debugBtn.textContent = 'Debug';
+                debugBtn.style.padding = '8px 12px';
+                debugBtn.style.background = '#6c757d';
+                debugBtn.style.color = 'white';
+                debugBtn.style.border = 'none';
+                debugBtn.style.borderRadius = '4px';
+                debugBtn.style.cursor = 'pointer';
+                debugBtn.style.marginLeft = '10px';
+                debugBtn.onclick = () => this.debugProjectData();
+                document.querySelector('div[style*="display: flex; gap: 10px;"]').appendChild(debugBtn);
             }
 
             static showView(viewId) {
@@ -1294,35 +1306,49 @@
                     console.log('Opening project:', projectHash);
 
                     const projectData = await ApiService.getProject(projectHash);
+
+                    // ИСПРАВЛЕНО: Правильное получение данных проекта и роли пользователя
                     currentProject = projectData.project || projectData;
+
+                    // Получаем роль пользователя из ответа API
+                    const userRole = projectData.current_user_role || currentProject.current_user_role;
+
+                    console.log('Project data:', currentProject);
+                    console.log('User role:', userRole);
 
                     // Обновляем заголовок и описание
                     document.getElementById('projectTitleHeader').textContent = currentProject.title;
                     document.getElementById('projectDescriptionText').textContent = currentProject.description || 'Без описания';
 
                     // Обновляем статистику - используем данные из API
-                    document.getElementById('projectMembersCount').textContent = currentProject.members_count || 0;
-                    document.getElementById('projectTotalTasks').textContent = currentProject.total_tasks || 0;
-                    document.getElementById('projectDoneTasks').textContent = currentProject.done_tasks || 0;
-                    document.getElementById('projectInProgressTasks').textContent = currentProject.in_progress_tasks || 0;
+                    const stats = projectData.stats || currentProject.stats || {};
+                    document.getElementById('projectMembersCount').textContent = stats.members_count || currentProject.members_count || 0;
+                    document.getElementById('projectTotalTasks').textContent = stats.total_tasks || currentProject.total_tasks || 0;
+                    document.getElementById('projectDoneTasks').textContent = stats.done_tasks || currentProject.done_tasks || 0;
+                    document.getElementById('projectInProgressTasks').textContent = stats.in_progress_tasks || currentProject.in_progress_tasks || 0;
 
                     // Показываем хэш проекта для владельцев и админов
                     const hashInfo = document.getElementById('projectHashInfo');
                     const hashValue = document.getElementById('projectHashValue');
-                    if (currentProject.current_user_role === 'owner' || currentProject.current_user_role === 'admin') {
+                    if (userRole === 'owner' || userRole === 'admin') {
                         hashInfo.style.display = 'block';
                         hashValue.textContent = currentProject.hash;
                     } else {
                         hashInfo.style.display = 'none';
                     }
 
-                    // Показываем/скрываем кнопки управления в зависимости от роли
-                    const canEditProject = currentProject.current_user_role === 'owner';
-                    const canManageRequests = currentProject.current_user_role === 'owner' || currentProject.current_user_role === 'admin';
+                    // ИСПРАВЛЕНО: Правильная проверка прав доступа
+                    const canEditProject = userRole === 'owner';
+                    const canManageRequests = userRole === 'owner' || userRole === 'admin';
+                    const canManageMembers = userRole === 'owner' || userRole === 'admin';
 
+                    console.log('Permissions - canEditProject:', canEditProject, 'canManageRequests:', canManageRequests, 'canManageMembers:', canManageMembers);
+
+                    // Показываем/скрываем кнопки управления в зависимости от роли
                     document.getElementById('editProjectBtn').style.display = canEditProject ? 'block' : 'none';
                     document.getElementById('deleteProjectBtn').style.display = canEditProject ? 'block' : 'none';
                     document.getElementById('joinRequestsBtn').style.display = canManageRequests ? 'block' : 'none';
+                    document.getElementById('manageMembersBtn').style.display = canManageMembers ? 'block' : 'none';
 
                     // Загружаем участников
                     await this.loadProjectMembers(projectHash);
@@ -1351,10 +1377,12 @@
                     }
 
                     container.innerHTML = members.map(member => {
-                        // ИСПРАВЛЕНО: Правильное получение имени участника
+                        // ИСПРАВЛЕНО: Правильное получение данных участника
                         const memberData = member.user || member;
-                        const displayName = memberData.full_name && memberData.full_name.trim() !== ''
+                        const displayName = (memberData.full_name && memberData.full_name.trim() !== '')
                             ? memberData.full_name
+                            : (member.full_name && member.full_name.trim() !== '')
+                            ? member.full_name
                             : `Участник #${member.user_id || memberData.id}`;
 
                         return `
@@ -1704,19 +1732,27 @@
                     const members = response.members || [];
                     const container = document.getElementById('projectMembersManagementList');
 
+                    // Получаем текущую роль пользователя
+                    const projectData = await ApiService.getProject(currentProject.hash);
+                    const userRole = projectData.current_user_role || currentProject.current_user_role;
+
+                    console.log('User role in member management:', userRole);
+
                     if (!members || members.length === 0) {
                         container.innerHTML = '<p>Участников нет</p>';
                     } else {
                         // ИСПРАВЛЕНО: Правильная проверка прав доступа
-                        // Владелец может управлять всеми участниками, включая себя (кроме смены роли себе)
-                        const canManageMembers = currentProject.current_user_role === 'owner' ||
-                                               currentProject.current_user_role === 'admin';
+                        const canManageMembers = userRole === 'owner' || userRole === 'admin';
+
+                        console.log('Can manage members:', canManageMembers);
 
                         container.innerHTML = members.map(member => {
                             // Правильное получение данных участника
                             const memberData = member.user || member;
-                            const displayName = memberData.full_name && memberData.full_name.trim() !== ''
+                            const displayName = (memberData.full_name && memberData.full_name.trim() !== '')
                                 ? memberData.full_name
+                                : (member.full_name && member.full_name.trim() !== '')
+                                ? member.full_name
                                 : `Участник #${member.user_id || memberData.id}`;
 
                             const isCurrentUser = (member.user_id || memberData.id) === currentUser.id;
@@ -1754,6 +1790,17 @@
                 } catch (error) {
                     console.error('Error loading project members management:', error);
                     this.showError('Ошибка загрузки управления участниками: ' + error.message);
+                }
+            }
+
+            static debugProjectData() {
+                console.log('=== DEBUG PROJECT DATA ===');
+                console.log('Current Project:', currentProject);
+                console.log('Current User:', currentUser);
+
+                if (currentProject) {
+                    const projectData = ApiService.getProject(currentProject.hash);
+                    console.log('Fresh Project Data:', projectData);
                 }
             }
 
