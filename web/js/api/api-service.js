@@ -83,15 +83,6 @@ class ApiService {
         }
     }
 
-    // В класс ApiService добавить методы для полного покрытия API
-    static async getRootEndpoint() {
-        return await this.apiCall('/');
-    }
-
-    static async getUserById(userId) {
-        return await this.apiCall(`/users/${userId}`);
-    }
-
     static async getUserProjects(userId = 'me') {
         return await this.apiCall(`/users/${userId}/projects`);
     }
@@ -100,18 +91,9 @@ class ApiService {
         return await this.apiCall('/users/me/preferences', 'PATCH', data);
     }
 
-    static async resetUserPreferences() {
-        return await this.apiCall('/users/me/preferences/reset', 'PUT');
-    }
 
     static async getTaskDependencies(taskId) {
         return await this.apiCall(`/tasks/${taskId}/dependencies`);
-    }
-
-    static async addTaskDependency(taskId, dependsOnId) {
-        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', {
-            depends_on_id: dependsOnId
-        });
     }
 
     static async addTaskComment(taskId, content) {
@@ -191,9 +173,6 @@ class ApiService {
         return await this.apiCall(`/users/${userId}`);
     }
 
-    static async getUserProjects(userId = 'me') {
-        return await this.apiCall(`/users/${userId}/projects`);
-    }
 
     static async getRootEndpoint() {
         return await this.apiCall('/');
@@ -206,10 +185,6 @@ class ApiService {
 
     static async updateUserPreferences(data) {
         return await this.apiCall('/users/me/preferences', 'PUT', data);
-    }
-
-    static async patchUserPreferences(data) {
-        return await this.apiCall('/users/me/preferences', 'PATCH', data);
     }
 
     static async resetUserPreferences() {
@@ -316,11 +291,7 @@ class ApiService {
     }
 
     // ==================== ЗАВИСИМОСТИ ЗАДАЧ ====================
-    static async getTaskDependencies(taskId) {
-        return await this.apiCall(`/tasks/${taskId}/dependencies`);
-    }
 
-    // ИСПРАВЛЕННЫЙ МЕТОД - теперь передаем данные в body, а не в params
     static async addTaskDependency(taskId, dependsOnId) {
         return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', {
             depends_on_id: dependsOnId
@@ -330,13 +301,6 @@ class ApiService {
     // ==================== КОММЕНТАРИИ К ЗАДАЧАМ ====================
     static async getTaskComments(taskId) {
         return await this.apiCall(`/tasks/${taskId}/comments`);
-    }
-
-    // ИСПРАВЛЕННЫЙ МЕТОД - теперь передаем данные в body, а не в params
-    static async addTaskComment(taskId, content) {
-        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', {
-            content: content
-        });
     }
 
     // ==================== ЗАДАЧИ ПРОЕКТА ====================

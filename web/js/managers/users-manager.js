@@ -108,11 +108,10 @@ class UsersManager {
   }
 
   static addSwipePreferences() {
-      // Возвращает настройки по умолчанию для свайпов
       return {
           swipe_enabled: true,
-          swipe_threshold: 60,
-          swipe_max_distance: 80,
+          swipe_threshold: 50,
+          swipe_max_distance: 100,
           long_press_delay: 500,
           haptic_feedback: true,
           haptic_intensity: 'medium'
@@ -313,7 +312,7 @@ class UsersManager {
 
         Utils.log('User UI updated', displayUser);
     }
-    
+
     static async loadUserPreferences() {
         try {
             const data = await ApiService.getUserPreferences();
@@ -876,91 +875,6 @@ class UsersManager {
 
             // Настраиваем обработчики для новых полей
             this.setupSwipePreferenceHandlers();
-
-        } catch (error) {
-            container.innerHTML = `
-                <div class="error-state">
-                    <div class="error-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <h3>Ошибка загрузки настроек</h3>
-                    <p>${Utils.escapeHTML(error.message)}</p>
-                    <button class="btn btn-primary" onclick="UsersManager.loadAndRenderPreferences()">
-                        <i class="fas fa-refresh"></i> Попробовать снова
-                    </button>
-                </div>
-            `;
-        }
-    }
-
-    static async loadAndRenderPreferences() {
-        const container = document.getElementById('preferences-content');
-        if (!container) return;
-
-        try {
-            const preferences = await this.loadUserPreferences();
-
-            container.innerHTML = `
-                <form id="preferences-form">
-                    <div class="preferences-section">
-                        <h5>Внешний вид</h5>
-                        <div class="form-group">
-                            <label for="pref-theme" class="form-label">Тема</label>
-                            <select class="form-select" id="pref-theme" name="theme">
-                                <option value="light" ${preferences.theme === 'light' ? 'selected' : ''}>Светлая</option>
-                                <option value="dark" ${preferences.theme === 'dark' ? 'selected' : ''}>Темная</option>
-                                <option value="auto" ${preferences.theme === 'auto' ? 'selected' : ''}>Авто</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="pref-language" class="form-label">Язык</label>
-                            <select class="form-select" id="pref-language" name="language">
-                                <option value="ru" ${preferences.language === 'ru' ? 'selected' : ''}>Русский</option>
-                                <option value="en" ${preferences.language === 'en' ? 'selected' : ''}>English</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="preferences-section">
-                        <h5>Уведомления</h5>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="pref-notifications"
-                                   name="notifications_enabled" ${preferences.notifications_enabled ? 'checked' : ''}>
-                            <label class="form-check-label" for="pref-notifications">
-                                Включить уведомления
-                            </label>
-                        </div>
-
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="pref-email-notifications"
-                                   name="email_notifications" ${preferences.email_notifications ? 'checked' : ''}>
-                            <label class="form-check-label" for="pref-email-notifications">
-                                Email уведомления
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="preferences-section">
-                        <h5>Интерфейс</h5>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="pref-compact-view"
-                                   name="compact_view" ${preferences.compact_view ? 'checked' : ''}>
-                            <label class="form-check-label" for="pref-compact-view">
-                                Компактный вид
-                            </label>
-                        </div>
-
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="pref-show-completed"
-                                   name="show_completed_tasks" ${preferences.show_completed_tasks ? 'checked' : ''}>
-                            <label class="form-check-label" for="pref-show-completed">
-                                Показывать завершенные задачи
-                            </label>
-                        </div>
-                    </div>
-                </form>
-            `;
 
         } catch (error) {
             container.innerHTML = `
