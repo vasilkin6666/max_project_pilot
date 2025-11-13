@@ -134,7 +134,6 @@ class DashboardManager {
         }
     }
 
-    // В начало метода initAdvancedStats() добавить:
     static initAdvancedStats() {
         // Добавляем обработку ошибок
         try {

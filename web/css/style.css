@@ -1641,3 +1641,197 @@ body {
     font-weight: 500;
     color: var(--text-secondary);
 }
+
+/* Стили для полноэкранного просмотра проекта */
+.project-view-container {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.project-view {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.project-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+
+.back-btn:hover {
+    color: var(--primary-color);
+}
+
+.project-title-section {
+    flex: 1;
+    margin: 0 20px;
+}
+
+.project-title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+}
+
+.project-status {
+    display: inline-block;
+    padding: 4px 8px;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.project-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.project-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+}
+
+.project-info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.project-description-card {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.project-description-card h3 {
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+}
+
+.project-description {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.project-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.meta-card {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.meta-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.meta-content {
+    flex: 1;
+}
+
+.meta-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.meta-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.project-tasks-section {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.tasks-header h2 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.tasks-container {
+    min-height: 200px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .project-content {
+        grid-template-columns: 1fr;
+    }
+
+    .project-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .project-title-section {
+        margin: 0;
+        width: 100%;
+    }
+
+    .project-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .project-meta-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tasks-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+}

@@ -1293,6 +1293,7 @@ class UIComponents {
 
     // ==================== РЕНДЕРИНГ ДАННЫХ ====================
 
+    // В метод renderProjects добавить обработчик кликов:
     static renderProjects(projects) {
         try {
             const container = document.getElementById('projects-list');
@@ -1301,7 +1302,6 @@ class UIComponents {
                 return;
             }
 
-            // Очищаем контейнер
             container.innerHTML = '';
 
             if (!projects || !Array.isArray(projects) || projects.length === 0) {
@@ -1318,8 +1318,6 @@ class UIComponents {
                 setTimeout(() => {
                     try {
                         const project = projectData.project || projectData;
-                        console.log('Rendering project card with data:', project);
-
                         const cardHTML = this.renderProjectCardWithTemplate(project);
 
                         if (!cardHTML) {
@@ -1329,8 +1327,6 @@ class UIComponents {
 
                         const cardElement = document.createElement('div');
                         cardElement.innerHTML = cardHTML.trim();
-
-                        // Получаем первый элемент (саму карточку)
                         const projectCard = cardElement.firstElementChild;
 
                         if (!projectCard) {
@@ -1338,13 +1334,24 @@ class UIComponents {
                             return;
                         }
 
-                        // Добавляем анимацию
+                        // Добавляем обработчик клика для открытия полноэкранного view
+                        projectCard.addEventListener('click', (e) => {
+                            // Предотвращаем срабатывание при клике на кнопки внутри карточки
+                            if (e.target.closest('button')) return;
+
+                            if (typeof ProjectView !== 'undefined') {
+                                ProjectView.openProject(project.hash);
+                            } else {
+                                // Fallback на старый метод
+                                ProjectsManager.openProjectDetail(project.hash);
+                            }
+                        });
+
                         projectCard.style.opacity = '0';
                         projectCard.style.transform = 'translateY(20px)';
 
                         container.appendChild(projectCard);
 
-                        // Анимация появления
                         requestAnimationFrame(() => {
                             projectCard.style.opacity = '1';
                             projectCard.style.transform = 'translateY(0)';
@@ -1366,7 +1373,7 @@ class UIComponents {
             }
         }
     }
-
+    
     static renderTasks(tasks) {
         const container = document.getElementById('tasks-container');
         if (!container) return;
