@@ -997,6 +997,10 @@
                 return this.get(`/users/${userId}/projects`);
             }
 
+            static async deleteJoinRequest(projectHash, requestId) {
+                return this.delete(`/projects/${projectHash}/join-requests/${requestId}`);
+            }
+
             // Notifications endpoints
             static async getNotifications() {
                 return this.get('/notifications/');
@@ -1976,10 +1980,6 @@
                         this.showError('Ошибка одобрения заявки: ' + error.message);
                     }
                 }
-            }
-
-            static async deleteJoinRequest(projectHash, requestId) {
-                return this.delete(`/projects/${projectHash}/join-requests/${requestId}`);
             }
 
             static async removeProcessedRequest(requestId) {
