@@ -68,7 +68,7 @@ class AuthManager {
             this.maxData = this.extractMaxDataFromUrl();
 
             // 1. Проверяем наличие валидного токена
-            const token = localStorage.getItem('access_token');
+            const token = this.getToken();
             const tokenExpiry = localStorage.getItem('token_expiry');
 
             let userLoaded = false;
@@ -280,6 +280,9 @@ class AuthManager {
         this.currentUser = tokenData.user;
         this.currentUserId = tokenData.user.id;
 
+        // ✅ ВАЖНО: Сохраняем пользователя в StateManager
+        StateManager.setState('user', tokenData.user);
+
         EventManager.emit(APP_EVENTS.USER_LOGIN, this.currentUser);
     }
 
@@ -341,6 +344,9 @@ class AuthManager {
             this.currentUserId = userData.id;
             this.isAuthenticated = true;
 
+            // ✅ ВАЖНО: Сохраняем пользователя в StateManager
+            StateManager.setState('user', userData);
+
             // Обновляем UI с учётом MAX данных
             this.updateUserUI();
 
@@ -357,12 +363,8 @@ class AuthManager {
                 Utils.log('Token invalid, clearing authentication data');
                 this.clearAuthData();
 
-                // Не перезагружаем страницу сразу, даем пользователю возможность взаимодействовать
-                setTimeout(() => {
-                    if (!this.isAuthenticated) {
-                        window.location.reload();
-                    }
-                }, 2000);
+                // Очищаем пользователя из состояния
+                StateManager.setState('user', null);
             }
             return false;
         } finally {
@@ -553,6 +555,9 @@ class AuthManager {
         this.currentUser = null;
         this.currentUserId = null;
         this.isAuthenticated = false;
+
+        // ✅ ВАЖНО: Очищаем пользователя из StateManager
+        StateManager.setState('user', null);
 
         if (this.tokenRefreshInterval) {
             clearInterval(this.tokenRefreshInterval);

@@ -446,9 +446,9 @@ class App {
     // Замените существующий метод isAuthenticated
     static isAuthenticated() {
         const token = AuthManager.getToken && AuthManager.getToken();
-        const user = StateManager.getState('user');
+        const user = AuthManager.getCurrentUser && AuthManager.getCurrentUser();
 
-        // Проверяем наличие токена и пользователя в состоянии
+        // Проверяем наличие токена и пользователя в AuthManager
         return !!token && !!user;
     }
 
