@@ -132,15 +132,13 @@ class AuthManager {
             const maxId = userData.id.toString();
             const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
             const username = userData.username || '';
-            const photoUrl = userData.photo_url || '';
 
-            Utils.log('MAX URL user data:', { maxId, fullName, username, photoUrl });
+            Utils.log('MAX URL user data:', { maxId, fullName, username });
 
             const authData = {
                 max_id: maxId,
                 full_name: fullName,
                 username: username,
-                photo_url: photoUrl,
                 auth_date: this.maxData.auth_date,
                 hash: this.maxData.hash,
                 chat: this.maxData.chat
@@ -183,7 +181,6 @@ class AuthManager {
             const maxId = userData.id.toString();
             const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
             const username = userData.username || '';
-            const photoUrl = userData.photo_url || '';
 
             Utils.log('MAX user data:', { maxId, fullName, username });
 
@@ -191,7 +188,6 @@ class AuthManager {
                 max_id: maxId,
                 full_name: fullName,
                 username: username,
-                photo_url: photoUrl,
                 auth_date: window.WebApp.initDataUnsafe.auth_date,
                 hash: window.WebApp.initDataUnsafe.hash
             };
@@ -287,9 +283,6 @@ class AuthManager {
         this.currentUserId = tokenData.user?.id;
         this.isAuthenticated = true;
 
-        // Обновляем данные пользователя из MAX если есть
-        await this.updateUserFromMaxData();
-
         // Запускаем периодическую проверку токена
         this.startTokenRefresh();
 
@@ -306,8 +299,7 @@ class AuthManager {
         });
     }
 
-
-    // В auth-manager.js исправляем метод updateUserFromMaxData
+    // НЕ ОТПРАВЛЯЕМ photo_url на сервер — только используем локально
     static async updateUserFromMaxData() {
         if (!this.maxData || !this.maxData.user || !this.isAuthenticated) {
             return;
@@ -317,83 +309,67 @@ class AuthManager {
             const maxUser = this.maxData.user;
             const currentUser = this.currentUser;
 
-            // Проверяем, есть ли фото в MAX данных и оно отличается от текущего
-            const hasMaxPhoto = maxUser.photo_url && maxUser.photo_url.includes('oneme.ru');
-            const hasCurrentPhoto = currentUser.photo_url;
-            const shouldUpdatePhoto = hasMaxPhoto && (!hasCurrentPhoto || !hasCurrentPhoto.includes('oneme.ru'));
+            // Обновляем только локальные данные и UI
+            const updates = {};
 
-            // Проверяем нужно ли обновлять имя
             const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
-            const shouldUpdateName = maxFullName && maxFullName !== 'Пользователь MAX' &&
-                                   maxFullName !== currentUser.full_name;
+            if (maxFullName && maxFullName !== 'Пользователь MAX' && maxFullName !== currentUser.full_name) {
+                updates.full_name = maxFullName;
+            }
 
-            // Если нет изменений - выходим
-            if (!shouldUpdatePhoto && !shouldUpdateName) {
-                Utils.log('No updates needed from MAX data');
+            if (maxUser.username && !currentUser.username) {
+                updates.username = maxUser.username;
+            }
+
+            // photo_url НЕ отправляем — только локально
+            if (maxUser.photo_url && maxUser.photo_url.includes('oneme.ru')) {
+                updates.photo_url = maxUser.photo_url;
+            }
+
+            if (Object.keys(updates).length === 0) {
+                Utils.log('No local user updates needed from MAX data');
                 return;
             }
 
-            const updateData = {};
+            // Обновляем только локально
+            this.currentUser = { ...this.currentUser, ...updates };
+            this.updateUserUI();
+            EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
 
-            if (shouldUpdatePhoto) {
-                updateData.photo_url = maxUser.photo_url;
-            }
-
-            if (shouldUpdateName) {
-                updateData.full_name = maxFullName;
-            }
-
-            // Обновляем username если его нет
-            if (maxUser.username && !currentUser.username) {
-                updateData.username = maxUser.username;
-            }
-
-            // Обновляем профиль
-            Utils.log('Updating user profile from MAX data:', updateData);
-
-            if (typeof UsersManager !== 'undefined') {
-                await UsersManager.updateUserProfile(updateData);
-            } else {
-                // Fallback: обновляем локально и в UI
-                this.currentUser = { ...this.currentUser, ...updateData };
-                this.updateUserUI();
-                EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
-            }
+            Utils.log('Local user profile updated from MAX data', updates);
 
         } catch (error) {
-            Utils.logError('Error updating user from MAX data:', error);
-            // Не блокируем приложение из-за этой ошибки
+            Utils.logError('Error updating local user from MAX data:', error);
         }
     }
-    
-        static async loadCurrentUser() {
-            try {
-                const userData = await ApiService.getCurrentUser();
-                this.currentUser = userData;
-                this.currentUserId = userData.id;
-                this.isAuthenticated = true;
 
-                // Обновляем данные из MAX после загрузки
-                await this.updateUserFromMaxData();
+    static async loadCurrentUser() {
+        try {
+            const userData = await ApiService.getCurrentUser();
+            this.currentUser = userData;
+            this.currentUserId = userData.id;
+            this.isAuthenticated = true;
 
-                this.updateUserUI();
-                EventManager.emit(APP_EVENTS.USER_UPDATE, userData);
+            // Обновляем UI с учётом MAX данных
+            this.updateUserUI();
 
-                Utils.log('Current user loaded successfully');
-                return true;
+            EventManager.emit(APP_EVENTS.USER_UPDATE, userData);
 
-            } catch (error) {
-                Utils.logError('Failed to load current user:', error);
-                // Если ошибка аутентификации - очищаем токен
-                if (error.status === 401 || error.message?.includes('401')) {
-                    Utils.log('Token invalid, clearing authentication data');
-                    this.clearAuthData();
-                    // Перезагружаем страницу для повторной аутентификации
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-                return false;
+            Utils.log('Current user loaded successfully');
+            return true;
+
+        } catch (error) {
+            Utils.logError('Failed to load current user:', error);
+            // Если ошибка аутентификации - очищаем токен
+            if (error.status === 401 || error.message?.includes('401')) {
+                Utils.log('Token invalid, clearing authentication data');
+                this.clearAuthData();
+                // Перезагружаем страницу для повторной аутентификации
+                setTimeout(() => window.location.reload(), 1000);
             }
+            return false;
         }
+    }
 
     static startTokenRefresh() {
         // Очищаем предыдущий интервал

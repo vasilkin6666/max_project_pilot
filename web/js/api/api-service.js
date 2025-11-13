@@ -169,14 +169,11 @@ class ApiService {
     }
 
     static async updateCurrentUser(data) {
-        // Очищаем данные перед отправкой
-        const cleanData = this.cleanRequestData(data);
-
-        if (Object.keys(cleanData).length === 0) {
-            throw new Error('No valid data provided for update');
+        if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+            throw new Error('No data provided for update');
         }
 
-        return await this.apiCall('/users/me', 'PUT', cleanData);
+        return this.apiCall('PUT', '/users/me', data);
     }
 
     static cleanRequestData(data) {

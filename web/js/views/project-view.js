@@ -3,9 +3,16 @@ class ProjectView {
     static currentProject = null;
 
     static async openProject(projectHash) {
+        // ПРОВЕРЯЕМ: уже открыт этот проект?
+        if (this.currentProject?.hash === projectHash) {
+            Utils.log('Project already open, skipping reload');
+            return;
+        }
+
         try {
             App.showLoadingOverlay();
 
+            // Делаем ТОЛЬКО ОДИН запрос на проект и задачи
             const [projectData, tasksData] = await Promise.all([
                 ApiService.getProject(projectHash),
                 ApiService.getProjectTasks(projectHash)
@@ -21,8 +28,9 @@ class ProjectView {
             ToastManager.error('Ошибка загрузки проекта');
             App.hideLoadingOverlay();
 
+            // Fallback: модалка
             if (typeof ProjectsManager !== 'undefined') {
-                ProjectsManager.showProjectDetailModal(await ApiService.getProject(projectHash));
+                ProjectsManager.showProjectDetailModal(await ApiService.getProject(projectHash).catch(() => null));
             }
         }
     }
