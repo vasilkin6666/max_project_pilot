@@ -8,7 +8,7 @@ import logging
 from app.api import deps
 from app.models.enums import ProjectRole
 from app.models import Project, ProjectMember, Task, User, UserSettings
-from app.schemas.dashboard import DashboardResponse, ProjectResponse, UserSettingsResponse, TaskResponse, ProjectOwnerResponse, ProjectMemberResponse
+from app.schemas.dashboard import DashboardResponse, ProjectResponse, UserSettingsResponse, TaskResponse, ProjectStats, ProjectOwnerResponse, ProjectMemberResponse
 import logging
 
 logger = logging.getLogger(__name__)
@@ -218,6 +218,15 @@ async def get_dashboard(
                 project = project_data["project"]
                 stats = await _get_project_stats(project.id, db)
 
+                # ИСПРАВЛЕНО: Создаем объект stats вместо отдельных полей
+                stats_obj = ProjectStats(
+                    total_tasks=stats["total_tasks"],
+                    done_tasks=stats["done_tasks"],
+                    in_progress_tasks=stats["in_progress_tasks"],
+                    todo_tasks=stats["todo_tasks"],
+                    members_count=stats["members_count"]
+                )
+
                 # Формируем ответ
                 project_response_data = {
                     "id": project.id,
@@ -229,11 +238,8 @@ async def get_dashboard(
                     "created_by": project.created_by,
                     "created_at": project.created_at,
                     "updated_at": project.updated_at,
-                    "total_tasks": stats["total_tasks"],
-                    "done_tasks": stats["done_tasks"],
-                    "in_progress_tasks": stats["in_progress_tasks"],
-                    "todo_tasks": stats["todo_tasks"],
-                    "members_count": stats["members_count"],
+                    # ИСПРАВЛЕНО: Используем объект stats вместо отдельных полей
+                    "stats": stats_obj,
                     "owner_info": ProjectOwnerResponse(**project_data["owner_info"]) if project_data["owner_info"] else None,
                     "members": [ProjectMemberResponse(**member) for member in project_data["members"]],
                     "current_user_role": project_data["current_user_role"] or "member"
@@ -250,7 +256,6 @@ async def get_dashboard(
             projects=project_responses,
             recent_tasks=[],
         )
-
     except HTTPException:
         raise
     except Exception as exc:

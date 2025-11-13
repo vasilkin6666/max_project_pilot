@@ -34,14 +34,11 @@ class ProjectResponse(BaseModel):
     created_by: int
     created_at: datetime
     updated_at: Optional[datetime]
-    total_tasks: int
-    done_tasks: int
-    in_progress_tasks: int
-    todo_tasks: int
-    members_count: int
+    # ИСПРАВЛЕНО: Заменяем отдельные поля на объект stats
+    stats: ProjectStats  # Вместо total_tasks, done_tasks и т.д. в корне
     owner_info: ProjectOwnerResponse
     members: List[ProjectMemberResponse]
-    current_user_role: str  # Должно правильно отображать "owner" для создателя
+    current_user_role: str
 
 class UserSettingsResponse(BaseModel):
     id: int
