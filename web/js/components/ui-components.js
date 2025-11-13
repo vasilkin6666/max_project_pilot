@@ -1,47 +1,69 @@
 //ui-components.js
 class UIComponents {
-
   static init() {
-      this.initNavigation();
-      this.initTheme();
-      this.initSearch();
-      this.initEventListeners();
-      this.loadTemplates();
-      this.setupGlobalHandlers();
+      if (this.isInitialized) {
+          Utils.log('UI components already initialized');
+          return;
+      }
 
-      Utils.log('UI components initialized');
+      // 1. Сначала — шаблоны (критично!)
+      this.loadTemplates().then(() => {
+          Utils.log('Templates loaded, proceeding with init');
+          this.initNavigation();
+          this.initTheme();
+          this.initSearch();
+          this.initEventListeners();
+          this.setupGlobalHandlers();
+          this.setupResponsiveBehavior();
+
+          // После всего — пытаемся загрузить дашборд
+          if (typeof App !== 'undefined' && App.isAuthenticated()) {
+              this.loadDashboard().catch(err => {
+                  Utils.logError('Dashboard load failed on init:', err);
+              });
+          }
+
+          this.isInitialized = true;
+          Utils.log('UI components initialized');
+      }).catch(err => {
+          Utils.logError('Failed to load templates:', err);
+          this.createFallbackTemplates();
+          this.isInitialized = true;
+      });
   }
 
     static templates = new Map();
     static isInitialized = false;
     static async loadTemplates() {
         try {
-            // Проверяем, не загружены ли уже шаблоны
             if (this.templates.size > 0) {
-                Utils.log('Templates already loaded, skipping');
+                Utils.log('Templates already loaded');
                 return;
             }
 
-            // Загружаем шаблоны из существующих script элементов в index.html
             const templateElements = document.querySelectorAll('script[type="text/template"]');
-            let loadedCount = 0;
+            let loaded = 0;
 
-            for (const element of templateElements) {
-                const id = element.id;
-                const content = element.innerHTML.trim();
-
+            for (const el of templateElements) {
+                const id = el.id;
+                const content = el.innerHTML.trim();
                 if (id && content) {
                     this.templates.set(id, content);
-                    loadedCount++;
-                    Utils.log(`Loaded inline template: ${id}`);
+                    loaded++;
+                    Utils.log(`Loaded template: ${id}`);
                 }
             }
 
-            Utils.log('Templates loaded from inline scripts', { count: loadedCount });
-            this.ensureRequiredTemplates();
+            if (loaded === 0) {
+                console.warn('No inline templates found');
+            } else {
+                Utils.log(`Loaded ${loaded} inline templates`);
+            }
 
+            // Принудительно создаём критические шаблоны
+            this.ensureRequiredTemplates();
         } catch (error) {
-            Utils.logError('Error loading templates:', error);
+            Utils.logError('Template load failed:', error);
             this.createFallbackTemplates();
         }
     }
@@ -473,118 +495,69 @@ class UIComponents {
     }
 
     static initEventListeners() {
-        // Кнопка уведомлений
-        const notificationsBtn = document.getElementById('notifications-btn');
-        if (notificationsBtn) {
-            notificationsBtn.addEventListener('click', () => {
-                this.showView('notifications-view');
-                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-                document.querySelector('.nav-item[data-view="notifications-view"]')?.classList.add('active');
-                if (typeof HapticManager !== 'undefined') HapticManager.buttonPress();
-            });
-        }
-
-        // Кнопка заявок на вступление
-        const joinRequestsBtn = document.getElementById('join-requests-btn');
-        if (joinRequestsBtn) {
-            joinRequestsBtn.addEventListener('click', async () => {
-                const projects = StateManager.getState('projects') || [];
-                const userProjectsWithAccess = projects.filter(p => {
-                    const role = p.current_user_role || p.user_role;
-                    return ['owner', 'admin'].includes(role);
-                });
-                if (userProjectsWithAccess.length === 0) {
-                    ToastManager.info('У вас нет проектов с правами для управления заявками');
-                    return;
-                }
-                this.showJoinRequestsProjectsModal(userProjectsWithAccess);
-            });
-        }
-
-        // Прочитать все уведомления
-        const markAllReadBtn = document.getElementById('mark-all-read-btn');
-        if (markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', () => {
-                if (typeof NotificationsManager !== 'undefined') {
-                    NotificationsManager.markAllNotificationsRead();
-                } else {
-                    ToastManager.error('Менеджер уведомлений недоступен');
-                }
-            });
-        }
-
-        // Кнопка настроек
-        const settingsBtn = document.getElementById('settings-btn');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', async () => {
-                await this.preloadModalTemplates();
-                if (typeof UsersManager !== 'undefined') {
-                    UsersManager.showPreferencesModal();
-                } else {
-                    this.showView('settings-view');
-                }
-            });
-        }
-
-        // Кнопка меню пользователя
-        const userMenuBtn = document.getElementById('user-menu-btn');
-        if (userMenuBtn) {
-            userMenuBtn.addEventListener('click', () => this.showUserMenu());
-        }
-
-        // Экспорт / очистка / отладка
-        ['export-data-btn', 'clear-cache-btn', 'debug-info-btn'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.addEventListener('click', () => {
-                    if (id === 'export-data-btn' && typeof PersistenceManager !== 'undefined') {
-                        PersistenceManager.exportData();
-                    } else if (id === 'clear-cache-btn' && typeof CacheManager !== 'undefined') {
-                        CacheManager.clear();
-                        ToastManager.success('Кэш очищен');
-                    } else if (id === 'debug-info-btn' && typeof App !== 'undefined') {
-                        App.showDebugInfo();
-                    }
-                });
+        // === ЗАЩИТА ОТ НЕОПРЕДЕЛЁННЫХ СОБЫТИЙ ===
+        const safeOn = (event, handler) => {
+            if (event && typeof handler === 'function') {
+                EventManager.on(event, handler);
+            } else {
+                console.warn(`Event "${event}" is undefined or handler is not a function`);
             }
-        });
-
-        // Фильтры и сортировка
-        document.getElementById('filter-btn')?.addEventListener('click', () => this.showFiltersModal());
-        document.getElementById('sort-btn')?.addEventListener('click', () => this.showSortModal());
-
-        // Отладочная секция
-        if (CONFIG.ENV === 'development') {
-            const debugSection = document.getElementById('debug-section');
-            if (debugSection) debugSection.style.display = 'block';
-        }
+        };
 
         // === Глобальные события ===
-        EventManager.on(APP_EVENTS.USER_UPDATE, user => {
-            this.updateUserInfo(user);
-            this.updateAccountSettingsInfo(user);
-        });
-
-        EventManager.on(APP_EVENTS.NOTIFICATIONS_LOADED, notifications => {
-            this.updateNotificationBadge(notifications);
-        });
-
-        EventManager.on(APP_EVENTS.PROJECTS_UPDATED, projects => {
-            if (Array.isArray(projects)) this.renderProjects(projects);
-        });
-
-        EventManager.on(APP_EVENTS.STATE_UPDATED, newState => {
-            if (newState.projects && Array.isArray(newState.projects)) {
-                setTimeout(() => this.renderProjects(newState.projects), 100);
+        safeOn(APP_EVENTS.USER_UPDATE, user => {
+            if (user) {
+                this.updateUserInfo(user);
+                this.updateAccountSettingsInfo(user);
             }
         });
 
-        EventManager.on(APP_EVENTS.TASKS_LOADED, tasks => this.renderTasks(tasks));
-        EventManager.on(APP_EVENTS.THEME_CHANGED, theme => this.updateThemeUI(theme));
-        EventManager.on(APP_EVENTS.NETWORK_STATUS_CHANGED, status => this.updateNetworkStatusUI(status));
-        EventManager.on(APP_EVENTS.MODAL_OPENED, modalId => this.handleModalOpened(modalId));
-        EventManager.on(APP_EVENTS.MODAL_CLOSED, modalId => this.handleModalClosed(modalId));
-        EventManager.on(APP_EVENTS.DATA_LOADED, () => this.ensureRequiredTemplates());
+        safeOn(APP_EVENTS.NOTIFICATIONS_LOADED, notifications => {
+            if (Array.isArray(notifications)) {
+                this.updateNotificationBadge(notifications);
+            }
+        });
+
+        safeOn(APP_EVENTS.PROJECTS_UPDATED, projects => {
+            if (Array.isArray(projects)) {
+                this.renderProjects(projects);
+            } else {
+                Utils.log('PROJECTS_UPDATED: invalid data', projects);
+            }
+        });
+
+        safeOn(APP_EVENTS.STATE_UPDATED, newState => {
+            const projects = newState?.projects;
+            if (Array.isArray(projects)) {
+                setTimeout(() => this.renderProjects(projects), 100);
+            }
+        });
+
+        safeOn(APP_EVENTS.TASKS_LOADED, tasks => {
+            if (Array.isArray(tasks)) {
+                this.renderTasks(tasks);
+            }
+        });
+
+        safeOn(APP_EVENTS.THEME_CHANGED, theme => {
+            if (theme) this.updateThemeUI(theme);
+        });
+
+        safeOn(APP_EVENTS.NETWORK_STATUS_CHANGED, status => {
+            if (status) this.updateNetworkStatusUI(status);
+        });
+
+        safeOn(APP_EVENTS.MODAL_OPENED, modalId => {
+            if (modalId) this.handleModalOpened(modalId);
+        });
+
+        safeOn(APP_EVENTS.MODAL_CLOSED, modalId => {
+            if (modalId) this.handleModalClosed(modalId);
+        });
+
+        safeOn(APP_EVENTS.DATA_LOADED, () => {
+            this.ensureRequiredTemplates();
+        });
 
         Utils.log('Event listeners initialized');
     }
@@ -1202,53 +1175,63 @@ class UIComponents {
             return;
         }
 
-        if (!Array.isArray(projects) || projects.length === 0) {
+        // === ЗАЩИТА ОТ NULL / UNDEFINED ===
+        if (!Array.isArray(projects)) {
+            Utils.log('renderProjects: invalid or null projects', projects);
+            this.showEmptyState(container, 'Проектов пока нет');
+            return;
+        }
+
+        if (projects.length === 0) {
             this.showEmptyState(container, 'Проектов пока нет');
             return;
         }
 
         container.innerHTML = '';
-        let lastRendered = null;
+        let lastSerialized = null;
 
         projects.forEach((projectData, index) => {
-            const project = projectData.project || projectData;
+            const project = projectData?.project || projectData;
+            if (!project?.hash) return;
+
             const serialized = JSON.stringify(project);
-            if (lastRendered === serialized) {
-                Utils.log('Project already rendered, skipping');
+            if (lastSerialized === serialized) {
+                Utils.log('Duplicate project skipped');
                 return;
             }
-            lastRendered = serialized;
+            lastSerialized = serialized;
 
             setTimeout(() => {
                 try {
                     const cardHTML = this.renderProjectCardWithTemplate(project);
                     if (!cardHTML) return;
 
-                    const cardElement = document.createElement('div');
-                    cardElement.innerHTML = cardHTML.trim();
-                    const projectCard = cardElement.firstElementChild;
-                    if (!projectCard) return;
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = cardHTML.trim();
+                    const card = wrapper.firstElementChild;
+                    if (!card) return;
 
-                    projectCard.addEventListener('click', (e) => {
+                    card.addEventListener('click', (e) => {
                         if (e.target.closest('button, .swipe-action')) return;
+                        const hash = project.hash;
                         if (typeof ProjectView !== 'undefined') {
-                            ProjectView.openProject(project.hash);
+                            ProjectView.openProject(hash);
                         } else if (typeof ProjectsManager !== 'undefined') {
-                            ProjectsManager.openProjectDetail(project.hash);
+                            ProjectsManager.openProjectDetail(hash);
                         }
                     });
 
-                    projectCard.style.opacity = '0';
-                    projectCard.style.transform = 'translateY(20px)';
-                    container.appendChild(projectCard);
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    container.appendChild(card);
 
                     requestAnimationFrame(() => {
-                        projectCard.style.opacity = '1';
-                        projectCard.style.transform = 'translateY(0)';
-                        projectCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                        card.style.transition = 'all 0.3s ease';
                     });
-                } catch (error) {
-                    console.error('Error rendering project:', error, projectData);
+                } catch (err) {
+                    Utils.logError('Error rendering project card:', err);
                 }
             }, index * 50);
         });

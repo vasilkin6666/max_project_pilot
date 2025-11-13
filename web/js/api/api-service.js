@@ -1,5 +1,98 @@
 // Сервис для работы с API
 class ApiService {
+  static async request(url, options = {}, cacheKey = null) {
+      try {
+          // Добавляем токен, если он есть
+          const token = AuthManager.getToken();
+          const headers = {
+              'Content-Type': 'application/json',
+              ...options.headers
+          };
+
+          if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+          }
+
+          const response = await fetch(url, {
+              ...options,
+              headers
+          });
+
+          // === Обработка 401 с повтором ===
+          if (response.status === 401) {
+              if (options.retryOnAuthError) {
+                  Utils.log('401 Unauthorized → attempting token refresh');
+                  try {
+                      await AuthManager.refreshToken();
+                      // Повторяем запрос с новым токеном
+                      return this.request(url, options, cacheKey);
+                  } catch (refreshError) {
+                      Utils.logError('Token refresh failed:', refreshError);
+                      AuthManager.clearAuth();
+                      App.redirectToLogin?.();
+                      throw { status: 401, message: 'Session expired' };
+                  }
+              } else {
+                  throw { status: 401, message: 'Could not validate credentials' };
+              }
+          }
+
+          // === Обработка других ошибок ===
+          if (!response.ok) {
+              let errorData = {};
+              try {
+                  errorData = await response.json();
+              } catch {
+                  // Если не JSON
+              }
+              throw {
+                  status: response.status,
+                  message: errorData.message || response.statusText || 'Network error',
+                  data: errorData
+              };
+          }
+
+          // === Успешный ответ ===
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+              return await response.json();
+          } else {
+              return await response.text();
+          }
+
+      } catch (error) {
+          // Логируем только реальные ошибки сети
+          if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
+              Utils.logError('API Request failed:', { url, error });
+          }
+          throw error;
+      }
+  }
+
+  // Примеры удобных методов
+  static async get(url, params = {}, cacheKey = null) {
+      const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+      return this.request(url + query, { method: 'GET' }, cacheKey);
+  }
+
+  static async post(url, data = {}, cacheKey = null) {
+      return this.request(url, {
+          method: 'POST',
+          body: JSON.stringify(data)
+      }, cacheKey);
+  }
+
+  static async put(url, data = {}, cacheKey = null) {
+      return this.request(url, {
+          method: 'PUT',
+          body: JSON.stringify(data)
+      }, cacheKey);
+  }
+
+  static async delete(url, cacheKey = null) {
+      return this.request(url, { method: 'DELETE' }, cacheKey);
+  }
+}
     static async apiCall(endpoint, method = 'GET', data = null, params = {}) {
         const token = localStorage.getItem('access_token');
         const baseUrl = CONFIG.API_BASE_URL;

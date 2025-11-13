@@ -1,6 +1,12 @@
 // Менеджер дашборда
 class DashboardManager {
   static async loadDashboard() {
+      // ЗАЩИТА: не грузим, если не авторизован
+      if (!App.isAuthenticated()) {
+          Utils.log('loadDashboard skipped: user not authenticated');
+          return;
+      }
+
       try {
           StateManager.setLoading(true);
           Utils.log('Loading dashboard...');
@@ -8,10 +14,11 @@ class DashboardManager {
           const dashboardData = await CacheManager.getWithCache(
               'dashboard',
               () => ApiService.getDashboard(),
-              'dashboard'
+              'dashboard',
+              { retryOnAuthError: true } // ← ВАЖНО: повтор при 401
           );
 
-          if (!dashboardData) throw new Error('Не удалось загрузить дашборд');
+          if (!dashboardData) throw new Error('Empty dashboard data');
 
           const projects = Array.isArray(dashboardData.projects) ? dashboardData.projects : [];
           StateManager.setState('dashboard', dashboardData);
@@ -23,30 +30,23 @@ class DashboardManager {
           // Приоритетные задачи
           try {
               const tasksData = await ApiService.getTasks({ status: 'todo', limit: 10 });
-              const tasks = Array.isArray(tasksData.tasks) ? tasksData.tasks : [];
+              const tasks = Array.isArray(tasksData?.tasks) ? tasksData.tasks : [];
               StateManager.setState('tasks', tasks);
               this.renderPriorityTasks(tasks);
           } catch (e) {
-              Utils.logError('Failed to load priority tasks:', e);
-              this.renderPriorityTasks([]);
+              Utils.logError('Failed to load tasks:', e);
           }
 
-          // Применение темы
-          setTimeout(() => {
-              try {
-                  const theme = App.getCurrentTheme();
-                  App.applyTheme(theme);
-              } catch (e) {
-                  Utils.logError('Theme apply failed:', e);
-              }
-          }, 150);
-
           EventManager.emit(APP_EVENTS.DATA_LOADED);
-          Utils.log('Dashboard loaded', { projects: projects.length });
+          Utils.log('Dashboard loaded successfully');
       } catch (error) {
+          if (error.status === 401) {
+              Utils.log('401 in loadDashboard → redirect to auth');
+              App.logout(); // или App.redirectToLogin()
+              return;
+          }
           Utils.logError('Dashboard load error:', error);
-          EventManager.emit(APP_EVENTS.DATA_ERROR, error);
-          this.showErrorState(document.getElementById('dashboard-view'));
+          this.showErrorState(document.getElementById('projects-list'), 'Не удалось загрузить проекты');
       } finally {
           StateManager.setLoading(false);
       }
