@@ -1310,6 +1310,9 @@
                     // ИСПРАВЛЕНО: Правильное получение данных проекта и роли пользователя
                     currentProject = projectData.project || projectData;
 
+                    // Сохраняем информацию об участниках для использования в задачах
+                    currentProject.members = projectData.members || [];
+
                     // Получаем роль пользователя из ответа API
                     const userRole = projectData.current_user_role || currentProject.current_user_role;
 
@@ -1350,7 +1353,7 @@
                     document.getElementById('joinRequestsBtn').style.display = canManageRequests ? 'block' : 'none';
                     document.getElementById('manageMembersBtn').style.display = canManageMembers ? 'block' : 'none';
 
-                    // Загружаем участников
+                    // Загружаем участников (для отображения в UI)
                     await this.loadProjectMembers(projectHash);
 
                     // Загружаем задачи
@@ -1454,17 +1457,15 @@
                     document.getElementById('taskCreatedAtText').textContent = new Date(currentTask.created_at).toLocaleString();
                     document.getElementById('taskDueDateText').textContent = currentTask.due_date ? new Date(currentTask.due_date).toLocaleDateString() : 'Не установлен';
 
-                    // ИСПРАВЛЕНО: Отображаем имя исполнителя
                     if (currentTask.assigned_to_id) {
-                        try {
-                            const userResponse = await ApiService.getUser(currentTask.assigned_to_id);
-                            const displayName = userResponse.full_name && userResponse.full_name.trim() !== ''
-                                ? userResponse.full_name
-                                : `Исполнитель #${currentTask.assigned_to_id}`;
+                        if (currentTask.assigned_user) {
+                            // Если бэкенд возвращает данные об исполнителе
+                            const displayName = currentTask.assigned_user.full_name ||
+                                              `Участник #${currentTask.assigned_to_id}`;
                             document.getElementById('taskAssignedToText').textContent = displayName;
-                        } catch (error) {
-                            console.error('Error loading assigned user:', error);
-                            document.getElementById('taskAssignedToText').textContent = `ID: ${currentTask.assigned_to_id}`;
+                        } else {
+                            // Иначе используем наш метод
+                            await this.loadTaskAssigneeInfo(currentTask.assigned_to_id);
                         }
                     } else {
                         document.getElementById('taskAssignedToText').textContent = 'Не назначена';
@@ -1500,6 +1501,51 @@
                 } catch (error) {
                     console.error('Error opening task:', error);
                     this.showError('Ошибка открытия задачи: ' + error.message);
+                }
+            }
+
+            // Новая функция для загрузки информации об исполнителе
+            static async loadTaskAssigneeInfo(assigneeId) {
+                try {
+                    // Если у нас есть данные о проекте и участниках, ищем исполнителя среди участников
+                    if (currentProject && currentProject.members) {
+                        const assignee = currentProject.members.find(member =>
+                            member.user_id === assigneeId || (member.user && member.user.id === assigneeId)
+                        );
+
+                        if (assignee) {
+                            const displayName = assignee.user?.full_name ||
+                                              assignee.full_name ||
+                                              `Участник #${assigneeId}`;
+                            document.getElementById('taskAssignedToText').textContent = displayName;
+                            return;
+                        }
+                    }
+
+                    // Если не нашли в участниках, попробуем получить через API проектов
+                    if (currentProject && currentProject.hash) {
+                        const projectResponse = await ApiService.getProject(currentProject.hash);
+                        const projectMembers = projectResponse.members || [];
+
+                        const assignee = projectMembers.find(member =>
+                            member.user_id === assigneeId || (member.user && member.user.id === assigneeId)
+                        );
+
+                        if (assignee) {
+                            const displayName = assignee.user?.full_name ||
+                                              assignee.full_name ||
+                                              `Участник #${assigneeId}`;
+                            document.getElementById('taskAssignedToText').textContent = displayName;
+                            return;
+                        }
+                    }
+
+                    // Если все еще не нашли, показываем ID
+                    document.getElementById('taskAssignedToText').textContent = `ID: ${assigneeId}`;
+
+                } catch (error) {
+                    console.error('Error loading assignee info:', error);
+                    document.getElementById('taskAssignedToText').textContent = `ID: ${assigneeId}`;
                 }
             }
 
@@ -2187,7 +2233,7 @@
                     this.showError('Ошибка обновления задачи: ' + error.message);
                 }
             }
-            
+
             static async assignTaskToUser(userId) {
                 if (!currentTask || !currentTask.id) return;
 
