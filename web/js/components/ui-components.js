@@ -48,105 +48,66 @@ class UIComponents {
     static ensureRequiredTemplates() {
         const requiredTemplates = {
             'project-card-template': `
-                <div class="project-card" data-project-hash="{{hash}}">
-                    <div class="card-header">
-                        <h3 class="project-title">{{title}}</h3>
-                        <div class="project-badges">
-                            <span class="project-privacy {{#if isPrivate}}private{{else}}public{{/if}}">
-                                {{#if isPrivate}}🔒 Приватный{{else}}🌐 Публичный{{/if}}
-                            </span>
-                            <span class="project-role {{role}}">{{roleText}}</span>
+                <div class="project-card" data-project-hash="{{hash}}" tabindex="0"
+                     aria-label="Проект {{title}}">
+                    <div class="swipe-actions" aria-hidden="true">
+                        <div class="swipe-action edit-action" aria-label="Редактировать проект">
+                            <i class="fas fa-edit" aria-hidden="true"></i>
                         </div>
-                    </div>
-                    <p class="project-description">{{description}}</p>
-                    <div class="project-stats">
-                        <div class="stat">
-                            <i class="fas fa-users"></i>
-                            <span>{{membersCount}}</span>
-                        </div>
-                        <div class="stat">
-                            <i class="fas fa-tasks"></i>
-                            <span>{{tasksCount}}</span>
-                        </div>
-                        <div class="stat">
-                            <i class="fas fa-check-circle"></i>
-                            <span>{{tasksDone}}</span>
-                        </div>
-                    </div>
-                    {{#if tasksCount}}
-                    <div class="progress-section">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {{progress}}%"></div>
-                        </div>
-                        <span class="progress-text">{{progress}}%</span>
-                    </div>
-                    {{/if}}
-                    <div class="project-footer">
-                        <div class="task-breakdown">
-                            <span class="task-todo">{{tasksTodo}} к выполнению</span>
-                            <span class="task-in-progress">{{tasksInProgress}} в работе</span>
-                        </div>
-                        {{#if canInvite}}
-                        {{#if isPrivate}}
-                        <button class="btn btn-sm btn-outline share-btn" onclick="ProjectsManager.showInviteDialog('{{hash}}')">
-                            <i class="fas fa-share-alt"></i>
-                        </button>
-                        {{/if}}
-                        {{/if}}
-                    </div>
-                </div>
-            `,
-            'task-card-template': `
-                <div class="task-card" data-task-id="{{id}}">
-                    <div class="swipe-actions">
-                        <div class="swipe-action edit-action">
-                            <i class="fas fa-edit"></i>
-                        </div>
-                        <div class="swipe-action delete-action">
-                            <i class="fas fa-trash"></i>
+                        <div class="swipe-action delete-action" aria-label="Удалить проект">
+                            <i class="fas fa-trash" aria-hidden="true"></i>
                         </div>
                     </div>
                     <div class="card-content">
                         <div class="card-header">
-                            <h4 class="task-title">{{title}}</h4>
-                            <span class="priority-badge priority-{{priority}}">{{priorityText}}</span>
+                            <h5 class="project-title">{{title}}</h5>
+                            <span class="project-status">{{statusText}}</span>
                         </div>
-                        <p class="task-description">{{description}}</p>
-                        <div class="task-meta">
-                            <div class="meta-item">
-                                <i class="fas fa-user"></i>
-                                <span>{{assignee}}</span>
+                        <p class="project-description">
+                            {{description}}
+                        </p>
+                        <div class="project-stats">
+                            <div class="stat">
+                                <i class="fas fa-users" aria-hidden="true"></i>
+                                <span>{{membersCount}}</span>
+                                <span class="sr-only">участников</span>
                             </div>
-                            <div class="meta-item {{#if isOverdue}}overdue{{/if}}">
-                                <i class="fas fa-clock"></i>
-                                <span>{{dueDate}}</span>
+                            <div class="stat">
+                                <i class="fas fa-tasks" aria-hidden="true"></i>
+                                <span>{{tasksCount}}</span>
+                                <span class="sr-only">задач</span>
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                <span>{{tasksDone}}</span>
+                                <span class="sr-only">выполнено</span>
                             </div>
                         </div>
-                        <div class="task-footer">
-                            <span class="status-badge status-{{status}}">{{statusText}}</span>
-                            {{#if hasSubtasks}}
-                            <div class="task-progress">
-                                <span class="progress-text">{{progress}}%</span>
-                                <div class="progress-bar small">
-                                    <div class="progress-fill" style="width: {{progress}}%"></div>
-                                </div>
-                            </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{progress}}%"
+                                 aria-label="Прогресс: {{progress}}%"></div>
+                        </div>
+                        <div class="project-footer">
+                            <span class="progress-text">{{progress}}%</span>
+                            {{#if isPrivate}}
+                            <button class="btn btn-sm btn-outline share-btn"
+                                    onclick="ProjectsManager.showInviteDialog('{{hash}}')"
+                                    aria-label="Поделиться проектом">
+                                <i class="fas fa-share-alt" aria-hidden="true"></i>
+                            </button>
                             {{/if}}
                         </div>
                     </div>
                 </div>
-            `,
-            'create-project-modal-template': this.getCreateProjectFallbackTemplate(),
-            'create-task-modal-template': this.getCreateTaskFallbackTemplate(),
-            'settings-modal-template': this.getSettingsFallbackTemplate()
+            `
         };
 
-        Object.entries(requiredTemplates).forEach(([templateId, templateContent]) => {
-            if (!this.templates.has(templateId)) {
-                console.warn(`Creating fallback template: ${templateId}`);
-                this.templates.set(templateId, templateContent);
+        Object.entries(requiredTemplates).forEach(([id, content]) => {
+            if (!this.templates.has(id)) {
+                console.warn(`Creating fallback template: ${id}`);
+                this.templates.set(id, content);
             } else {
-                console.log(`✅ Required template available: ${templateId}`);
+                console.log(`Required template available: ${id}`);
             }
         });
     }
@@ -1457,57 +1418,6 @@ class UIComponents {
         });
     }
 
-    static createProjectCard(project) {
-        const stats = project.stats || {};
-        const progress = stats.tasks_count > 0
-            ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
-            : 0;
-
-        return `
-            <div class="project-card" data-project-hash="${project.hash}" tabindex="0"
-                 aria-label="Проект ${Utils.escapeHTML(project.title)}">
-                <div class="card-header">
-                    <h5 class="project-title">${Utils.escapeHTML(project.title)}</h5>
-                    <span class="project-status">${this.getProjectStatus(project)}</span>
-                </div>
-                <p class="project-description">
-                    ${Utils.escapeHTML(project.description || 'Без описания')}
-                </p>
-                <div class="project-stats">
-                    <div class="stat">
-                        <i class="fas fa-users" aria-hidden="true"></i>
-                        <span>${stats.members_count || 0}</span>
-                        <span class="sr-only">участников</span>
-                    </div>
-                    <div class="stat">
-                        <i class="fas fa-tasks" aria-hidden="true"></i>
-                        <span>${stats.tasks_count || 0}</span>
-                        <span class="sr-only">задач</span>
-                    </div>
-                    <div class="stat">
-                        <i class="fas fa-check-circle" aria-hidden="true"></i>
-                        <span>${stats.tasks_done || 0}</span>
-                        <span class="sr-only">выполнено</span>
-                    </div>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${progress}%"
-                         aria-label="Прогресс: ${progress}%"></div>
-                </div>
-                <div class="project-footer">
-                    <span class="progress-text">${progress}%</span>
-                    ${project.is_private ? `
-                        <button class="btn btn-sm btn-outline share-btn"
-                                onclick="ProjectsManager.showInviteDialog('${project.hash}')"
-                                aria-label="Поделиться проектом">
-                            <i class="fas fa-share-alt" aria-hidden="true"></i>
-                        </button>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }
-
     static createTaskCard(task) {
         const isOverdue = task.due_date && Utils.isOverdue(task.due_date);
         const progress = task.subtasks && task.subtasks.length > 0
@@ -1660,7 +1570,32 @@ class UIComponents {
     }
 
     // ==================== ШАБЛОНЫ ====================
+    static renderProjectCard(project) {
+        const stats = project.stats || {};
+        const tasksCount = stats.tasks_count || 0;
+        const tasksDone = stats.tasks_done || 0;
+        const progress = tasksCount > 0 ? Math.round((tasksDone / tasksCount) * 100) : 0;
 
+        const data = {
+            hash: project.hash,
+            title: Utils.escapeHTML(project.title),
+            description: Utils.escapeHTML(project.description || 'Без описания'),
+            statusText: this.getProjectStatus(project),
+            membersCount: stats.members_count || 0,
+            tasksCount,
+            tasksDone,
+            progress,
+            isPrivate: project.is_private
+        };
+
+        const template = this.templates.get('project-card-template');
+        if (!template) {
+            console.error('project-card-template not found');
+            return '';
+        }
+
+        return this.renderTemplate(template, data);
+    }
     static renderProjectCardWithTemplate(projectData) {
         try {
             console.log('Rendering project card with data:', projectData);
@@ -1729,68 +1664,6 @@ class UIComponents {
             Utils.logError('Error in renderProjectCardWithTemplate:', error);
             return this.createProjectCardFallback({title: 'Ошибка загрузки'});
         }
-    }
-
-
-
-    static createProjectCardFallback(project) {
-        return `
-            <div class="project-card" data-project-id="${project.id}" data-project-hash="${project.hash}">
-                <div class="card-header">
-                    <h3 class="project-title">${Utils.escapeHTML(project.title)}</h3>
-                    <div class="project-badges">
-                        <span class="project-privacy ${project.isPrivate ? 'private' : 'public'}">
-                            ${project.isPrivate ? '🔒 Приватный' : '🌐 Публичный'}
-                        </span>
-                        <span class="project-role ${project.role}">
-                            ${project.roleText}
-                        </span>
-                    </div>
-                </div>
-
-                <p class="project-description">
-                    ${Utils.escapeHTML(project.description)}
-                </p>
-
-                <div class="project-stats">
-                    <div class="stat">
-                        <i class="fas fa-users"></i>
-                        <span>${project.membersCount}</span>
-                    </div>
-                    <div class="stat">
-                        <i class="fas fa-tasks"></i>
-                        <span>${project.tasksCount}</span>
-                    </div>
-                    <div class="stat">
-                        <i class="fas fa-check-circle"></i>
-                        <span>${project.tasksDone}</span>
-                    </div>
-                </div>
-
-                ${project.tasksCount > 0 ? `
-                    <div class="progress-section">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${project.progress}%"></div>
-                        </div>
-                        <span class="progress-text">${project.progress}%</span>
-                    </div>
-                ` : ''}
-
-                <div class="project-footer">
-                    <div class="task-breakdown">
-                        <span class="task-todo">${project.tasksTodo} к выполнению</span>
-                        <span class="task-in-progress">${project.tasksInProgress} в работе</span>
-                    </div>
-
-                    ${project.canInvite && project.isPrivate ? `
-                        <button class="btn btn-sm btn-outline share-btn"
-                                onclick="ProjectsManager.showInviteDialog('${project.hash}')">
-                            <i class="fas fa-share-alt"></i>
-                        </button>
-                    ` : ''}
-                </div>
-            </div>
-        `;
     }
 
     static renderTaskCardWithTemplate(task) {

@@ -59,7 +59,7 @@ class DashboardManager {
           StateManager.setLoading(false);
       }
   }
-  
+
     static updateStats(data) {
         // Используем данные из dashboard response
         const projects = data.projects || [];
@@ -222,81 +222,18 @@ class DashboardManager {
     }
 
     static renderProjects(projects) {
-        try {
-            const container = document.getElementById('projects-list');
-            if (!container) {
-                console.warn('Projects container not found');
-                return;
-            }
+        if (!Array.isArray(projects)) return;
 
-            container.innerHTML = '';
+        const container = document.getElementById('projects-container');
+        if (!container) return;
 
-            if (!projects || !Array.isArray(projects) || projects.length === 0) {
-                this.showEmptyState(container, 'Проектов пока нет', 'fa-folder-open', `
-                    <button class="btn btn-primary" onclick="ProjectsManager.showCreateProjectModal()">
-                        <i class="fas fa-plus"></i> Создать проект
-                    </button>
-                `);
-                return;
-            }
+        container.innerHTML = projects
+            .map(project => UIComponents.renderProjectCard(project))
+            .join('');
 
-            // Рендерим проекты
-            projects.forEach((projectData, index) => {
-                setTimeout(() => {
-                    try {
-                        const project = projectData.project || projectData;
-                        const cardHTML = this.renderProjectCardWithTemplate(project);
-
-                        if (!cardHTML) {
-                            console.error('Empty card HTML for project:', project);
-                            return;
-                        }
-
-                        const cardElement = document.createElement('div');
-                        cardElement.innerHTML = cardHTML.trim();
-                        const projectCard = cardElement.firstElementChild;
-
-                        if (!projectCard) {
-                            console.error('Could not create card element for project:', project);
-                            return;
-                        }
-
-                        // Добавляем обработчик клика для открытия полноэкранного view
-                        projectCard.addEventListener('click', () => {
-                            if (typeof ProjectView !== 'undefined') {
-                                ProjectView.openProject(project.hash);
-                            } else {
-                                ProjectsManager.openProjectDetail(project.hash);
-                            }
-                        });
-
-                        projectCard.style.opacity = '0';
-                        projectCard.style.transform = 'translateY(20px)';
-
-                        container.appendChild(projectCard);
-
-                        requestAnimationFrame(() => {
-                            projectCard.style.opacity = '1';
-                            projectCard.style.transform = 'translateY(0)';
-                            projectCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                        });
-
-                    } catch (error) {
-                        console.error('Error rendering project card:', error, projectData);
-                    }
-                }, index * 50);
-            });
-
-            Utils.log(`Rendered ${projects.length} projects`);
-        } catch (error) {
-            Utils.logError('Error in renderProjects:', error);
-            const container = document.getElementById('projects-list');
-            if (container) {
-                this.showErrorState(container, 'Ошибка отображения проектов');
-            }
-        }
+        Utils.log(`Rendered ${projects.length} projects`);
     }
-
+    
     static renderPriorityTasks(tasks) {
         const container = document.getElementById('priority-tasks-list');
         if (!container) return;
@@ -532,68 +469,6 @@ class DashboardManager {
             // Fallback на стандартный рендеринг
             return this.createTaskCard(task);
         }
-    }
-
-    static createProjectCard(project) {
-        const stats = project.stats || {};
-        const progress = stats.tasks_count > 0
-            ? Math.round((stats.tasks_done / stats.tasks_count) * 100)
-            : 0;
-
-        return `
-            <div class="project-card" data-project-hash="${project.hash}" tabindex="0"
-                 aria-label="Проект ${Utils.escapeHTML(project.title)}">
-                <div class="swipe-actions" aria-hidden="true">
-                    <div class="swipe-action edit-action" aria-label="Редактировать проект">
-                        <i class="fas fa-edit" aria-hidden="true"></i>
-                    </div>
-                    <div class="swipe-action delete-action" aria-label="Удалить проект">
-                        <i class="fas fa-trash" aria-hidden="true"></i>
-                    </div>
-                </div>
-
-                <div class="card-content">
-                    <div class="card-header">
-                        <h5 class="project-title">${Utils.escapeHTML(project.title)}</h5>
-                        <span class="project-status">${this.getProjectStatus(project)}</span>
-                    </div>
-                    <p class="project-description">
-                        ${Utils.escapeHTML(project.description || 'Без описания')}
-                    </p>
-                    <div class="project-stats">
-                        <div class="stat">
-                            <i class="fas fa-users" aria-hidden="true"></i>
-                            <span>${stats.members_count || 0}</span>
-                            <span class="sr-only">участников</span>
-                        </div>
-                        <div class="stat">
-                            <i class="fas fa-tasks" aria-hidden="true"></i>
-                            <span>${stats.tasks_count || 0}</span>
-                            <span class="sr-only">задач</span>
-                        </div>
-                        <div class="stat">
-                            <i class="fas fa-check-circle" aria-hidden="true"></i>
-                            <span>${stats.tasks_done || 0}</span>
-                            <span class="sr-only">выполнено</span>
-                        </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress}%"
-                             aria-label="Прогресс: ${progress}%"></div>
-                    </div>
-                    <div class="project-footer">
-                        <span class="progress-text">${progress}%</span>
-                        ${project.is_private ? `
-                            <button class="btn btn-sm btn-outline share-btn"
-                                    onclick="ProjectsManager.showInviteDialog('${project.hash}')"
-                                    aria-label="Поделиться проектом">
-                                <i class="fas fa-share-alt" aria-hidden="true"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
     }
 
     static createTaskCard(task) {
