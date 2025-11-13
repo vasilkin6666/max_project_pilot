@@ -213,34 +213,41 @@ class UsersManager {
         }
     }
 
-    // В users-manager.js исправляем метод updateUserProfile
     static async updateUserProfile(updateData) {
         try {
-            // Очищаем данные от null/undefined значений
-            const cleanData = Utils.cleanObject(updateData);
+            // Очищаем данные от null/undefined/пустых значений
+            const cleanData = {};
+            for (const [key, value] of Object.entries(updateData)) {
+                if (value !== null && value !== undefined && value !== '') {
+                    cleanData[key] = value;
+                }
+            }
 
             // Проверяем что есть данные для обновления
             if (Object.keys(cleanData).length === 0) {
-                Utils.log('No valid data to update');
+                Utils.log('No valid data to update in user profile');
                 return null;
             }
 
+            Utils.log('Updating user profile with data:', cleanData);
             const result = await ApiService.updateCurrentUser(cleanData);
+
             if (result && result.user) {
                 // Обновляем текущего пользователя в AuthManager
                 if (typeof AuthManager !== 'undefined') {
                     AuthManager.currentUser = { ...AuthManager.currentUser, ...result.user };
                     EventManager.emit(APP_EVENTS.USER_UPDATE, AuthManager.currentUser);
                 }
+
                 ToastManager.success('Профиль обновлен');
                 HapticManager.success();
                 return result.user;
             }
             throw new Error('Не удалось обновить профиль');
+
         } catch (error) {
             Utils.logError('Error updating user profile:', error);
 
-            // Более информативное сообщение об ошибке
             let errorMessage = 'Ошибка обновления профиля';
             if (error.message?.includes('No data provided')) {
                 errorMessage = 'Нет данных для обновления';
@@ -255,6 +262,38 @@ class UsersManager {
             throw error;
         }
     }
+
+    static updateUserUI() {
+        if (!this.currentUser) return;
+
+        // Используем данные из MAX если есть
+        let displayUser = { ...this.currentUser };
+        if (this.maxData && this.maxData.user) {
+            const maxUser = this.maxData.user;
+            displayUser = {
+                ...displayUser,
+                full_name: maxUser.first_name && maxUser.last_name ?
+                    `${maxUser.first_name} ${maxUser.last_name}` : displayUser.full_name,
+                photo_url: maxUser.photo_url || displayUser.photo_url
+            };
+        }
+
+        // Обновляем аватар пользователя
+        const userAvatar = document.getElementById('user-avatar');
+        if (userAvatar) {
+            const initials = Utils.getInitials(displayUser.full_name || 'Пользователь');
+            userAvatar.textContent = initials;
+
+            // Принудительно устанавливаем фото из MAX если есть
+            if (this.maxData?.user?.photo_url) {
+                userAvatar.style.backgroundImage = `url(${this.maxData.user.photo_url})`;
+                userAvatar.textContent = '';
+                userAvatar.style.backgroundSize = 'cover';
+                userAvatar.style.backgroundPosition = 'center';
+            } else {
+                userAvatar.style.backgroundImage = '';
+            }
+        }
 
     static async loadUserPreferences() {
         try {

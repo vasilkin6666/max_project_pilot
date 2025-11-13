@@ -316,9 +316,8 @@ class AuthManager {
         try {
             const maxUser = this.maxData.user;
             const currentUser = this.currentUser;
-            const updateData = {};
 
-            // Проверяем нужно ли обновлять фото
+            // Проверяем, есть ли фото в MAX данных и оно отличается от текущего
             const hasMaxPhoto = maxUser.photo_url && maxUser.photo_url.includes('oneme.ru');
             const hasCurrentPhoto = currentUser.photo_url;
             const shouldUpdatePhoto = hasMaxPhoto && (!hasCurrentPhoto || !hasCurrentPhoto.includes('oneme.ru'));
@@ -326,7 +325,15 @@ class AuthManager {
             // Проверяем нужно ли обновлять имя
             const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
             const shouldUpdateName = maxFullName && maxFullName !== 'Пользователь MAX' &&
-                                   (!currentUser.full_name || currentUser.full_name === 'Пользователь MAX');
+                                   maxFullName !== currentUser.full_name;
+
+            // Если нет изменений - выходим
+            if (!shouldUpdatePhoto && !shouldUpdateName) {
+                Utils.log('No updates needed from MAX data');
+                return;
+            }
+
+            const updateData = {};
 
             if (shouldUpdatePhoto) {
                 updateData.photo_url = maxUser.photo_url;
@@ -341,27 +348,24 @@ class AuthManager {
                 updateData.username = maxUser.username;
             }
 
-            // Если есть изменения - обновляем профиль
-            if (Object.keys(updateData).length > 0) {
-                Utils.log('Updating user profile from MAX data:', updateData);
+            // Обновляем профиль
+            Utils.log('Updating user profile from MAX data:', updateData);
 
-                if (typeof UsersManager !== 'undefined') {
-                    await UsersManager.updateUserProfile(updateData);
-                } else {
-                    // Fallback: обновляем локально
-                    this.currentUser = { ...this.currentUser, ...updateData };
-                    EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
-                }
+            if (typeof UsersManager !== 'undefined') {
+                await UsersManager.updateUserProfile(updateData);
             } else {
-                Utils.log('No updates needed from MAX data');
+                // Fallback: обновляем локально и в UI
+                this.currentUser = { ...this.currentUser, ...updateData };
+                this.updateUserUI();
+                EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
             }
 
         } catch (error) {
             Utils.logError('Error updating user from MAX data:', error);
-            // Не показываем ошибку пользователю - это не критично
+            // Не блокируем приложение из-за этой ошибки
         }
     }
-
+    
         static async loadCurrentUser() {
             try {
                 const userData = await ApiService.getCurrentUser();
