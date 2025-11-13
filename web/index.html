@@ -1054,7 +1054,7 @@
                     if (projectFilter) filters.project_hash = projectFilter;
 
                     const response = await ApiService.getUserTasks(filters);
-                    const tasks = response.tasks || []; // Исправлено
+                    const tasks = response.tasks || [];
                     const container = document.getElementById('myTasksList');
 
                     if (!tasks || tasks.length === 0) {
@@ -1143,7 +1143,7 @@
             static async loadProjectTasks(projectHash) {
                 try {
                     const response = await ApiService.getTasks(projectHash);
-                    const tasks = response.tasks || []; // Исправлено
+                    const tasks = response.tasks || [];
                     const container = document.getElementById('projectTasksList');
 
                     if (!tasks || tasks.length === 0) {
@@ -1173,8 +1173,14 @@
                 try {
                     console.log('Opening task:', taskId);
 
-                    const taskData = await ApiService.getTask(taskId);
-                    currentTask = taskData;
+                    const response = await ApiService.getTask(taskId);
+                    currentTask = response.task || response; // Исправлено - берем task из ответа
+                    console.log('Current task set to:', currentTask);
+
+                    if (!currentTask) {
+                        this.showError('Задача не найдена');
+                        return;
+                    }
 
                     // Обновляем основную информацию
                     document.getElementById('taskTitleHeader').textContent = currentTask.title;
@@ -1256,12 +1262,15 @@
 
                 try {
                     const response = await ApiService.getProjectMembers(currentProject.hash);
-                    const members = response.members || []; // Исправлено
+                    const members = response.members || [];
                     const container = document.getElementById('projectMembersManagementList');
 
                     if (!members || members.length === 0) {
                         container.innerHTML = '<p>Участников нет</p>';
                     } else {
+                        // Проверяем права текущего пользователя
+                        const canManageMembers = currentProject.current_user_role === 'owner' || currentProject.current_user_role === 'admin';
+
                         container.innerHTML = members.map(member => `
                             <div style="padding: 15px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1270,8 +1279,10 @@
                                         <div style="color: #666; font-size: 14px;">
                                             Роль: ${this.getRoleText(member.role)} |
                                             Username: ${member.username || 'не указан'}
+                                            ${member.user_id === currentUser.id ? ' (Вы)' : ''}
                                         </div>
                                     </div>
+                                    ${canManageMembers && member.user_id !== currentUser.id ? `
                                     <div style="display: flex; gap: 10px;">
                                         <button onclick="App.showUpdateMemberRoleModal(${member.user_id}, '${this.escapeHtml(member.full_name)}', '${member.role}')"
                                                 style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -1282,6 +1293,7 @@
                                             Удалить
                                         </button>
                                     </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         `).join('');
@@ -1396,7 +1408,11 @@
             }
 
             static async handleRemoveMember() {
-                if (!currentProject || !currentMemberToRemove) return;
+                if (!currentProject || !currentMemberToRemove) {
+                    console.error('No project or member to remove:', {currentProject, currentMemberToRemove});
+                    this.showError('Ошибка: данные не найдены');
+                    return;
+                }
 
                 try {
                     await ApiService.removeProjectMember(currentProject.hash, currentMemberToRemove.userId);
@@ -1407,7 +1423,11 @@
 
                 } catch (error) {
                     console.error('Error removing member:', error);
-                    this.showError('Ошибка удаления участника: ' + error.message);
+                    if (error.message.includes('403')) {
+                        this.showError('Недостаточно прав для удаления участника');
+                    } else {
+                        this.showError('Ошибка удаления участника: ' + error.message);
+                    }
                 }
             }
 
@@ -1458,7 +1478,11 @@
             }
 
             static showEditTaskModal() {
-                if (!currentTask) return;
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for editing:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
 
                 document.getElementById('editTaskTitle').value = currentTask.title;
                 document.getElementById('editTaskDescription').value = currentTask.description || '';
@@ -1475,7 +1499,11 @@
             }
 
             static async handleUpdateTask() {
-                if (!currentTask) return;
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for update:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
 
                 const title = document.getElementById('editTaskTitle').value.trim();
                 const description = document.getElementById('editTaskDescription').value.trim();
@@ -1500,6 +1528,7 @@
                         taskData.due_date = null;
                     }
 
+                    console.log('Updating task:', currentTask.id, taskData);
                     await ApiService.updateTask(currentTask.id, taskData);
 
                     this.hideModal('editTaskModal');
@@ -1513,16 +1542,25 @@
             }
 
             static showDeleteTaskModal() {
-                if (!currentTask) return;
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for deletion:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
 
                 document.getElementById('deleteTaskName').textContent = currentTask.title;
                 this.showModal('deleteTaskModal');
             }
 
             static async handleDeleteTask() {
-                if (!currentTask) return;
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for deletion:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
 
                 try {
+                    console.log('Deleting task:', currentTask.id);
                     await ApiService.deleteTask(currentTask.id);
 
                     this.hideModal('deleteTaskModal');
@@ -1536,10 +1574,16 @@
             }
 
             static async updateTaskStatus() {
-                if (!currentTask) return;
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task or task ID:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
 
                 try {
                     const newStatus = document.getElementById('taskStatusSelect').value;
+                    console.log('Updating task status:', currentTask.id, newStatus);
+
                     await ApiService.updateTaskStatus(currentTask.id, newStatus);
 
                     currentTask.status = newStatus;
@@ -1549,12 +1593,18 @@
                     console.error('Error updating task status:', error);
                     this.showError('Ошибка обновления статуса: ' + error.message);
                     // Восстанавливаем предыдущее значение
-                    document.getElementById('taskStatusSelect').value = currentTask.status;
+                    if (currentTask) {
+                        document.getElementById('taskStatusSelect').value = currentTask.status;
+                    }
                 }
             }
 
             static async addComment() {
-                if (!currentTask) return;
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for comment:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
 
                 const content = document.getElementById('newCommentText').value.trim();
                 if (!content) {
@@ -1576,7 +1626,11 @@
             }
 
             static async addDependency() {
-                if (!currentTask) return;
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for dependency:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
 
                 const dependsOnId = document.getElementById('newDependencyTaskId').value.trim();
                 if (!dependsOnId) {
@@ -1598,9 +1652,11 @@
             }
 
             static backToProject() {
-                if (currentProject) {
+                console.log('Back to project, currentProject:', currentProject);
+                if (currentProject && currentProject.hash) {
                     this.openProject(currentProject.hash);
                 } else {
+                    console.log('No current project, showing dashboard');
                     this.showDashboard();
                 }
             }
