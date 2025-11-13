@@ -26,39 +26,49 @@ class UIComponents {
     static templates = new Map();
     static isInitialized = false;
     static async loadTemplates() {
-        try {
-            if (this.templates.size > 0) {
-                Utils.log('Templates already loaded');
-                return;
-            }
-
-            const templateElements = document.querySelectorAll('script[type="text/template"]');
-            let loaded = 0;
-
-            for (const el of templateElements) {
-                const id = el.id;
-                const content = el.innerHTML.trim();
-                if (id && content) {
-                    this.templates.set(id, content);
-                    loaded++;
-                    Utils.log(`Loaded template: ${id}`);
+        return new Promise((resolve) => {
+            try {
+                if (this.templates.size > 0) {
+                    Utils.log('Templates already loaded');
+                    resolve();
+                    return;
                 }
-            }
 
-            if (loaded === 0) {
-                console.warn('No inline templates found');
-            } else {
+                const templateElements = document.querySelectorAll('script[type="text/template"]');
+                let loaded = 0;
+
+                // Если нет шаблонов, создаем критически важные
+                if (templateElements.length === 0) {
+                    Utils.log('No inline templates found, creating fallbacks');
+                    this.createFallbackTemplates();
+                    resolve();
+                    return;
+                }
+
+                for (const el of templateElements) {
+                    const id = el.id;
+                    const content = el.innerHTML.trim();
+                    if (id && content) {
+                        this.templates.set(id, content);
+                        loaded++;
+                    }
+                }
+
                 Utils.log(`Loaded ${loaded} inline templates`);
+
+                // Гарантируем наличие критических шаблонов
+                this.ensureRequiredTemplates();
+
+                resolve();
+
+            } catch (error) {
+                Utils.logError('Template load failed:', error);
+                this.createFallbackTemplates();
+                resolve(); // Всегда разрешаем промис, даже при ошибке
             }
-
-            // Принудительно создаём критические шаблоны
-            this.ensureRequiredTemplates();
-        } catch (error) {
-            Utils.logError('Template load failed:', error);
-            this.createFallbackTemplates();
-        }
+        });
     }
-
+    
     static ensureRequiredTemplates() {
         const requiredTemplates = {
             'project-card-template': `
@@ -1150,7 +1160,7 @@ class UIComponents {
             }, i * 50);
         });
     }
-    
+
     static renderTasks(tasks) {
         const container = document.getElementById('tasks-container');
         if (!container) return;

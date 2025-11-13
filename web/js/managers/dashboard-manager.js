@@ -1,50 +1,63 @@
 // Менеджер дашборда
 class DashboardManager {
   static async loadDashboard() {
-      // НЕ проверяем App.isAuthenticated() здесь!
-      // Доверимся, что вызываем только после авторизации
-
-      if (!AuthManager.getToken()) {
-          Utils.log('loadDashboard: no token, skipping');
-          return;
-      }
-
       try {
           StateManager.setLoading(true);
           Utils.log('Loading dashboard...');
 
+          // ПРОСТАЯ ПРОВЕРКА - если нет токена, просто выходим
+          if (!AuthManager.getToken()) {
+              Utils.log('No auth token available, skipping dashboard load');
+              StateManager.setLoading(false);
+              return;
+          }
+
           const data = await CacheManager.getWithCache(
               'dashboard',
               () => ApiService.getDashboard(),
-              'dashboard',
-              { retryOnAuthError: true }
+              'dashboard'
           );
 
-          if (!data) throw new Error('Empty dashboard');
+          if (!data) {
+              Utils.log('Empty dashboard response');
+              StateManager.setLoading(false);
+              return;
+          }
 
           const projects = Array.isArray(data.projects) ? data.projects : [];
           StateManager.setState('dashboard', data);
           StateManager.setState('projects', projects);
 
+          // Обновляем UI
           UIComponents.updateStats(data);
           UIComponents.renderProjects(projects);
 
-          // Приоритетные задачи
-          const tasks = await ApiService.getTasks({ status: 'todo', limit: 10 }).catch(() => ({ tasks: [] }));
-          StateManager.setState('tasks', tasks.tasks || []);
-          UIComponents.renderPriorityTasks(tasks.tasks || []);
+          // Загружаем задачи (если есть токен)
+          if (AuthManager.getToken()) {
+              try {
+                  const tasks = await ApiService.getTasks({ status: 'todo', limit: 10 });
+                  StateManager.setState('tasks', tasks.tasks || []);
+                  UIComponents.renderPriorityTasks(tasks.tasks || []);
+              } catch (taskError) {
+                  Utils.logError('Error loading tasks:', taskError);
+                  // Не блокируем из-за ошибки задач
+              }
+          }
 
           EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
           EventManager.emit(APP_EVENTS.DATA_LOADED);
 
-          Utils.log('Dashboard loaded');
+          Utils.log('Dashboard loaded successfully');
+
       } catch (error) {
-          if (error.status === 401) {
-              AuthManager.logout();
-              return;
-          }
           Utils.logError('Dashboard load error:', error);
-          UIComponents.showErrorState('#projects-list', 'Не удалось загрузить проекты');
+
+          // Если ошибка аутентификации - не показываем ошибку UI, просто логируем
+          if (error.status === 401) {
+              Utils.log('Authentication required for dashboard');
+          } else {
+              UIComponents.showErrorState('#projects-list', 'Не удалось загрузить проекты');
+          }
       } finally {
           StateManager.setLoading(false);
       }

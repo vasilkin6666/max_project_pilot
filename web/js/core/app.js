@@ -7,51 +7,45 @@ class App {
 
     // ---------- ТЕМА ----------
     static applyTheme(theme) {
-        if (this.isApplyingTheme) return;
-        this.isApplyingTheme = true;
-
         try {
-            // ← КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: finalTheme объявлена здесь
             const finalTheme = theme || CONFIG.UI.THEME.LIGHT;
 
+            // Прямое применение без блокировки
             const lightTheme = document.getElementById('theme-light');
-            const darkTheme  = document.getElementById('theme-dark');
+            const darkTheme = document.getElementById('theme-dark');
 
             if (finalTheme === 'dark') {
                 if (lightTheme) lightTheme.disabled = true;
-                if (darkTheme)  darkTheme.disabled  = false;
+                if (darkTheme) darkTheme.disabled = false;
                 document.body.setAttribute('data-theme', 'dark');
                 document.documentElement.setAttribute('data-theme', 'dark');
             } else {
                 if (lightTheme) lightTheme.disabled = false;
-                if (darkTheme)  darkTheme.disabled  = true;
+                if (darkTheme) darkTheme.disabled = true;
                 document.body.removeAttribute('data-theme');
                 document.documentElement.removeAttribute('data-theme');
             }
 
+            // Сохраняем в state и localStorage
             StateManager.setTheme(finalTheme);
             localStorage.setItem('theme', finalTheme);
-            this.forceThemeApplication(finalTheme);
 
-            // Синхронизация с сервером (если залогинен)
+            // Асинхронно сохраняем в настройки пользователя (не блокируем)
             setTimeout(async () => {
                 if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
                     try {
-                        const prefs = await UsersManager.loadUserPreferences();
-                        if (prefs.theme !== finalTheme) {
-                            await UsersManager.patchUserPreferences({ theme: finalTheme });
-                        }
+                        await UsersManager.patchUserPreferences({ theme: finalTheme });
                     } catch (err) {
                         Utils.logError('Failed to save theme preference:', err);
                     }
                 }
-            }, 2000);
+            }, 1000);
 
             Utils.log(`Theme applied: ${finalTheme}`);
+            EventManager.emit(APP_EVENTS.THEME_CHANGED, finalTheme);
+
         } catch (error) {
             Utils.logError('Error in applyTheme:', error);
-        } finally {
-            setTimeout(() => { this.isApplyingTheme = false; }, 1000);
         }
     }
 
@@ -610,22 +604,26 @@ if (typeof APP_EVENTS !== 'undefined') {
 }
 
 // ---------- ЗАПУСК ----------
-document.addEventListener('DOMContentLoaded', () => {
-    UIComponents.init();          // <-- собирает все <template>
-    AuthManager.initializeUser();
-});
+// ЗАМЕНИТЕ существующие обработчики на этот код:
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // 1. Сначала инициализируем UI компоненты и шаблоны
+        await UIComponents.init();
 
-document.addEventListener('DOMContentLoaded', () => {
-    window.addEventListener('error', ev => Utils.logError('Global error caught:', ev.error));
-    window.addEventListener('unhandledrejection', ev => Utils.logError('Unhandled promise rejection:', ev.reason));
-
-    // Применяем сохранённую тему сразу, до полной инициализации
-    setTimeout(() => {
+        // 2. Применяем тему сразу (без ожидания полной инициализации)
         const theme = App.getCurrentTheme();
-        App.applyTheme(theme);               // ← гарантируем, что finalTheme объявлена
-    }, 300);
+        App.applyTheme(theme);
 
-    setTimeout(() => App.init(), 100);
+        // 3. Инициализируем аутентификацию
+        await AuthManager.initializeUser();
+
+        // 4. Запускаем основную инициализацию приложения
+        setTimeout(() => App.init(), 300);
+
+    } catch (error) {
+        console.error('Initialization failed:', error);
+        App.handleInitError(error);
+    }
 });
 
 window.App = App;
