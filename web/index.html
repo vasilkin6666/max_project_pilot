@@ -122,6 +122,9 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 id="taskTitleHeader">Название задачи</h2>
                     <div style="display: flex; gap: 10px;">
+                        <button id="createSubtaskBtn" style="padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Создать подзадачу
+                        </button>
                         <button id="editTaskBtn" style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
                             Редактировать
                         </button>
@@ -314,63 +317,6 @@
         </div>
     </div>
 
-    <!-- Edit Project Modal -->
-    <div id="editProjectModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 500px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Редактировать проект</h3>
-                <button onclick="App.hideModal('editProjectModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-            <form id="editProjectForm">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Название проекта *</label>
-                    <input type="text" id="editProjectTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Описание</label>
-                    <textarea id="editProjectDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="editProjectIsPrivate"> Приватный проект
-                    </label>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="editProjectRequiresApproval"> Требуется одобрение для вступления
-                    </label>
-                </div>
-            </form>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="App.hideModal('editProjectModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Отмена
-                </button>
-                <button onclick="App.handleUpdateProject()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Сохранить
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Project Modal -->
-    <div id="deleteProjectModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 400px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Удалить проект</h3>
-                <button onclick="App.hideModal('deleteProjectModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-            <p>Вы уверены, что хотите удалить проект "<span id="deleteProjectName"></span>"? Это действие нельзя отменить.</p>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="App.hideModal('deleteProjectModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Отмена
-                </button>
-                <button onclick="App.handleDeleteProject()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Удалить
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Create Task Modal -->
     <div id="createTaskModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 500px; max-height: 80vh; overflow-y: auto;">
@@ -424,178 +370,49 @@
         </div>
     </div>
 
-    <!-- Edit Task Modal -->
-    <div id="editTaskModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <!-- Create Subtask Modal -->
+    <div id="createSubtaskModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 500px; max-height: 80vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Редактировать задачу</h3>
-                <button onclick="App.hideModal('editTaskModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
+                <h3 style="margin: 0;">Создать подзадачу</h3>
+                <button onclick="App.hideModal('createSubtaskModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
             </div>
-            <form id="editTaskForm">
+            <form id="createSubtaskForm">
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Название задачи *</label>
-                    <input type="text" id="editTaskTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <label style="display: block; margin-bottom: 5px;">Название подзадачи *</label>
+                    <input type="text" id="subtaskTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px;">Описание</label>
-                    <textarea id="editTaskDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                    <textarea id="subtaskDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px;">Приоритет</label>
-                    <select id="editTaskPriority" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <select id="subtaskPriority" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                         <option value="low">Низкий</option>
-                        <option value="medium">Средний</option>
+                        <option value="medium" selected>Средний</option>
                         <option value="high">Высокий</option>
                         <option value="urgent">Срочный</option>
                     </select>
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px;">Срок выполнения</label>
-                    <input type="date" id="editTaskDueDate" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-            </form>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="App.hideModal('editTaskModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Отмена
-                </button>
-                <button onclick="App.handleUpdateTask()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Сохранить
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Task Modal -->
-    <div id="deleteTaskModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 400px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Удалить задачу</h3>
-                <button onclick="App.hideModal('deleteTaskModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-            <p>Вы уверены, что хотите удалить задачу "<span id="deleteTaskName"></span>"? Это действие нельзя отменить.</p>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="App.hideModal('deleteTaskModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Отмена
-                </button>
-                <button onclick="App.handleDeleteTask()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Удалить
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Update Member Role Modal -->
-    <div id="updateMemberRoleModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 400px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Изменить роль участника</h3>
-                <button onclick="App.hideModal('updateMemberRoleModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-            <p>Участник: <strong id="memberName"></strong></p>
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">Роль</label>
-                <select id="memberRoleSelect" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <option value="owner">Владелец</option>
-                    <option value="admin">Администратор</option>
-                    <option value="member">Участник</option>
-                    <option value="guest">Гость</option>
-                </select>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="App.hideModal('updateMemberRoleModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Отмена
-                </button>
-                <button onclick="App.handleUpdateMemberRole()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Сохранить
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Remove Member Modal -->
-    <div id="removeMemberModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 400px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Удалить участника</h3>
-                <button onclick="App.hideModal('removeMemberModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-            <p>Вы уверены, что хотите удалить участника "<span id="removeMemberName"></span>" из проекта?</p>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="App.hideModal('removeMemberModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Отмена
-                </button>
-                <button onclick="App.handleRemoveMember()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Удалить
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notifications Modal -->
-    <div id="notificationsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 500px; max-height: 80vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Уведомления</h3>
-                <div>
-                    <button onclick="App.markAllNotificationsRead()" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                        Прочитать все
-                    </button>
-                    <button onclick="App.hideModal('notificationsModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-                </div>
-            </div>
-            <div id="notificationsList">
-                <!-- Notifications will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 4px; min-width: 500px; max-height: 80vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Настройки пользователя</h3>
-                <button onclick="App.hideModal('settingsModal')" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-            <form id="settingsForm">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Имя</label>
-                    <input type="text" id="userFullName" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <input type="date" id="subtaskDueDate" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 </div>
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Имя пользователя</label>
-                    <input type="text" id="userUsername" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Тема</label>
-                    <select id="userTheme" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <option value="light">Светлая</option>
-                        <option value="dark">Темная</option>
-                        <option value="auto">Авто</option>
+                    <label style="display: block; margin-bottom: 5px;">Исполнитель</label>
+                    <select id="subtaskAssignedTo" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">Не назначена</option>
                     </select>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="userNotificationsEnabled"> Уведомления включены
-                    </label>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" id="userCompactView"> Компактный вид
-                    </label>
-                </div>
             </form>
-            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-                <button onclick="App.resetUserPreferences()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Сбросить настройки
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button onclick="App.hideModal('createSubtaskModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Отмена
                 </button>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="App.hideModal('settingsModal')" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Отмена
-                    </button>
-                    <button onclick="App.handleSaveSettings()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Сохранить
-                    </button>
-                </div>
+                <button onclick="App.handleCreateSubtask()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Создать
+                </button>
             </div>
         </div>
     </div>
@@ -1061,6 +878,11 @@
                     this.showCreateTaskModal();
                 });
 
+                // Создание подзадачи
+                document.getElementById('createSubtaskBtn').addEventListener('click', () => {
+                    this.showCreateSubtaskModal();
+                });
+
                 // Редактирование задачи
                 document.getElementById('editTaskBtn').addEventListener('click', () => {
                     this.showEditTaskModal();
@@ -1172,6 +994,14 @@
                         hashInfo.style.display = 'none';
                     }
 
+                    // Показываем/скрываем кнопки управления в зависимости от роли
+                    const canEditProject = currentProject.current_user_role === 'owner';
+                    const canManageRequests = currentProject.current_user_role === 'owner' || currentProject.current_user_role === 'admin';
+
+                    document.getElementById('editProjectBtn').style.display = canEditProject ? 'block' : 'none';
+                    document.getElementById('deleteProjectBtn').style.display = canEditProject ? 'block' : 'none';
+                    document.getElementById('joinRequestsBtn').style.display = canManageRequests ? 'block' : 'none';
+
                     // Загружаем участников
                     await this.loadProjectMembers(projectHash);
 
@@ -1281,13 +1111,16 @@
                     // Устанавливаем статус
                     document.getElementById('taskStatusSelect').value = currentTask.status;
 
-                    // Показываем/скрываем секцию подзадач
+                    // Показываем/скрываем секцию подзадач и кнопку создания подзадач
                     const subtasksSection = document.getElementById('subtasksSection');
+                    const createSubtaskBtn = document.getElementById('createSubtaskBtn');
                     if (currentTask.parent_task_id === null) {
                         subtasksSection.style.display = 'block';
+                        createSubtaskBtn.style.display = 'block';
                         await this.loadSubtasks(currentTask.id);
                     } else {
                         subtasksSection.style.display = 'none';
+                        createSubtaskBtn.style.display = 'none';
                     }
 
                     // Загружаем комментарии
@@ -1602,6 +1435,80 @@
                 } catch (error) {
                     console.error('Error loading task creation data:', error);
                     this.showError('Ошибка загрузки данных: ' + error.message);
+                }
+            }
+
+            static async showCreateSubtaskModal() {
+                if (!currentProject || !currentTask) return;
+
+                try {
+                    // Загружаем участников проекта
+                    const response = await ApiService.getProjectMembers(currentProject.hash);
+                    const members = response.members || [];
+
+                    const assignedToSelect = document.getElementById('subtaskAssignedTo');
+                    assignedToSelect.innerHTML = '<option value="">Не назначена</option>';
+
+                    members.forEach(member => {
+                        const option = document.createElement('option');
+                        option.value = member.user_id;
+                        option.textContent = member.full_name;
+                        assignedToSelect.appendChild(option);
+                    });
+
+                    // Устанавливаем родительскую задачу
+                    document.getElementById('subtaskTitle').value = '';
+                    document.getElementById('subtaskDescription').value = '';
+                    document.getElementById('subtaskPriority').value = 'medium';
+                    document.getElementById('subtaskDueDate').value = '';
+
+                    this.showModal('createSubtaskModal');
+
+                } catch (error) {
+                    console.error('Error loading subtask creation data:', error);
+                    this.showError('Ошибка загрузки данных: ' + error.message);
+                }
+            }
+
+            static async handleCreateSubtask() {
+                if (!currentProject || !currentTask) return;
+
+                const title = document.getElementById('subtaskTitle').value.trim();
+                const description = document.getElementById('subtaskDescription').value.trim();
+                const priority = document.getElementById('subtaskPriority').value;
+                const dueDate = document.getElementById('subtaskDueDate').value;
+                const assignedTo = document.getElementById('subtaskAssignedTo').value;
+
+                if (!title) {
+                    this.showError('Введите название подзадачи');
+                    return;
+                }
+
+                try {
+                    const taskData = {
+                        title,
+                        description,
+                        project_hash: currentProject.hash,
+                        priority,
+                        status: 'todo',
+                        parent_task_id: currentTask.id // Устанавливаем родительскую задачу
+                    };
+
+                    if (dueDate) taskData.due_date = dueDate;
+                    if (assignedTo) taskData.assigned_to_ids = [parseInt(assignedTo)];
+
+                    await ApiService.createTask(taskData);
+
+                    this.hideModal('createSubtaskModal');
+                    document.getElementById('createSubtaskForm').reset();
+
+                    // Перезагружаем подзадачи
+                    await this.loadSubtasks(currentTask.id);
+                    this.showSuccess('Подзадача создана успешно!');
+
+                } catch (error) {
+                    console.error('Error creating subtask:', error);
+                    this.showError('Ошибка создания подзадачи: ' + error.message);
                 }
             }
 
