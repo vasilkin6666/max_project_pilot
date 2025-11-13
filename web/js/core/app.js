@@ -3,6 +3,7 @@ class App {
     // Добавьте свойство для отслеживания настройки обработчиков ДО всех методов
     static eventHandlersSetup = false;
     static templatesLoaded = false;
+    static themeUpdateDebounce = null;
 
     static async init() {
         try {
@@ -559,7 +560,7 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
             if (lightTheme) lightTheme.disabled = true;
             if (darkTheme) darkTheme.disabled = false;
             document.body.setAttribute('data-theme', 'dark');
-            document.documentElement.setAttribute('data-theme', 'dark'); // Добавляем для html
+            document.documentElement.setAttribute('data-theme', 'dark');
         } else {
             if (lightTheme) lightTheme.disabled = false;
             if (darkTheme) darkTheme.disabled = true;
@@ -573,8 +574,30 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
         // Сохраняем тему в localStorage для быстрого доступа
         localStorage.setItem('theme', theme);
 
-        // Принудительно применяем тему ко всем элементам
-        this.forceThemeApplication(theme);
+        // ОТЛАДОЧНАЯ ИНФОРМАЦИЯ - удалить после фикса
+        console.log('Theme applied:', theme, 'Current UI theme:', StateManager.getState('ui.theme'));
+
+        // Debounce обновление настроек пользователя
+        if (this.themeUpdateDebounce) {
+            clearTimeout(this.themeUpdateDebounce);
+        }
+
+        this.themeUpdateDebounce = setTimeout(async () => {
+            // Сохраняем тему в настройках пользователя, если доступен UsersManager
+            if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
+                try {
+                    // Проверяем, действительно ли тема изменилась
+                    const currentPrefs = await UsersManager.loadUserPreferences();
+                    if (currentPrefs.theme !== theme) {
+                        await UsersManager.patchUserPreferences({ theme });
+                        console.log('Theme preference saved successfully');
+                    }
+                } catch (error) {
+                    console.warn('Failed to save theme preference:', error);
+                    // Игнорируем ошибки сохранения темы - это не критично
+                }
+            }
+        }, 1000); // Задержка 1 секунда
 
         Utils.log(`Theme changed to: ${theme}`);
     }

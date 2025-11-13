@@ -488,14 +488,20 @@ class UIComponents {
     static initTheme() {
         // Инициализация темы
         const currentTheme = App.getCurrentTheme();
-        App.applyTheme(currentTheme);
+
+        // ПРИНУДИТЕЛЬНОЕ ПРИМЕНЕНИЕ ТЕМЫ БЕЗ ВЫЗОВА СОБЫТИЙ
+        this.applyThemeSilently(currentTheme);
 
         // Переключатель темы
         const themeSwitch = document.getElementById('themeSwitch');
         if (themeSwitch) {
             themeSwitch.checked = currentTheme === 'dark';
             themeSwitch.addEventListener('change', (e) => {
-                const newTheme = App.toggleTheme();
+                const newTheme = e.target.checked ? 'dark' : 'light';
+
+                // Прямое применение темы без эмита событий
+                App.applyTheme(newTheme);
+
                 if (typeof ToastManager !== 'undefined') {
                     ToastManager.info(`Тема изменена на ${newTheme === 'dark' ? 'тёмную' : 'светлую'}`);
                 }
@@ -506,22 +512,24 @@ class UIComponents {
             });
         }
 
-        // Кнопка переключения темы в мобильном меню
-        const mobileThemeBtn = document.getElementById('mobile-theme-btn');
-        if (mobileThemeBtn) {
-            mobileThemeBtn.addEventListener('click', () => {
-                const newTheme = App.toggleTheme();
-                mobileThemeBtn.innerHTML = newTheme === 'dark'
-                    ? '<i class="fas fa-sun"></i> Светлая тема'
-                    : '<i class="fas fa-moon"></i> Тёмная тема';
-
-                if (typeof HapticManager !== 'undefined') {
-                    HapticManager.toggleSwitch();
-                }
-            });
-        }
-
         Utils.log('Theme system initialized');
+    }
+
+    static applyThemeSilently(theme) {
+        const lightTheme = document.getElementById('theme-light');
+        const darkTheme = document.getElementById('theme-dark');
+
+        if (theme === 'dark') {
+            if (lightTheme) lightTheme.disabled = true;
+            if (darkTheme) darkTheme.disabled = false;
+            document.body.setAttribute('data-theme', 'dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            if (lightTheme) lightTheme.disabled = false;
+            if (darkTheme) darkTheme.disabled = true;
+            document.body.removeAttribute('data-theme');
+            document.documentElement.removeAttribute('data-theme');
+        }
     }
 
     static initSearch() {

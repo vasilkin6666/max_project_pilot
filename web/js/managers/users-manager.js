@@ -138,20 +138,32 @@ class UsersManager {
     }
 
     static async patchUserPreferences(preferences) {
+        // Проверяем, не является ли запрос дублирующим
+        const currentPrefs = await this.loadUserPreferences();
+        const hasChanges = Object.keys(preferences).some(key =>
+            currentPrefs[key] !== preferences[key]
+        );
+
+        if (!hasChanges) {
+            console.log('No changes in preferences, skipping update');
+            return currentPrefs;
+        }
+
         try {
             const result = await ApiService.patchUserPreferences({ preferences });
 
             if (result && result.preferences) {
-                ToastManager.success('Настройки обновлены');
+                // ToastManager.success('Настройки обновлены'); // Убрать чтобы не мешать
                 HapticManager.success();
                 return result.preferences;
             }
 
             throw new Error('Не удалось обновить настройки');
         } catch (error) {
-            Utils.logError('Error patching user preferences:', error);
-            ToastManager.error('Ошибка обновления настроек: ' + error.message);
-            HapticManager.error();
+            // Логируем ошибку, но не показываем пользователю если это не критично
+            if (!error.message.includes('network') && !error.message.includes('timeout')) {
+                Utils.logError('Error patching user preferences:', error);
+            }
             throw error;
         }
     }
