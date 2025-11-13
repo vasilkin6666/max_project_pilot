@@ -1860,7 +1860,6 @@
 
             static async showJoinRequests() {
                 if (!currentProject) return;
-
                 try {
                     const response = await ApiService.getProjectJoinRequests(currentProject.hash);
                     const joinRequests = response.requests || [];
@@ -1870,7 +1869,6 @@
                         container.innerHTML = '<p>Заявок на вступление нет</p>';
                     } else {
                         container.innerHTML = joinRequests.map(request => {
-                            // ИСПРАВЛЕНО: Правильное получение данных пользователя и даты
                             const userData = request.user || request;
                             const displayName = (userData.full_name && userData.full_name.trim() !== '')
                                 ? userData.full_name
@@ -1878,42 +1876,81 @@
                                 ? request.user_full_name
                                 : `Пользователь #${request.user_id || userData.id}`;
 
-                            // ИСПРАВЛЕНО: Правильное форматирование даты
                             const requestDate = request.requested_at || request.created_at;
                             const formattedDate = requestDate ? new Date(requestDate).toLocaleString() : 'Дата не указана';
+
+                            // Определяем статус и доступные действия
+                            const statusText = this.getJoinRequestStatusText(request.status);
+                            const statusColor = this.getJoinRequestStatusColor(request.status);
+                            const canApprove = request.status === 'pending';
+                            const canReject = request.status === 'pending';
 
                             return `
                                 <div style="padding: 15px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
+                                        <div style="flex: 1;">
                                             <div style="font-weight: bold;">${this.escapeHtml(displayName)}</div>
-                                            <div style="color: #666; font-size: 14px;">
+                                            <div style="color: #666; font-size: 14px; margin-bottom: 5px;">
                                                 Заявка подана: ${formattedDate}
-                                                ${request.status ? ` | Статус: ${request.status}` : ''}
                                             </div>
+                                            <div style="font-size: 14px;">
+                                                Статус: <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span>
+                                            </div>
+                                            ${request.processed_at ? `
+                                            <div style="color: #666; font-size: 12px;">
+                                                Обработана: ${new Date(request.processed_at).toLocaleString()}
+                                            </div>
+                                            ` : ''}
                                         </div>
                                         <div style="display: flex; gap: 10px;">
+                                            ${canApprove ? `
                                             <button onclick="App.approveJoinRequest(${request.id})"
                                                     style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                                 Одобрить
                                             </button>
+                                            ` : ''}
+                                            ${canReject ? `
                                             <button onclick="App.rejectJoinRequest(${request.id})"
                                                     style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                                 Отклонить
                                             </button>
+                                            ` : ''}
+                                            ${request.status !== 'pending' ? `
+                                            <button onclick="App.removeProcessedRequest(${request.id})"
+                                                    style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                                Удалить
+                                            </button>
+                                            ` : ''}
                                         </div>
                                     </div>
                                 </div>
                             `;
                         }).join('');
                     }
-
                     this.showView('joinRequestsView');
-
                 } catch (error) {
                     console.error('Error loading join requests:', error);
                     this.showError('Ошибка загрузки заявок: ' + error.message);
                 }
+            }
+
+            // Добавьте вспомогательные методы для статусов заявок
+            static getJoinRequestStatusText(status) {
+                const statusMap = {
+                    'pending': 'Ожидает рассмотрения',
+                    'approved': 'Одобрена',
+                    'rejected': 'Отклонена'
+                };
+                return statusMap[status] || status;
+            }
+
+            static getJoinRequestStatusColor(status) {
+                const colorMap = {
+                    'pending': '#ffc107',
+                    'approved': '#28a745',
+                    'rejected': '#dc3545'
+                };
+                return colorMap[status] || '#6c757d';
             }
 
             static async approveJoinRequest(requestId) {
@@ -1924,24 +1961,59 @@
                     this.showSuccess('Заявка одобрена!');
                     // Перезагружаем список заявок и участников
                     await this.showJoinRequests();
-                    // Обновляем список участников проекта
-                    if (currentProject && currentProject.hash) {
-                        await this.loadProjectMembers(currentProject.hash);
-                    }
+                    await this.loadProjectMembers(currentProject.hash);
                 } catch (error) {
                     console.error('Error approving join request:', error);
-                    if (error.message.includes('404')) {
-                        this.showError('Заявка не найдена. Возможно, она уже была обработана.');
-                        // Перезагружаем список заявок, чтобы показать актуальные данные
-                        await this.showJoinRequests();
-                    } else if (error.message.includes('400')) {
-                        this.showError('Заявка уже обработана или пользователь уже является участником.');
+                    if (error.message.includes('400')) {
+                        if (error.message.includes('already')) {
+                            this.showError('Заявка уже обработана ранее.');
+                        } else if (error.message.includes('already a member')) {
+                            this.showError('Пользователь уже является участником проекта.');
+                        }
+                        // Перезагружаем список заявок для обновления статусов
                         await this.showJoinRequests();
                     } else {
                         this.showError('Ошибка одобрения заявки: ' + error.message);
                     }
                 }
             }
+
+            static async deleteJoinRequest(projectHash, requestId) {
+                return this.delete(`/projects/${projectHash}/join-requests/${requestId}`);
+            }
+
+            static async removeProcessedRequest(requestId) {
+                if (!currentProject) return;
+                try {
+                    if (confirm('Вы уверены, что хотите удалить эту заявку из списка?')) {
+                        await ApiService.deleteJoinRequest(currentProject.hash, requestId);
+                        this.showSuccess('Заявка удалена!');
+                        await this.showJoinRequests();
+                    }
+                } catch (error) {
+                    console.error('Error removing processed request:', error);
+                    this.showError('Ошибка удаления заявки: ' + error.message);
+                }
+            }
+
+            static async rejectJoinRequest(requestId) {
+                if (!currentProject) return;
+                try {
+                    console.log('Rejecting join request:', requestId, 'for project:', currentProject.hash);
+                    await ApiService.rejectJoinRequest(currentProject.hash, requestId);
+                    this.showSuccess('Заявка отклонена!');
+                    await this.showJoinRequests();
+                } catch (error) {
+                    console.error('Error rejecting join request:', error);
+                    if (error.message.includes('400')) {
+                        this.showError('Заявка уже обработана ранее.');
+                        await this.showJoinRequests();
+                    } else {
+                        this.showError('Ошибка отклонения заявки: ' + error.message);
+                    }
+                }
+            }
+
 
             static async rejectJoinRequest(requestId) {
                 if (!currentProject) return;

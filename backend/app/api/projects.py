@@ -627,6 +627,63 @@ async def get_all_join_requests(
         })
     return {"requests": formatted_requests}
 
+@router.delete("/{project_hash}/join-requests/{request_id}")
+async def delete_join_request(
+    project_hash: str,
+    request_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Удалить заявку на вступление (только обработанные)"""
+    try:
+        result = await db.execute(select(Project).where(Project.hash == project_hash))
+        project = result.scalar_one_or_none()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        membership = await db.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id == current_user.id
+            )
+        )
+        member = membership.scalar_one_or_none()
+        if not member or member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        result = await db.execute(
+            select(JoinRequest).where(
+                JoinRequest.id == request_id,
+                JoinRequest.project_id == project.id
+            )
+        )
+        join_request = result.scalar_one_or_none()
+
+        if not join_request:
+            raise HTTPException(status_code=404, detail="Join request not found")
+
+        # Разрешаем удалять только обработанные заявки
+        if join_request.status == "pending":
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete pending join request"
+            )
+
+        await db.delete(join_request)
+        await db.commit()
+
+        return {"status": "success", "message": "Join request deleted"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting join request {request_id}: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
 @router.post("/{project_hash}/join-requests/{request_id}/approve")
 async def approve_join_request(
     project_hash: str,
