@@ -684,6 +684,156 @@ async def delete_join_request(
             detail="Internal server error"
         )
 
+@router.get("/search/public")
+async def search_public_projects(
+    query: str = Query(None, description="Поисковый запрос"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Поиск публичных проектов"""
+    try:
+        # Базовый запрос для публичных проектов
+        stmt = select(Project).where(Project.is_private == False)
+
+        if query:
+            # Поиск по названию, описанию или хэшу
+            stmt = stmt.where(
+                or_(
+                    Project.title.ilike(f"%{query}%"),
+                    Project.description.ilike(f"%{query}%"),
+                    Project.hash.ilike(f"%{query}%")
+                )
+            )
+
+        # Исключаем проекты, в которых пользователь уже состоит
+        user_project_ids = await db.execute(
+            select(ProjectMember.project_id).where(ProjectMember.user_id == current_user.id)
+        )
+        user_project_ids = [row[0] for row in user_project_ids.fetchall()]
+
+        if user_project_ids:
+            stmt = stmt.where(Project.id.notin_(user_project_ids))
+
+        # Сортировка по дате создания
+        stmt = stmt.order_by(Project.created_at.desc())
+
+        result = await db.execute(stmt)
+        projects = result.scalars().all()
+
+        # Форматируем ответ
+        projects_data = []
+        for project in projects:
+            # Получаем владельца
+            owner_result = await db.execute(select(User).where(User.id == project.created_by))
+            owner = owner_result.scalar_one_or_none()
+
+            # Статистика задач
+            total_tasks = await db.execute(select(func.count(Task.id)).where(Task.project_id == project.id))
+            done_tasks = await db.execute(select(func.count(Task.id)).where(
+                Task.project_id == project.id, Task.status == 'done'
+            ))
+
+            projects_data.append({
+                "id": project.id,
+                "title": project.title,
+                "description": project.description,
+                "hash": project.hash,
+                "is_private": project.is_private,
+                "requires_approval": project.requires_approval,
+                "created_at": project.created_at,
+                "owner": {
+                    "id": owner.id,
+                    "max_id": owner.max_id,
+                    "full_name": owner.full_name,
+                    "username": owner.username
+                } if owner else None,
+                "stats": {
+                    "tasks_count": total_tasks.scalar() or 0,
+                    "tasks_done": done_tasks.scalar() or 0
+                }
+            })
+
+        return {"projects": projects_data}
+
+    except Exception as e:
+        logger.error(f"Error searching public projects: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+@router.get("/by-hash/{project_hash}")
+async def get_project_by_hash_exact(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получить проект по точному совпадению хэша"""
+    try:
+        result = await db.execute(
+            select(Project).where(Project.hash == project_hash)
+        )
+        project = result.scalar_one_or_none()
+
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Проверяем, является ли пользователь уже участником
+        is_member = await db.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id == current_user.id
+            )
+        )
+        is_member = is_member.scalar_one_or_none() is not None
+
+        # Получаем владельца
+        owner_result = await db.execute(select(User).where(User.id == project.created_by))
+        owner = owner_result.scalar_one_or_none()
+
+        # Статистика
+        total_tasks = await db.execute(select(func.count(Task.id)).where(Task.project_id == project.id))
+        done_tasks = await db.execute(select(func.count(Task.id)).where(
+            Task.project_id == project.id, Task.status == 'done'
+        ))
+        members_count = await db.execute(
+            select(func.count(ProjectMember.id)).where(ProjectMember.project_id == project.id)
+        )
+
+        return {
+            "project": {
+                "id": project.id,
+                "title": project.title,
+                "description": project.description,
+                "hash": project.hash,
+                "is_private": project.is_private,
+                "requires_approval": project.requires_approval,
+                "created_at": project.created_at,
+                "owner": {
+                    "id": owner.id,
+                    "max_id": owner.max_id,
+                    "full_name": owner.full_name,
+                    "username": owner.username
+                } if owner else None,
+                "stats": {
+                    "tasks_count": total_tasks.scalar() or 0,
+                    "tasks_done": done_tasks.scalar() or 0,
+                    "members_count": members_count.scalar() or 0
+                }
+            },
+            "is_member": is_member,
+            "can_join": not is_member and (not project.is_private or project.requires_approval)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting project by hash: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
 @router.post("/{project_hash}/join-requests/{request_id}/approve")
 async def approve_join_request(
     project_hash: str,
