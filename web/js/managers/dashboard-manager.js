@@ -15,7 +15,7 @@ class DashboardManager {
               throw new Error('Не удалось загрузить данные дашборда');
           }
 
-          const projects = dashboardData.projects || [];
+          const projects = Array.isArray(dashboardData.projects) ? dashboardData.projects : [];
 
           StateManager.setState('dashboard', dashboardData);
           StateManager.setState('projects', projects);
@@ -26,7 +26,7 @@ class DashboardManager {
           // Приоритетные задачи
           try {
               const tasksData = await ApiService.getTasks({ status: 'todo', limit: 10 });
-              const tasks = tasksData.tasks || [];
+              const tasks = Array.isArray(tasksData.tasks) ? tasksData.tasks : [];
               StateManager.setState('tasks', tasks);
               this.renderPriorityTasks(tasks);
           } catch (e) {
@@ -38,15 +38,18 @@ class DashboardManager {
           setTimeout(() => {
               try {
                   const theme = App.getCurrentTheme();
-                  App.applyTheme(theme); // finalTheme объявлена внутри
+                  App.applyTheme(theme);
               } catch (e) {
                   Utils.logError('Theme apply failed in dashboard:', e);
               }
           }, 150);
 
-          EventManager.emit(APP_EVENTS.DATA_LOADED);
-          EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
+          // Безопасный emit — только если projects валиден
+          if (projects.length > 0) {
+              EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
+          }
 
+          EventManager.emit(APP_EVENTS.DATA_LOADED);
           Utils.log('Dashboard loaded', { projects: projects.length });
       } catch (error) {
           Utils.logError('Dashboard load error:', error);

@@ -683,9 +683,19 @@ class UIComponents {
         });
 
         EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
-            console.log('PROJECTS_LOADED event received:', projects);
-            // Добавляем небольшую задержку для гарантии что DOM готов
-            setTimeout(() => this.renderProjects(projects), 100);
+            if (!Array.isArray(projects)) {
+                Utils.log('Invalid projects data:', projects);
+                return;
+            }
+            if (typeof APP_EVENTS !== 'undefined') {
+                APP_EVENTS.PROJECTS_LOADED = 'projects:loaded';
+                APP_EVENTS.INITIAL_DATA_LOADED = 'initial:data:loaded';
+            }
+            try {
+                UIComponents.renderProjects(projects);
+            } catch (error) {
+                Utils.logError('Error rendering projects:', error);
+            }
         });
 
         EventManager.on(APP_EVENTS.PROJECTS_UPDATED, (projects) => {
@@ -1298,7 +1308,7 @@ class UIComponents {
             }
         }
     }
-    
+
     static updateNotificationBadge(notifications) {
         const badge = document.getElementById('notifications-badge');
         const navBadge = document.getElementById('nav-notification-count');
