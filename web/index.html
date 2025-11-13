@@ -1318,6 +1318,7 @@
 
                     console.log('Project data:', currentProject);
                     console.log('User role:', userRole);
+                    console.log('Project members:', currentProject.members);
 
                     // Обновляем заголовок и описание
                     document.getElementById('projectTitleHeader').textContent = currentProject.title;
@@ -1459,12 +1460,11 @@
 
                     if (currentTask.assigned_to_id) {
                         if (currentTask.assigned_user) {
-                            // Если бэкенд возвращает данные об исполнителе
                             const displayName = currentTask.assigned_user.full_name ||
+                                              currentTask.assigned_user.username ||
                                               `Участник #${currentTask.assigned_to_id}`;
                             document.getElementById('taskAssignedToText').textContent = displayName;
                         } else {
-                            // Иначе используем наш метод
                             await this.loadTaskAssigneeInfo(currentTask.assigned_to_id);
                         }
                     } else {
@@ -1504,17 +1504,22 @@
                 }
             }
 
-            // Новая функция для загрузки информации об исполнителе
             static async loadTaskAssigneeInfo(assigneeId) {
                 try {
+                    console.log('Loading assignee info for:', assigneeId);
+
                     // Если у нас есть данные о проекте и участниках, ищем исполнителя среди участников
                     if (currentProject && currentProject.members) {
-                        const assignee = currentProject.members.find(member =>
-                            member.user_id === assigneeId || (member.user && member.user.id === assigneeId)
-                        );
+                        console.log('Searching in project members:', currentProject.members);
+                        const assignee = currentProject.members.find(member => {
+                            const memberId = member.user_id || (member.user && member.user.id);
+                            console.log('Checking member:', memberId, 'against assignee:', assigneeId);
+                            return memberId === assigneeId;
+                        });
 
                         if (assignee) {
-                            const displayName = assignee.user?.full_name ||
+                            console.log('Found assignee in members:', assignee);
+                            const displayName = (assignee.user && assignee.user.full_name) ||
                                               assignee.full_name ||
                                               `Участник #${assigneeId}`;
                             document.getElementById('taskAssignedToText').textContent = displayName;
@@ -1522,17 +1527,19 @@
                         }
                     }
 
-                    // Если не нашли в участниках, попробуем получить через API проектов
+                    // Если не нашли в участниках, попробуем загрузить участников проекта
                     if (currentProject && currentProject.hash) {
+                        console.log('Loading project members for assignee search');
                         const projectResponse = await ApiService.getProject(currentProject.hash);
                         const projectMembers = projectResponse.members || [];
 
-                        const assignee = projectMembers.find(member =>
-                            member.user_id === assigneeId || (member.user && member.user.id === assigneeId)
-                        );
+                        const assignee = projectMembers.find(member => {
+                            const memberId = member.user_id || (member.user && member.user.id);
+                            return memberId === assigneeId;
+                        });
 
                         if (assignee) {
-                            const displayName = assignee.user?.full_name ||
+                            const displayName = (assignee.user && assignee.user.full_name) ||
                                               assignee.full_name ||
                                               `Участник #${assigneeId}`;
                             document.getElementById('taskAssignedToText').textContent = displayName;
@@ -1541,6 +1548,7 @@
                     }
 
                     // Если все еще не нашли, показываем ID
+                    console.log('Assignee not found, showing ID');
                     document.getElementById('taskAssignedToText').textContent = `ID: ${assigneeId}`;
 
                 } catch (error) {

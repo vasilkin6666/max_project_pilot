@@ -499,7 +499,6 @@ async def delete_task(
             detail="Internal server error"
         )
 
-# В backend/app/api/tasks.py в функции get_task
 @router.get("/{task_id}")
 async def get_task(
     task_id: int,
@@ -508,10 +507,12 @@ async def get_task(
 ):
     """Получить задачу по ID"""
     try:
+        from sqlalchemy.orm import selectinload
+
         result = await db.execute(
             select(Task)
             .where(Task.id == task_id)
-            .options(selectinload(Task.assigned_user))  # Добавляем загрузку данных об исполнителе
+            .options(selectinload(Task.assigned_user))  # Загружаем связанного пользователя
         )
         task = result.scalar_one_or_none()
 
