@@ -1,56 +1,69 @@
 // Менеджер дашборда
 class DashboardManager {
-    static async loadDashboard() {
-        try {
-            StateManager.setLoading(true);
+  static async loadDashboard() {
+      try {
+          StateManager.setLoading(true);
+          Utils.log('Loading dashboard...');
 
-            // Загружаем только дашборд - он уже содержит проекты и статистику
-            const dashboardData = await CacheManager.getWithCache(
-                'dashboard',
-                () => ApiService.getDashboard(),
-                'dashboard'
-            );
+          // Попытка взять из кэша
+          let dashboardData = await CacheManager.getWithCache(
+              'dashboard',
+              () => ApiService.getDashboard(),
+              'dashboard'
+          );
 
-            if (!dashboardData) {
-                throw new Error('Не удалось загрузить данные дашборда');
-            }
+          if (!dashboardData) {
+              throw new Error('Не удалось загрузить данные дашборда');
+          }
 
-            // Извлекаем проекты из ответа дашборда
-            const projects = dashboardData.projects || [];
+          // Извлекаем проекты
+          const projects = dashboardData.projects || [];
 
-            // Обновляем состояние
-            StateManager.setState('dashboard', dashboardData);
-            StateManager.setState('projects', projects);
+          // Обновляем состояние
+          StateManager.setState('dashboard', dashboardData);
+          StateManager.setState('projects', projects);
 
-            // Обновляем UI
-            this.updateStats(dashboardData);
-            this.renderProjects(projects);
+          // Обновляем UI
+          this.updateStats(dashboardData);
+          this.renderProjects(projects);
 
-            // Загружаем приоритетные задачи отдельно
-            try {
-                const tasksData = await ApiService.getTasks({ status: 'todo' });
-                const tasks = tasksData.tasks || [];
-                StateManager.setState('tasks', tasks);
-                this.renderPriorityTasks(tasks);
-            } catch (tasksError) {
-                Utils.logError('Error loading tasks:', tasksError);
-                this.renderPriorityTasks([]);
-            }
+          // Приоритетные задачи (отдельный запрос)
+          try {
+              const tasksData = await ApiService.getTasks({ status: 'todo', limit: 10 });
+              const tasks = tasksData.tasks || [];
+              StateManager.setState('tasks', tasks);
+              this.renderPriorityTasks(tasks);
+          } catch (tasksError) {
+              Utils.logError('Failed to load priority tasks:', tasksError);
+              this.renderPriorityTasks([]);
+          }
 
-            EventManager.emit(APP_EVENTS.DATA_LOADED);
-            Utils.log('Dashboard loaded successfully', {
-                projects: projects.length,
-                settings: !!dashboardData.settings
-            });
+          // Применяем тему (без ReferenceError)
+          setTimeout(() => {
+              try {
+                  const currentTheme = App.getCurrentTheme();
+                  App.applyTheme(currentTheme); // finalTheme объявлена внутри
+              } catch (themeError) {
+                  Utils.logError('Failed to apply theme after dashboard load:', themeError);
+              }
+          }, 150);
 
-        } catch (error) {
-            Utils.logError('Dashboard load error:', error);
-            EventManager.emit(APP_EVENTS.DATA_ERROR, error);
-            this.showErrorState();
-        } finally {
-            StateManager.setLoading(false);
-        }
-    }
+          EventManager.emit(APP_EVENTS.DATA_LOADED);
+          EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
+
+          Utils.log('Dashboard loaded successfully', {
+              projects: projects.length,
+              hasSettings: !!dashboardData.settings
+          });
+
+      } catch (error) {
+          Utils.logError('Dashboard load error:', error);
+          EventManager.emit(APP_EVENTS.DATA_ERROR, error);
+          this.showErrorState();
+      } finally {
+          StateManager.setLoading(false);
+      }
+  }
 
     static updateStats(data) {
         // Используем данные из dashboard response

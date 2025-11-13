@@ -67,21 +67,23 @@ class ApiService {
             Utils.log(`API Response: ${method} ${url}`, result);
 
             return result;
-        } catch (error) {
-            Utils.logError(`API Error: ${method} ${url}`, error);
+          } catch (error) {
+                  Utils.logError(`API Error: ${method} ${url}`, error);
 
-            if (error.name === 'TimeoutError') {
-                throw new Error('Превышено время ожидания ответа от сервера');
-            }
+                  if (error.name === 'TimeoutError') {
+                      throw new Error('Превышено время ожидания ответа от сервера');
+                  }
+                  if (error.name === 'AbortError') {
+                      throw new Error('Запрос отменён');
+                  }
 
-            if (error.status) {
-                // Это HTTP ошибка
-                throw new Error(error.message);
-            }
+                  if (error.status) {
+                      throw new Error(error.message);
+                  }
 
-            throw error;
-        }
-    }
+                  throw error;
+              }
+          }
 
     static async getUserProjects(userId = 'me') {
         return await this.apiCall(`/users/${userId}/projects`);

@@ -11,18 +11,19 @@ class App {
         this.isApplyingTheme = true;
 
         try {
-            const finalTheme = theme || 'light';
+            // ← Объявляем переменную, чтобы не было ReferenceError
+            const finalTheme = theme || CONFIG.UI.THEME.LIGHT;
             const lightTheme = document.getElementById('theme-light');
-            const darkTheme = document.getElementById('theme-dark');
+            const darkTheme  = document.getElementById('theme-dark');
 
             if (finalTheme === 'dark') {
                 if (lightTheme) lightTheme.disabled = true;
-                if (darkTheme) darkTheme.disabled = false;
+                if (darkTheme)  darkTheme.disabled  = false;
                 document.body.setAttribute('data-theme', 'dark');
                 document.documentElement.setAttribute('data-theme', 'dark');
             } else {
                 if (lightTheme) lightTheme.disabled = false;
-                if (darkTheme) darkTheme.disabled = true;
+                if (darkTheme)  darkTheme.disabled  = true;
                 document.body.removeAttribute('data-theme');
                 document.documentElement.removeAttribute('data-theme');
             }
@@ -31,6 +32,7 @@ class App {
             localStorage.setItem('theme', finalTheme);
             this.forceThemeApplication(finalTheme);
 
+            // Сохраняем предпочтения пользователя (если уже залогинен)
             setTimeout(async () => {
                 if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
                     try {
@@ -44,9 +46,7 @@ class App {
                 }
             }, 2000);
         } finally {
-            setTimeout(() => {
-                this.isApplyingTheme = false;
-            }, 1000);
+            setTimeout(() => { this.isApplyingTheme = false; }, 1000);
         }
 
         Utils.log(`Theme changed to: ${finalTheme}`);
@@ -94,8 +94,9 @@ class App {
     }
 
     static getCurrentTheme() {
-        const stateTheme = StateManager.getState('ui.theme');
-        return stateTheme || localStorage.getItem('theme') || 'light';
+        return StateManager.getState('ui.theme') ||
+               localStorage.getItem('theme') ||
+               CONFIG.UI.THEME.LIGHT;
     }
 
     static toggleTheme() {
@@ -110,16 +111,28 @@ class App {
         try {
             Utils.log('App initialization started');
             this.showLoadingOverlay();
+
             await this.checkSystemRequirements();
             await this.initializeCore();
+
+            // 1. Сначала аутентификация – токен обязателен для всех запросов
             await AuthManager.initializeUser();
 
+            // 2. Тема – берём сохранённую или светлую
+            const savedTheme = StateManager.getState('ui.theme') ||
+                               localStorage.getItem('theme') ||
+                               CONFIG.UI.THEME.LIGHT;
+            this.applyTheme(savedTheme);
+
+            // 3. UI-компоненты
             if (typeof UIComponents === 'undefined') {
                 throw new Error('UIComponents not loaded');
             }
             UIComponents.init();
 
+            // 4. Данные
             await this.loadInitialData();
+
             this.hideLoadingOverlay();
             this.startBackgroundProcesses();
             this.activateUnusedComponents();
@@ -388,50 +401,32 @@ class App {
     // ---------- ДАННЫЕ ----------
     static async loadInitialData() {
         try {
-            const loaders = [];
+            Utils.log('Starting initial data load...');
 
-            if (typeof UIComponents !== 'undefined' && !this.templatesLoaded) {
-                await UIComponents.loadTemplates();
-                this.templatesLoaded = true;
-            }
+            // Параллельная загрузка ключевых данных
+            const results = await Promise.allSettled([
+                DashboardManager.loadDashboard(),
+                NotificationsManager.loadNotifications(),
+                ProjectsManager.loadProjects?.(),
+                TasksManager.loadTasks?.(),
+                UsersManager.loadCurrentUser?.()
+            ]);
 
-            if (AuthManager.isUserAuthenticated()) {
-                if (typeof DashboardManager !== 'undefined') {
-                    loaders.push(DashboardManager.loadDashboard().catch(e => {
-                        Utils.logError('Dashboard load failed:', e);
-                        return null;
-                    }));
+            // Логируем результаты
+            results.forEach((result, idx) => {
+                if (result.status === 'rejected') {
+                    Utils.logError(`Initial load failed [${idx}]:`, result.reason);
                 }
-                if (typeof NotificationsManager !== 'undefined') {
-                    loaders.push(NotificationsManager.loadNotifications().catch(e => {
-                        Utils.logError('Notifications load failed:', e);
-                        return [];
-                    }));
-                }
-                if (typeof UsersManager !== 'undefined') {
-                    loaders.push(UsersManager.loadUserPreferences().then(prefs => {
-                        if (prefs.theme && prefs.theme !== this.getCurrentTheme()) {
-                            this.applyTheme(prefs.theme);
-                        }
-                        return prefs;
-                    }).catch(e => {
-                        Utils.logError('User preferences load failed:', e);
-                        return {};
-                    }));
-                }
-                if (typeof ProjectsManager !== 'undefined') {
-                    const force = localStorage.getItem('force_refresh_projects') === 'true';
-                    loaders.push(ProjectsManager.loadProjects(force).catch(e => {
-                        Utils.logError('Projects preload failed:', e);
-                        return [];
-                    }).finally(() => localStorage.removeItem('force_refresh_projects')));
-                }
-            }
+            });
 
-            if (loaders.length) await Promise.allSettled(loaders);
-            Utils.log('Initial data loaded successfully');
-        } catch (e) {
-            Utils.logError('Error loading initial data:', e);
+            // Эмитируем событие завершения (даже если были ошибки)
+            EventManager.emit(APP_EVENTS.INITIAL_DATA_LOADED);
+
+            Utils.log('Initial data load completed');
+        } catch (error) {
+            Utils.logError('Critical error in loadInitialData:', error);
+            ToastManager?.error('Не удалось загрузить данные приложения');
+            EventManager.emit(APP_EVENTS.DATA_ERROR, error);
         }
     }
 
@@ -455,19 +450,32 @@ class App {
     }
 
     static async syncData() {
-        if (!navigator.onLine || !AuthManager.isUserAuthenticated()) return;
+        if (!AuthManager.isUserAuthenticated()) {
+            Utils.log('Sync skipped: user not authenticated');
+            return;
+        }
+
         try {
-            EventManager.emit(APP_EVENTS.SYNC_STARTED);
-            const tasks = [];
-            if (typeof DashboardManager !== 'undefined') tasks.push(DashboardManager.loadDashboard());
-            if (typeof ProjectsManager !== 'undefined') tasks.push(ProjectsManager.loadProjects());
-            if (typeof NotificationsManager !== 'undefined') tasks.push(NotificationsManager.loadNotifications());
-            if (tasks.length) await Promise.allSettled(tasks);
-            EventManager.emit(APP_EVENTS.SYNC_COMPLETED);
+            Utils.log('Starting data sync...');
+
+            const results = await Promise.allSettled([
+                DashboardManager.loadDashboard(),
+                NotificationsManager.loadNotifications(),
+                ProjectsManager.refreshProjects?.(),
+                TasksManager.refreshTasks?.()
+            ]);
+
+            results.forEach((result, idx) => {
+                if (result.status === 'rejected') {
+                    Utils.logError(`Sync failed [${idx}]:`, result.reason);
+                }
+            });
+
+            EventManager.emit(APP_EVENTS.DATA_SYNCED);
             Utils.log('Data sync completed');
-        } catch (e) {
-            EventManager.emit(APP_EVENTS.SYNC_FAILED, e);
-            Utils.logError('Data sync failed:', e);
+        } catch (error) {
+            Utils.logError('Sync error:', error);
+            ToastManager?.error('Ошибка синхронизации данных');
         }
     }
 
@@ -649,24 +657,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('error', ev => Utils.logError('Global error caught:', ev.error));
     window.addEventListener('unhandledrejection', ev => Utils.logError('Unhandled promise rejection:', ev.reason));
 
-    document.addEventListener('keydown', e => {
-        if (e.ctrlKey && e.shiftKey && e.key === 'I') {
-            e.preventDefault();
-            App.showDebugInfo();
-        }
-        if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-            e.preventDefault();
-            App.healthCheck().then(r => {
-                console.log('Health Check Results:', r);
-                if (typeof ToastManager !== 'undefined') ToastManager.info('Health check completed');
-            });
-        }
-    });
-
+    // Применяем сохранённую тему сразу, до полной инициализации
     setTimeout(() => {
         const theme = App.getCurrentTheme();
-        App.forceThemeApplication(theme);
-    }, 1000);
+        App.applyTheme(theme);               // ← гарантируем, что finalTheme объявлена
+    }, 300);
 
     setTimeout(() => App.init(), 100);
 });

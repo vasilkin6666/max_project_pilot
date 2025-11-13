@@ -267,36 +267,17 @@ class AuthManager {
     }
 
     static async handleSuccessfulAuth(tokenData) {
-        // Сохраняем токен
         localStorage.setItem('access_token', tokenData.access_token);
 
-        // В нашем API нет информации о времени жизни токена
-        // Используем консервативный подход: 12 часов для безопасности
-        const expiryTime = Date.now() + (12 * 60 * 60 * 1000); // 12 часов
-        localStorage.setItem('token_expiry', expiryTime.toString());
+        // Сохраняем время жизни токена (по-умолчанию 1 час)
+        const expiresIn = tokenData.expires_in || 3600;
+        localStorage.setItem('token_expiry', Date.now() + expiresIn * 1000);
 
-        // Сохраняем время последней успешной аутентификации
-        localStorage.setItem('last_auth_time', Date.now().toString());
-
-        // Сохраняем данные пользователя
-        this.currentUser = tokenData.user;
-        this.currentUserId = tokenData.user?.id;
         this.isAuthenticated = true;
+        this.currentUser = tokenData.user;
+        this.currentUserId = tokenData.user.id;
 
-        // Запускаем периодическую проверку токена
-        this.startTokenRefresh();
-
-        // Обновляем UI
-        this.updateUserUI();
-
-        // Отправляем событие успешной аутентификации
         EventManager.emit(APP_EVENTS.USER_LOGIN, this.currentUser);
-
-        Utils.log('Authentication successful', {
-            user: this.currentUser?.full_name,
-            id: this.currentUserId,
-            maxData: !!this.maxData
-        });
     }
 
     // НЕ ОТПРАВЛЯЕМ photo_url на сервер — только используем локально
