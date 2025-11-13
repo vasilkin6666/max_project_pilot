@@ -1,6 +1,7 @@
 // js/views/project-view.js
 class ProjectView {
     static currentProject = null;
+    static isOpening = false; /
 
     static async openProject(projectHash) {
         // ПРОВЕРЯЕМ: уже открыт этот проект?
@@ -8,6 +9,14 @@ class ProjectView {
             Utils.log('Project already open, skipping reload');
             return;
         }
+
+        // ПРОВЕРЯЕМ: уже идёт открытие?
+        if (this.isOpening) {
+            Utils.log('Project opening in progress, skipping duplicate call');
+            return;
+        }
+
+        this.isOpening = true;
 
         try {
             App.showLoadingOverlay();
@@ -32,8 +41,11 @@ class ProjectView {
             if (typeof ProjectsManager !== 'undefined') {
                 ProjectsManager.showProjectDetailModal(await ApiService.getProject(projectHash).catch(() => null));
             }
+        } finally {
+            this.isOpening = false; // СБРАСЫВАЕМ ФЛАГ
         }
     }
+
 
     static showProjectView(projectData, tasks) {
         const project = projectData.project || projectData;

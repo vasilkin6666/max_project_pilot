@@ -303,36 +303,18 @@ class UsersManager {
     }
 
     static async patchUserPreferences(preferences) {
-        // Проверяем, не является ли запрос дублирующим
-        let currentPrefs;
+        if (!AuthManager.isUserAuthenticated() || !AuthManager.getCurrentUser()) {
+            Utils.log('User not fully authenticated, skipping preferences save');
+            return;
+        }
+
         try {
-            currentPrefs = await this.loadUserPreferences();
+            const response = await ApiService.patchUserPreferences(preferences);
+            Utils.log('Preferences updated successfully');
+            return response;
         } catch (error) {
-            currentPrefs = {};
-        }
-
-        const hasChanges = Object.keys(preferences).some(key =>
-            currentPrefs[key] !== preferences[key]
-        );
-
-        if (!hasChanges) {
-            console.log('No changes in preferences, skipping update');
-            return currentPrefs;
-        }
-
-        try {
-            const result = await ApiService.patchUserPreferences({ preferences });
-            if (result && result.preferences) {
-                HapticManager.success();
-                return result.preferences;
-            }
+            Utils.logError('Error patching user preferences:', error);
             throw new Error('Не удалось обновить настройки');
-        } catch (error) {
-            // Логируем ошибку только если это не сетевые проблемы
-            if (!error.message?.includes('network') && !error.message?.includes('timeout')) {
-                Utils.logError('Error patching user preferences:', error);
-            }
-            throw error;
         }
     }
 

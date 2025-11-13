@@ -330,6 +330,19 @@ class App {
             }
         });
 
+        EventManager.on('data:loaded', async () => {
+            // Ждём, пока AuthManager полностью загрузит пользователя
+            if (AuthManager.getCurrentUser()) {
+                applyTheme(AuthManager.getCurrentUser().preferences?.theme || 'light');
+            } else {
+                // Если пользователь ещё не загружен — ждём
+                const unwatch = EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
+                    unwatch();
+                    applyTheme(user.preferences?.theme || 'light');
+                });
+            }
+        });
+
         // Обновление поискового индекса при изменении данных
         EventManager.on(APP_EVENTS.PROJECTS_LOADED, (projects) => {
             if (typeof SearchManager !== 'undefined') {
@@ -714,7 +727,7 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
 
         Utils.log(`Theme changed to: ${theme}`);
     }
-    
+
     static forceThemeApplication(theme) {
         // Принудительно обновляем основные элементы
         const mainContent = document.querySelector('.main-content');

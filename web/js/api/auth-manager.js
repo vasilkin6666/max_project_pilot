@@ -309,7 +309,6 @@ class AuthManager {
             const maxUser = this.maxData.user;
             const currentUser = this.currentUser;
 
-            // Обновляем только локальные данные и UI
             const updates = {};
 
             const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
@@ -460,9 +459,9 @@ class AuthManager {
 
             // Добавляем фото если есть (приоритет у MAX фото)
             if (displayUser.photo_url) {
-                userAvatar.style.backgroundImage = `url(${displayUser.photo_url})`;
-                userAvatar.textContent = '';
-            }
+                    userAvatar.style.backgroundImage = `url(${displayUser.photo_url})`;
+                    userAvatar.textContent = '';
+                }
         }
 
         // Обновляем имя пользователя в настройках если есть элемент
