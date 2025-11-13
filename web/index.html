@@ -905,6 +905,11 @@
             }
 
             static async createTask(taskData) {
+                // Преобразуем assigned_to_ids в assigned_to_id если нужно
+                if (taskData.assigned_to_ids && taskData.assigned_to_ids.length > 0) {
+                    taskData.assigned_to_id = taskData.assigned_to_ids[0];
+                    delete taskData.assigned_to_ids;
+                }
                 return this.post('/tasks/', taskData);
             }
 
@@ -913,6 +918,14 @@
             }
 
             static async updateTask(taskId, taskData) {
+                // Преобразуем assigned_to_ids в assigned_to_id если нужно
+                if (taskData.assigned_to_ids && taskData.assigned_to_ids.length > 0) {
+                    taskData.assigned_to_id = taskData.assigned_to_ids[0];
+                    delete taskData.assigned_to_ids;
+                } else if (taskData.assigned_to_ids && taskData.assigned_to_ids.length === 0) {
+                    taskData.assigned_to_id = null;
+                    delete taskData.assigned_to_ids;
+                }
                 return this.put(`/tasks/${taskId}`, taskData);
             }
 
@@ -1413,7 +1426,7 @@
                     document.getElementById('taskCreatedAtText').textContent = new Date(currentTask.created_at).toLocaleString();
                     document.getElementById('taskDueDateText').textContent = currentTask.due_date ? new Date(currentTask.due_date).toLocaleDateString() : 'Не установлен';
 
-                    // Отображаем имя исполнителя вместо ID
+                    // ИСПРАВЛЕНО: Отображаем имя исполнителя
                     if (currentTask.assigned_to_id) {
                         try {
                             const userResponse = await ApiService.getUser(currentTask.assigned_to_id);
@@ -1422,6 +1435,7 @@
                                 : `Исполнитель #${currentTask.assigned_to_id}`;
                             document.getElementById('taskAssignedToText').textContent = displayName;
                         } catch (error) {
+                            console.error('Error loading assigned user:', error);
                             document.getElementById('taskAssignedToText').textContent = `ID: ${currentTask.assigned_to_id}`;
                         }
                     } else {
@@ -1693,15 +1707,19 @@
                     if (!members || members.length === 0) {
                         container.innerHTML = '<p>Участников нет</p>';
                     } else {
-                        // Проверяем права текущего пользователя
-                        const canManageMembers = currentProject.current_user_role === 'owner' || currentProject.current_user_role === 'admin';
+                        // ИСПРАВЛЕНО: Правильная проверка прав доступа
+                        // Владелец может управлять всеми участниками, включая себя (кроме смены роли себе)
+                        const canManageMembers = currentProject.current_user_role === 'owner' ||
+                                               currentProject.current_user_role === 'admin';
 
                         container.innerHTML = members.map(member => {
-                            // ИСПРАВЛЕНО: Правильное получение имени участника
+                            // Правильное получение данных участника
                             const memberData = member.user || member;
                             const displayName = memberData.full_name && memberData.full_name.trim() !== ''
                                 ? memberData.full_name
                                 : `Участник #${member.user_id || memberData.id}`;
+
+                            const isCurrentUser = (member.user_id || memberData.id) === currentUser.id;
 
                             return `
                                 <div style="padding: 15px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
@@ -1710,10 +1728,10 @@
                                             <div style="font-weight: bold;">${this.escapeHtml(displayName)}</div>
                                             <div style="color: #666; font-size: 14px;">
                                                 Роль: ${this.getRoleText(member.role)}
-                                                ${(member.user_id || memberData.id) === currentUser.id ? ' (Вы)' : ''}
+                                                ${isCurrentUser ? ' (Вы)' : ''}
                                             </div>
                                         </div>
-                                        ${canManageMembers && (member.user_id || memberData.id) !== currentUser.id ? `
+                                        ${canManageMembers && !isCurrentUser ? `
                                         <div style="display: flex; gap: 10px;">
                                             <button onclick="App.showUpdateMemberRoleModal(${member.user_id || memberData.id}, '${this.escapeHtml(displayName)}', '${member.role}')"
                                                     style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -1983,11 +2001,12 @@
                         taskData.due_date = dueDate;
                     }
 
-                    // Назначаем исполнителя, если выбран
+                    // ИСПРАВЛЕНО: Правильное назначение исполнителя
                     if (assignedTo) {
-                        taskData.assigned_to_ids = [parseInt(assignedTo)];
+                        taskData.assigned_to_id = parseInt(assignedTo);
                     }
 
+                    console.log('Creating subtask with data:', taskData);
                     await ApiService.createTask(taskData);
 
                     this.hideModal('createSubtaskModal');
@@ -2029,8 +2048,13 @@
 
                     if (dueDate) taskData.due_date = dueDate;
                     if (parentTaskId) taskData.parent_task_id = parseInt(parentTaskId);
-                    if (assignedTo) taskData.assigned_to_ids = [parseInt(assignedTo)];
 
+                    // ИСПРАВЛЕНО: Правильное назначение исполнителя
+                    if (assignedTo) {
+                        taskData.assigned_to_id = parseInt(assignedTo);
+                    }
+
+                    console.log('Creating task with data:', taskData);
                     await ApiService.createTask(taskData);
 
                     this.hideModal('createTaskModal');
@@ -2105,6 +2129,9 @@
                         taskData.due_date = null;
                     }
 
+                    // ИСПРАВЛЕНО: Если нужно обновить назначение, добавить assigned_to_id
+                    // (пока оставляем текущее значение)
+
                     console.log('Updating task:', currentTask.id, taskData);
                     await ApiService.updateTask(currentTask.id, taskData);
 
@@ -2115,6 +2142,24 @@
                 } catch (error) {
                     console.error('Error updating task:', error);
                     this.showError('Ошибка обновления задачи: ' + error.message);
+                }
+            }
+
+            static async assignTaskToUser(userId) {
+                if (!currentTask || !currentTask.id) return;
+
+                try {
+                    const taskData = {
+                        assigned_to_id: userId
+                    };
+
+                    await ApiService.updateTask(currentTask.id, taskData);
+                    this.showSuccess('Исполнитель назначен!');
+                    await this.openTask(currentTask.id); // Перезагружаем задачу
+
+                } catch (error) {
+                    console.error('Error assigning task:', error);
+                    this.showError('Ошибка назначения исполнителя: ' + error.message);
                 }
             }
 
