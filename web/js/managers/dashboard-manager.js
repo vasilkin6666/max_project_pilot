@@ -83,6 +83,39 @@ class DashboardManager {
         }
     }
 
+    static initAdvancedStats() {
+        // Периодическое обновление статистики
+        setInterval(() => {
+            this.updateDashboardStats();
+        }, 30000); // Каждые 30 секунд
+
+        // Слушатель для обновления при изменении данных
+        EventManager.on(APP_EVENTS.PROJECTS_LOADED, () => this.refreshStats());
+        EventManager.on(APP_EVENTS.TASKS_LOADED, () => this.refreshStats());
+    }
+
+    static updateDashboardStats() {
+        const projects = StateManager.getState('projects') || [];
+        const tasks = StateManager.getState('tasks') || [];
+
+        const stats = {
+            activeProjects: this.getActiveProjectsCount(projects),
+            totalProjects: projects.length,
+            overdueTasks: this.getOverdueTasksCount(tasks),
+            totalTasks: tasks.length,
+            completedTasks: this.getCompletedTasksCount(tasks),
+            urgentTasks: this.getUrgentTasksCount(tasks)
+        };
+
+        // Обновляем UI
+        this.updateStatsDisplay(stats);
+
+        // Сохраняем в state
+        StateManager.setState('dashboard.stats', stats);
+
+        return stats;
+    }
+
     static animateCounter(element, from, to) {
         const duration = 500; // ms
         const startTime = performance.now();
@@ -227,47 +260,24 @@ class DashboardManager {
     }
 
     static getActiveProjects(projects) {
-        return projects
-            .filter(projectMember => {
-                const project = projectMember.project || projectMember;
-                const stats = project.stats || { tasks_count: 0, tasks_done: 0 };
-                const progress = stats.tasks_count > 0 ?
-                    Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
-                return progress < 100; // Незавершенные проекты
-            })
-            .sort((a, b) => {
-                const projectA = a.project || a;
-                const projectB = b.project || b;
-                const statsA = projectA.stats || { tasks_count: 0, tasks_done: 0 };
-                const statsB = projectB.stats || { tasks_count: 0, tasks_done: 0 };
-
-                const progressA = statsA.tasks_count > 0 ?
-                    Math.round((statsA.tasks_done / statsA.tasks_count) * 100) : 0;
-                const progressB = statsB.tasks_count > 0 ?
-                    Math.round((statsB.tasks_done / statsB.tasks_count) * 100) : 0;
-
-                // Сортируем по убыванию прогресса
-                return progressB - progressA;
-            });
+        return projects.filter(project => {
+            const stats = project.stats || {};
+            const progress = stats.tasks_count > 0 ?
+                Math.round((stats.tasks_done / stats.tasks_count) * 100) : 0;
+            return progress < 100;
+        });
     }
 
     static getPriorityTasks(tasks) {
         return tasks
-            .filter(task => {
-                // Фильтруем просроченные и задачи с высоким приоритетом
-                const isOverdue = Utils.isOverdue(task.due_date);
-                const isHighPriority = ['high', 'urgent'].includes(task.priority);
-                return isOverdue || isHighPriority;
-            })
+            .filter(task => ['high', 'urgent'].includes(task.priority) || Utils.isOverdue(task.due_date))
             .sort((a, b) => {
-                // Сортируем: сначала просроченные, затем по приоритету
                 const aOverdue = Utils.isOverdue(a.due_date);
                 const bOverdue = Utils.isOverdue(b.due_date);
 
                 if (aOverdue && !bOverdue) return -1;
                 if (!aOverdue && bOverdue) return 1;
 
-                // При равных условиях сортируем по приоритету
                 const priorityOrder = { 'urgent': 0, 'high': 1, 'medium': 2, 'low': 3 };
                 return priorityOrder[a.priority] - priorityOrder[b.priority];
             });
@@ -342,8 +352,23 @@ class DashboardManager {
     }
 
     static refreshStats() {
-        const dashboardData = StateManager.getState('dashboard');
-        this.updateStats(dashboardData);
+        this.updateDashboardStats();
+    }
+
+    static getActiveProjectsCount(projects) {
+        return this.getActiveProjects(projects).length;
+    }
+
+    static getOverdueTasksCount(tasks) {
+        return tasks.filter(task => Utils.isOverdue(task.due_date) && task.status !== 'done').length;
+    }
+
+    static getCompletedTasksCount(tasks) {
+        return tasks.filter(task => task.status === 'done').length;
+    }
+
+    static getUrgentTasksCount(tasks) {
+        return tasks.filter(task => task.priority === 'urgent' && task.status !== 'done').length;
     }
 
     // Подписка на события обновления данных

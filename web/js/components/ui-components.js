@@ -21,76 +21,28 @@ class UIComponents {
                 return;
             }
 
-            // ИСПРАВЛЕННЫЕ ПУТИ - относительные от корня
-            const templateFiles = [
-                'templates/project-card.html',
-                'templates/task-card.html',
-                'templates/notification-item.html',
-                'templates/modals/create-project.html',
-                'templates/modals/create-task.html',
-                'templates/modals/settings.html'
-            ];
-
+            // Загружаем шаблоны из существующих script элементов в index.html
+            const templateElements = document.querySelectorAll('script[type="text/template"]');
             let loadedCount = 0;
 
-            for (const file of templateFiles) {
-                try {
-                    const response = await fetch(file);
-                    if (response.ok) {
-                        const html = await response.text();
-
-                        // Извлекаем только содержимое script template
-                        const templateMatch = html.match(/<script[^>]*type="text\/template"[^>]*>([\s\S]*?)<\/script>/);
-                        if (templateMatch) {
-                            const templateContent = templateMatch[1].trim();
-                            // Извлекаем ID из атрибута id
-                            const idMatch = html.match(/<script[^>]*id="([^"]+)"[^>]*type="text\/template"/);
-                            const templateId = idMatch ? idMatch[1] : this.generateTemplateId(file);
-
-                            this.templates.set(templateId, templateContent);
-                            loadedCount++;
-                            console.log(`✅ Loaded template: ${templateId} from ${file}`);
-                        } else {
-                            // Если не нашли script template, используем весь HTML как шаблон
-                            const templateId = this.generateTemplateId(file);
-                            this.templates.set(templateId, html);
-                            loadedCount++;
-                            console.log(`✅ Loaded entire file as template: ${templateId} from ${file}`);
-                        }
-                    } else {
-                        console.warn(`❌ Failed to load template: ${file}`, response.status);
-                        this.createFallbackTemplate(file);
-                    }
-                } catch (error) {
-                    Utils.logError(`Error loading template ${file}:`, error);
-                    this.createFallbackTemplate(file);
-                }
-            }
-
-            // Загружаем шаблоны из существующих script элементов
-            const templateElements = document.querySelectorAll('script[type="text/template"]');
             for (const element of templateElements) {
                 const id = element.id;
-                const content = element.innerHTML;
-                if (id && !this.templates.has(id)) {
+                const content = element.innerHTML.trim();
+
+                if (id && content) {
                     this.templates.set(id, content);
                     loadedCount++;
-                    console.log(`✅ Loaded inline template: ${id}`);
+                    Utils.log(`Loaded inline template: ${id}`);
                 }
             }
 
-            Utils.log('Templates loaded', { count: loadedCount });
+            Utils.log('Templates loaded from inline scripts', { count: loadedCount });
             this.ensureRequiredTemplates();
 
         } catch (error) {
             Utils.logError('Error loading templates:', error);
             this.createFallbackTemplates();
         }
-    }
-
-    static generateTemplateId(file) {
-        const fileName = file.split('/').pop().replace('.html', '');
-        return `${fileName}-template`;
     }
 
     static ensureRequiredTemplates() {
@@ -307,38 +259,6 @@ class UIComponents {
                 </div>
             </div>
         `;
-    }
-
-    static createFallbackTemplate(file) {
-        const fileName = file.split('/').pop().replace('.html', '');
-        const templateId = `${fileName}-template`;
-
-        let fallbackContent = '';
-
-        switch(templateId) {
-            case 'project-card-template':
-                fallbackContent = this.createProjectCardFallback({});
-                break;
-            case 'task-card-template':
-                fallbackContent = this.createTaskCard({});
-                break;
-            case 'notification-item-template':
-                fallbackContent = '<div class="notification-item">{{message}}</div>';
-                break;
-            case 'create-project-modal-template':
-                fallbackContent = this.getCreateProjectFallbackTemplate();
-                break;
-            case 'create-task-modal-template':
-                fallbackContent = this.getCreateTaskFallbackTemplate();
-                break;
-            case 'settings-modal-template':
-                fallbackContent = this.getSettingsFallbackTemplate();
-                break;
-            default:
-                fallbackContent = `<div class="fallback-template">Шаблон ${templateId}</div>`;
-        }
-
-        this.templates.set(templateId, fallbackContent);
     }
 
     static createFallbackTemplates() {

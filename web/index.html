@@ -46,14 +46,30 @@
                     <i class="fas fa-rocket me-2"></i>Project Pilot
                 </h1>
                 <div class="header-actions">
+                    <!-- Активированные кнопки -->
+                    <button class="btn btn-icon" id="notifications-btn" aria-label="Уведомления">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notification-count">0</span>
+                    </button>
+
                     <button class="btn btn-icon" id="search-btn" aria-label="Поиск">
                         <i class="fas fa-search"></i>
                     </button>
+
                     <button class="btn btn-icon" id="join-requests-btn" aria-label="Заявки на вступление">
                         <i class="fas fa-user-plus"></i>
                     </button>
+
+                    <!-- Активированное меню пользователя -->
+                    <button class="btn btn-avatar" id="user-menu-btn" aria-label="Меню пользователя">
+                        <div class="user-avatar" id="user-avatar">
+                            <span id="user-initials">U</span>
+                        </div>
+                    </button>
+
                     <button class="btn btn-primary" id="create-project-btn">
                         <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline">Создать проект</span>
                     </button>
                 </div>
             </div>
@@ -204,6 +220,496 @@
             </div>
         </div>
     </div>
+
+    <!-- Templates -->
+
+    <!-- Шаблон элемента уведомления -->
+    <script type="text/template" id="notification-item-template">
+        <div class="notification-item {{type}} {{#unless isRead}}unread{{/unless}}"
+             data-notification-id="{{id}}"
+             {{#if projectHash}}data-project-hash="{{projectHash}}"{{/if}}
+             tabindex="0"
+             role="button"
+             aria-label="Уведомление: {{title}}">
+
+            <div class="notification-content">
+                <div class="notification-icon" aria-hidden="true">
+                    <i class="fas {{icon}}"></i>
+                </div>
+                <div class="notification-details">
+                    <h5 class="notification-title">{{title}}</h5>
+                    <p class="notification-message">{{message}}</p>
+
+                    {{#if isJoinRequest}}
+                    <div class="notification-actions">
+                        <button class="btn btn-success btn-sm"
+                                onclick="NotificationsManager.approveJoinRequest('{{id}}', '{{projectHash}}')"
+                                aria-label="Принять запрос на вступление">
+                            <i class="fas fa-check"></i> Принять
+                        </button>
+                        <button class="btn btn-danger btn-sm"
+                                onclick="NotificationsManager.rejectJoinRequest('{{id}}', '{{projectHash}}')"
+                                aria-label="Отклонить запрос на вступление">
+                            <i class="fas fa-times"></i> Отклонить
+                        </button>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+            <div class="notification-time" aria-label="Получено: {{time}}">
+                {{time}}
+            </div>
+        </div>
+    </script>
+
+    <!-- Шаблон карточки проекта -->
+    <script type="text/template" id="project-card-template">
+        <div class="project-card"
+             data-project-id="{{id}}"
+             data-project-hash="{{hash}}"
+             data-user-role="{{role}}"
+             tabindex="0"
+             role="button"
+             aria-label="Проект: {{title}}, прогресс: {{progress}}%">
+
+            <div class="swipe-actions" aria-hidden="true">
+                <div class="swipe-action edit-action">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <div class="swipe-action delete-action">
+                    <i class="fas fa-trash"></i>
+                </div>
+            </div>
+
+            <div class="card-content">
+                <div class="card-header">
+                    <h3 class="project-title">{{title}}</h3>
+                    <span class="role-badge role-{{role}}" aria-label="Ваша роль: {{roleText}}">
+                        {{roleText}}
+                    </span>
+                </div>
+
+                <p class="project-description">
+                    {{description}}
+                </p>
+
+                <div class="project-stats">
+                    <div class="stat" aria-label="{{membersCount}} участников">
+                        <i class="fas fa-users"></i>
+                        <span>{{membersCount}}</span>
+                    </div>
+                    <div class="stat" aria-label="{{tasksCount}} задач">
+                        <i class="fas fa-tasks"></i>
+                        <span>{{tasksCount}}</span>
+                    </div>
+                    <div class="stat" aria-label="{{tasksDone}} выполнено">
+                        <i class="fas fa-check-circle"></i>
+                        <span>{{tasksDone}}</span>
+                    </div>
+                </div>
+
+                {{#if tasksCount}}
+                <div class="progress-container">
+                    <div class="progress-bar" role="progressbar"
+                         aria-valuenow="{{progress}}"
+                         aria-valuemin="0"
+                         aria-valuemax="100">
+                        <div class="progress-fill" style="width: {{progress}}%"></div>
+                    </div>
+                    <span class="progress-text">{{progress}}%</span>
+                </div>
+                {{/if}}
+
+                <div class="card-footer">
+                    <span class="project-status" aria-label="Статус: {{status}}">
+                        {{status}}
+                    </span>
+                    {{#if canInvite}}
+                    <button class="btn btn-sm btn-outline share-btn"
+                            onclick="ProjectsManager.showInviteDialog('{{hash}}')"
+                            aria-label="Поделиться проектом">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <!-- Шаблон карточки задачи -->
+    <script type="text/template" id="task-card-template">
+        <div class="task-card"
+             data-task-id="{{id}}"
+             tabindex="0"
+             role="button"
+             aria-label="Задача: {{title}}, приоритет: {{priorityText}}, статус: {{statusText}}">
+
+            <div class="swipe-actions" aria-hidden="true">
+                <div class="swipe-action edit-action">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <div class="swipe-action delete-action">
+                    <i class="fas fa-trash"></i>
+                </div>
+            </div>
+
+            <div class="card-content">
+                <div class="card-header">
+                    <h4 class="task-title">{{truncate title 60}}</h4>
+                    <span class="priority-badge priority-{{priority}}" aria-label="Приоритет: {{priorityText}}">
+                        {{priorityText}}
+                    </span>
+                </div>
+
+                <p class="task-description">
+                    {{truncate description 150}}
+                </p>
+
+                <div class="task-meta">
+                    <div class="meta-item" aria-label="Исполнитель: {{assignee}}">
+                        <i class="fas fa-user"></i>
+                        <span>{{assignee}}</span>
+                    </div>
+                    <div class="meta-item {{#if isOverdue}}overdue{{/if}}"
+                         aria-label="Срок: {{dueDate}} {{#if isOverdue}}(просрочено){{/if}}">
+                        <i class="fas fa-clock"></i>
+                        <span>{{dueDate}}</span>
+                    </div>
+                </div>
+
+                <div class="task-footer">
+                    <span class="status-badge status-{{status}}" aria-label="Статус: {{statusText}}">
+                        {{statusText}}
+                    </span>
+
+                    {{#if hasSubtasks}}
+                    <div class="task-progress" aria-label="Прогресс подзадач: {{progress}}%">
+                        <span class="progress-text">{{progress}}%</span>
+                        <div class="progress-bar small">
+                            <div class="progress-fill" style="width: {{progress}}%"></div>
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <!-- Шаблон модального окна создания проекта -->
+    <script type="text/template" id="create-project-modal-template">
+        <form id="create-project-form" novalidate>
+            <div class="form-group">
+                <label for="project-title" class="form-label">Название проекта *</label>
+                <input type="text" class="form-control" id="project-title" required
+                       placeholder="Введите название проекта"
+                       aria-describedby="project-title-help">
+                <div id="project-title-help" class="form-text">
+                    Название должно быть уникальным и описательным
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="project-description" class="form-label">Описание</label>
+                <textarea class="form-control" id="project-description" rows="3"
+                          placeholder="Опишите ваш проект (необязательно)"
+                          aria-describedby="project-description-help"></textarea>
+                <div id="project-description-help" class="form-text">
+                    Краткое описание поможет участникам понять цели проекта
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="project-private" checked
+                           aria-describedby="project-private-help">
+                    <label class="form-check-label" for="project-private">
+                        Приватный проект
+                    </label>
+                    <div id="project-private-help" class="form-text">
+                        Только приглашенные пользователи смогут увидеть проект
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="project-approval"
+                           aria-describedby="project-approval-help">
+                    <label class="form-check-label" for="project-approval">
+                        Требовать одобрение для присоединения
+                    </label>
+                    <div id="project-approval-help" class="form-text">
+                        Новые участники должны быть одобрены владельцем/админом
+                    </div>
+                </div>
+            </div>
+        </form>
+    </script>
+
+    <!-- Шаблон модального окна создания задачи -->
+    <script type="text/template" id="create-task-modal-template">
+        <form id="create-task-form" novalidate>
+            <div class="form-group">
+                <label for="task-title" class="form-label">Название задачи *</label>
+                <input type="text" class="form-control" id="task-title" required
+                       placeholder="Введите название задачи"
+                       aria-describedby="task-title-help">
+                <div id="task-title-help" class="form-text">
+                    Краткое и понятное название задачи
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="task-description" class="form-label">Описание</label>
+                <textarea class="form-control" id="task-description" rows="3"
+                          placeholder="Опишите задачу (необязательно)"
+                          aria-describedby="task-description-help"></textarea>
+                <div id="task-description-help" class="form-text">
+                    Детальное описание поможет исполнителю понять задачу
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="task-assignee" class="form-label">Исполнитель</label>
+                        <select class="form-select" id="task-assignee"
+                                aria-describedby="task-assignee-help">
+                            <option value="">Не назначен</option>
+                            {{#each members}}
+                            <option value="{{user_id}}">{{user.full_name}}</option>
+                            {{/each}}
+                        </select>
+                        <div id="task-assignee-help" class="form-text">
+                            Выберите ответственного за выполнение задачи
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="task-priority" class="form-label">Приоритет</label>
+                        <select class="form-select" id="task-priority"
+                                aria-describedby="task-priority-help">
+                            <option value="low">Низкий</option>
+                            <option value="medium" selected>Средний</option>
+                            <option value="high">Высокий</option>
+                            <option value="urgent">Срочный</option>
+                        </select>
+                        <div id="task-priority-help" class="form-text">
+                            Определяет важность и срочность задачи
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="task-due-date" class="form-label">Срок выполнения</label>
+                <input type="datetime-local" class="form-control" id="task-due-date"
+                       aria-describedby="task-due-date-help">
+                <div id="task-due-date-help" class="form-text">
+                    Установите крайний срок выполнения задачи
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Подзадачи</label>
+                <div id="subtasks-container" aria-describedby="subtasks-help">
+                    <!-- Подзадачи будут добавляться динамически -->
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-2"
+                        onclick="TasksManager.addSubtaskField()"
+                        aria-label="Добавить подзадачу">
+                    <i class="fas fa-plus"></i> Добавить подзадачу
+                </button>
+                <div id="subtasks-help" class="form-text">
+                    Разбейте сложную задачу на более мелкие подзадачи
+                </div>
+            </div>
+        </form>
+    </script>
+
+    <!-- Шаблон модального окна настроек -->
+    <script type="text/template" id="settings-modal-template">
+        <div class="settings-modal">
+            <!-- ДОБАВЛЕННЫЙ БЛОК АККАУНТА -->
+            <div class="setting-group">
+                <h3 class="setting-title">Аккаунт</h3>
+                <div class="account-info">
+                    <div class="account-avatar-large">
+                        <div class="user-avatar-large" id="settings-user-avatar">U</div>
+                    </div>
+                    <div class="account-details">
+                        <h4 id="settings-user-name">Загрузка...</h4>
+                        <p class="text-muted" id="settings-max-id">MAX ID: загрузка...</p>
+                        <p class="text-muted" id="settings-user-role">Роль: загрузка...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="settings-section-title">Внешний вид</h4>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Тема приложения</label>
+                        <span class="setting-description">Выберите светлую или темную тему</span>
+                    </div>
+                    <div class="theme-toggle-container">
+                        <div class="theme-toggle">
+                            <input type="checkbox" id="settings-theme-switch" class="theme-checkbox"
+                                   {{#if isDarkTheme}}checked{{/if}}
+                                   aria-label="Переключить тему">
+                            <label for="settings-theme-switch" class="theme-label">
+                                <span class="theme-icon sun"><i class="fas fa-sun"></i></span>
+                                <span class="theme-icon moon"><i class="fas fa-moon"></i></span>
+                                <span class="theme-ball"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Компактный вид</label>
+                        <span class="setting-description">Уменьшить отступы между элементами</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="compact-view"
+                               {{#if compactView}}checked{{/if}}
+                               aria-label="Включить компактный вид">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="settings-section-title">Уведомления</h4>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Push-уведомления</label>
+                        <span class="setting-description">Получать уведомления в реальном времени</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="push-notifications"
+                               {{#if pushNotifications}}checked{{/if}}
+                               aria-label="Включить push-уведомления">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Email уведомления</label>
+                        <span class="setting-description">Получать уведомления на email</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="email-notifications"
+                               {{#if emailNotifications}}checked{{/if}}
+                               aria-label="Включить email уведомления">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Звуковые уведомления</label>
+                        <span class="setting-description">Воспроизводить звук при новых уведомлениях</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="sound-notifications"
+                               {{#if soundNotifications}}checked{{/if}}
+                               aria-label="Включить звуковые уведомления">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="settings-section-title">Данные и синхронизация</h4>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Автосинхронизация</label>
+                        <span class="setting-description">Автоматически синхронизировать данные каждые 5 минут</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="auto-sync"
+                               {{#if autoSync}}checked{{/if}}
+                               aria-label="Включить автосинхронизацию">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Оффлайн режим</label>
+                        <span class="setting-description">Сохранять данные для работы без интернета</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="offline-mode"
+                               {{#if offlineMode}}checked{{/if}}
+                               aria-label="Включить оффлайн режим">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <div class="setting-actions">
+                    <button class="btn btn-outline" id="export-data-btn"
+                            aria-label="Экспортировать данные">
+                        <i class="fas fa-download"></i> Экспорт данных
+                    </button>
+                    <button class="btn btn-outline" id="clear-cache-btn"
+                            aria-label="Очистить кэш">
+                        <i class="fas fa-trash"></i> Очистить кэш
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h4 class="settings-section-title">Дополнительно</h4>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Тактильная обратная связь</label>
+                        <span class="setting-description">Вибрация при взаимодействии с элементами</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="haptic-feedback"
+                               {{#if hapticFeedback}}checked{{/if}}
+                               aria-label="Включить тактильную обратную связь">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Анимации</label>
+                        <span class="setting-description">Плавные переходы и анимации интерфейса</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="animations"
+                               {{#if animations}}checked{{/if}}
+                               aria-label="Включить анимации">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Режим доступности</label>
+                        <span class="setting-description">Улучшенная поддержка для пользователей с ограниченными возможностями</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="accessibility-mode"
+                               {{#if accessibilityMode}}checked{{/if}}
+                               aria-label="Включить режим доступности">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

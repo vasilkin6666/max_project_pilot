@@ -4,6 +4,7 @@ class App {
     static eventHandlersSetup = false;
     static templatesLoaded = false;
     static themeUpdateDebounce = null;
+    static isApplyingTheme = false;
 
     static async init() {
         try {
@@ -37,6 +38,9 @@ class App {
             // Запускаем фоновые процессы
             this.startBackgroundProcesses();
 
+            this.activateUnusedComponents();
+            this.setupCompleteEventSystem();
+
             Utils.log('App initialization completed');
 
             // Триггерим событие успешной инициализации
@@ -47,6 +51,119 @@ class App {
             this.handleInitError(error);
         }
     }
+
+    static activateUnusedComponents() {
+        // Сетевой статус
+        this.initNetworkStatus();
+
+        // Расширенные свайпы
+        if (typeof SwipeManager !== 'undefined') {
+            SwipeManager.setupMemberSwipes();
+            SwipeManager.setupNotificationSwipes();
+        }
+
+        // Тактильная обратная связь
+        if (typeof HapticManager !== 'undefined') {
+            HapticManager.initHapticIntegration();
+        }
+
+        // Валидация
+        if (typeof Utils !== 'undefined') {
+            Utils.initValidationSystem();
+        }
+
+        // Настройки
+        if (typeof UsersManager !== 'undefined') {
+            UsersManager.initSettingsIntegration();
+        }
+
+        // Фильтры
+        if (typeof TasksManager !== 'undefined') {
+            TasksManager.initTaskFilters();
+        }
+
+        // Статистика
+        if (typeof DashboardManager !== 'undefined') {
+            DashboardManager.initAdvancedStats();
+        }
+
+        // Разрешения
+        if (typeof AuthManager !== 'undefined') {
+            AuthManager.initPermissionSystem();
+        }
+    }
+
+    static initNetworkStatus() {
+        const statusIndicator = document.createElement('div');
+        statusIndicator.id = 'network-status-indicator';
+        statusIndicator.className = 'network-status-indicator';
+        statusIndicator.innerHTML = `
+            <div class="network-status online"></div>
+            <span class="network-status-text">В сети</span>
+        `;
+
+        // Добавляем в header
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+            headerActions.appendChild(statusIndicator);
+        }
+
+        // Обработчик изменений сетевого статуса
+        EventManager.on(APP_EVENTS.NETWORK_STATUS_CHANGED, (status) => {
+            const statusElement = statusIndicator.querySelector('.network-status');
+            const textElement = statusIndicator.querySelector('.network-status-text');
+
+            statusElement.className = `network-status ${status}`;
+            textElement.textContent = status === 'online' ? 'В сети' : 'Не в сети';
+
+            if (status === 'offline') {
+                this.showOfflineIndicator();
+            } else {
+                this.hideOfflineIndicator();
+            }
+        });
+    }
+
+    static setupCompleteEventSystem() {
+        // Активируем все события
+        Object.values(APP_EVENTS).forEach(event => {
+            EventManager.on(event, (data) => {
+                Utils.log(`📢 Event: ${event}`, data);
+
+                // Специфичная обработка для ключевых событий
+                switch (event) {
+                    case APP_EVENTS.PROJECT_CREATED:
+                        this.handleProjectCreated(data);
+                        break;
+                    case APP_EVENTS.TASK_UPDATED:
+                        this.handleTaskUpdated(data);
+                        break;
+                    case APP_EVENTS.NETWORK_STATUS_CHANGED:
+                        this.handleNetworkStatusChange(data);
+                        break;
+                }
+            });
+        });
+    }
+
+    // Обработчики событий
+    static handleProjectCreated(project) {
+        // Автоматически обновляем кэш и UI
+        CacheManager.invalidate('projects');
+        CacheManager.invalidate('dashboard');
+
+        if (typeof DashboardManager !== 'undefined') {
+            DashboardManager.refreshProjects();
+        }
+    }
+
+    static handleTaskUpdated(task) {
+        // Обновляем связанные данные
+        if (task.project_hash) {
+            CacheManager.invalidate(`project-${task.project_hash}`);
+        }
+    }
+
 
     static async checkSystemRequirements() {
         const requirements = [
@@ -311,13 +428,9 @@ class App {
     }
 
     static handleNetworkStatusChange(status) {
-        const appElement = document.getElementById('app');
-        if (appElement) {
-            if (status === 'offline') {
-                appElement.classList.add('offline');
-            } else {
-                appElement.classList.remove('offline');
-            }
+        if (status === 'online') {
+            // Автоматическая синхронизация при восстановлении связи
+            this.syncData();
         }
     }
 
@@ -553,6 +666,13 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
     }
 
     static applyTheme(theme) {
+        // Предотвращаем циклические вызовы
+        if (this.isApplyingTheme) {
+            return;
+        }
+
+        this.isApplyingTheme = true;
+
         const lightTheme = document.getElementById('theme-light');
         const darkTheme = document.getElementById('theme-dark');
 
@@ -574,35 +694,25 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
         // Сохраняем тему в localStorage для быстрого доступа
         localStorage.setItem('theme', theme);
 
-        // ОТЛАДОЧНАЯ ИНФОРМАЦИЯ - удалить после фикса
-        console.log('Theme applied:', theme, 'Current UI theme:', StateManager.getState('ui.theme'));
+        // Принудительно применяем тему ко всем элементам
+        this.forceThemeApplication(theme);
 
-        // Debounce обновление настроек пользователя
-        if (this.themeUpdateDebounce) {
-            clearTimeout(this.themeUpdateDebounce);
-        }
-
-        this.themeUpdateDebounce = setTimeout(async () => {
-            // Сохраняем тему в настройках пользователя, если доступен UsersManager
+        // Сохраняем тему в настройках пользователя с задержкой
+        setTimeout(() => {
             if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
-                try {
-                    // Проверяем, действительно ли тема изменилась
-                    const currentPrefs = await UsersManager.loadUserPreferences();
-                    if (currentPrefs.theme !== theme) {
-                        await UsersManager.patchUserPreferences({ theme });
-                        console.log('Theme preference saved successfully');
-                    }
-                } catch (error) {
-                    console.warn('Failed to save theme preference:', error);
-                    // Игнорируем ошибки сохранения темы - это не критично
-                }
+                UsersManager.patchUserPreferences({ theme }).catch((error) => {
+                    Utils.logError('Failed to save theme preference:', error);
+                }).finally(() => {
+                    this.isApplyingTheme = false;
+                });
+            } else {
+                this.isApplyingTheme = false;
             }
-        }, 1000); // Задержка 1 секунда
+        }, 100);
 
         Utils.log(`Theme changed to: ${theme}`);
     }
 
-    // НОВЫЙ МЕТОД ДЛЯ ПРИНУДИТЕЛЬНОГО ПРИМЕНЕНИЯ ТЕМЫ
     static forceThemeApplication(theme) {
         // Принудительно обновляем основные элементы
         const mainContent = document.querySelector('.main-content');

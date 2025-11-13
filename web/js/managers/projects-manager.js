@@ -98,8 +98,8 @@ class ProjectsManager {
         // Очищаем URL от параметров формы
         this.clearUrlParams();
 
-        // Получаем шаблон из UIComponents
-        const template = typeof UIComponents !== 'undefined' ?
+        // Получаем шаблон из встроенных шаблонов
+        const template = typeof UIComponents !== 'undefined' && UIComponents.templates.has('create-project-modal-template') ?
             UIComponents.templates.get('create-project-modal-template') :
             this.getCreateProjectFallbackTemplate();
 

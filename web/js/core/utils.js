@@ -1,6 +1,9 @@
 //utils.js
 // Утилитарные функции
 class Utils {
+  static init() {
+      this.initValidationSystem(); // ДОБАВИТЬ эту строку
+  }
     // Получение вложенного значения из объекта по пути
     static getNestedValue(obj, path) {
         return path.split('.').reduce((current, key) => {
@@ -11,6 +14,91 @@ class Utils {
     // Форматирование булевых значений для отображения
     static formatBoolean(value, trueText = 'Да', falseText = 'Нет') {
         return value ? trueText : falseText;
+    }
+
+    static initValidationSystem() {
+        // Регистрируем обработчики валидации для всех форм
+        const forms = ['create-project-form', 'create-task-form', 'edit-project-form', 'edit-task-form'];
+
+        forms.forEach(formId => {
+            const form = document.getElementById(formId);
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    if (!this.validateForm(form)) {
+                        e.preventDefault();
+                        HapticManager.error();
+                    }
+                });
+
+                // Валидация при вводе
+                form.addEventListener('input', (e) => {
+                    this.validateField(e.target);
+                });
+            }
+        });
+    }
+
+    static validateForm(form) {
+        const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
+        let isValid = true;
+
+        inputs.forEach(input => {
+            const error = this.validateField(input);
+            if (error) {
+                this.showFieldError(input, error);
+                isValid = false;
+            } else {
+                this.clearFieldError(input);
+            }
+        });
+
+        return isValid;
+    }
+
+    static validateField(field) {
+        const value = field.value.trim();
+        const fieldName = field.getAttribute('name') || field.id;
+
+        if (field.hasAttribute('required') && !value) {
+            return 'Это поле обязательно для заполнения';
+        }
+
+        // Специфичная валидация по типу поля
+        switch (fieldName) {
+            case 'title':
+            case 'project-title':
+            case 'task-title':
+                return this.validateProjectTitle(value);
+            case 'description':
+            case 'project-description':
+            case 'task-description':
+                return this.validateProjectDescription(value);
+            case 'email':
+                return this.validateEmail(value) ? null : 'Некорректный email адрес';
+            default:
+                return null;
+        }
+    }
+
+    static showFieldError(field, error) {
+        this.clearFieldError(field);
+
+        field.classList.add('is-invalid');
+
+        const errorElement = document.createElement('div');
+        errorElement.className = 'invalid-feedback';
+        errorElement.textContent = error;
+
+        field.parentNode.appendChild(errorElement);
+    }
+
+    static clearFieldError(field) {
+        field.classList.remove('is-invalid');
+
+        const existingError = field.parentNode.querySelector('.invalid-feedback');
+        if (existingError) {
+            existingError.remove();
+        }
     }
 
     // Генерация случайного цвета на основе строки

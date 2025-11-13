@@ -1561,3 +1561,83 @@ body {
         flex: 1;
     }
 }
+
+/* Стили для сетевого индикатора */
+.network-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+}
+
+.network-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.network-status.online {
+    background: var(--success-color);
+}
+
+.network-status.offline {
+    background: var(--danger-color);
+}
+
+/* Стили для валидации форм */
+.is-invalid {
+    border-color: var(--danger-color) !important;
+}
+
+.invalid-feedback {
+    color: var(--danger-color);
+    font-size: 0.75rem;
+    margin-top: 4px;
+}
+
+/* Стили для расширенной статистики */
+.dashboard-stats-widget {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+/* Стили для фильтров задач */
+.task-filters {
+    display: flex;
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}

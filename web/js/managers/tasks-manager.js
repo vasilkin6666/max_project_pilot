@@ -2,22 +2,102 @@
 class TasksManager {
   static async loadProjectTasks(projectHash) {
       try {
-          const data = await ApiService.getProjectTasks(projectHash);
-          const tasks = data.tasks || [];
+          const tasksData = await ApiService.getProjectTasks(projectHash);
+          const tasks = tasksData.tasks || [];
 
-          const currentTasks = StateManager.getState('tasks');
-          const updatedTasks = currentTasks.filter(t => t.project_hash !== projectHash).concat(tasks);
-          StateManager.setState('tasks', updatedTasks);
+          // Инициализируем фильтры при первой загрузке
+          this.initTaskFilters();
+          this.renderFilteredTasks(tasks);
 
-          EventManager.emit(APP_EVENTS.TASKS_LOADED, tasks);
-          Utils.log('Project tasks loaded', { projectHash, count: tasks.length });
-
-          return tasks;
       } catch (error) {
           Utils.logError('Error loading project tasks:', error);
-          throw error;
+          const container = document.getElementById('project-tasks-container');
+          if (container) {
+              container.innerHTML = '<p class="text-muted">Ошибка загрузки задач</p>';
+          }
       }
   }
+
+  static initTaskFilters() {
+      // Создаем UI для фильтров если его нет
+      if (!document.getElementById('task-filters-container')) {
+          const filtersHTML = `
+              <div class="task-filters" id="task-filters-container">
+                  <div class="filter-group">
+                      <label>Статус:</label>
+                      <select id="task-status-filter" onchange="TasksManager.applyStatusFilter(this.value)">
+                          <option value="all">Все</option>
+                          <option value="todo">К выполнению</option>
+                          <option value="in_progress">В работе</option>
+                          <option value="done">Завершено</option>
+                      </select>
+                  </div>
+                  <div class="filter-group">
+                      <label>Приоритет:</label>
+                      <select id="task-priority-filter" onchange="TasksManager.applyPriorityFilter(this.value)">
+                          <option value="all">Все</option>
+                          <option value="urgent">Срочный</option>
+                          <option value="high">Высокий</option>
+                          <option value="medium">Средний</option>
+                          <option value="low">Низкий</option>
+                      </select>
+                  </div>
+                  <button class="btn btn-sm btn-outline" onclick="TasksManager.clearFilters()">
+                      <i class="fas fa-times"></i> Сбросить
+                  </button>
+              </div>
+          `;
+
+          // Вставляем в контейнер задач проекта
+          const tasksContainer = document.querySelector('.project-tasks-section');
+          if (tasksContainer) {
+              tasksContainer.insertAdjacentHTML('afterbegin', filtersHTML);
+          }
+      }
+  }
+
+  static applyStatusFilter(status) {
+      const tasks = StateManager.getState('tasks');
+      const filtered = status === 'all' ? tasks : this.getTasksByStatus(tasks, status);
+      this.renderFilteredTasks(filtered);
+  }
+
+  static applyPriorityFilter(priority) {
+      const tasks = StateManager.getState('tasks');
+      const filtered = priority === 'all' ? tasks : this.getTasksByPriority(tasks, priority);
+      this.renderFilteredTasks(filtered);
+  }
+
+  static clearFilters() {
+      document.getElementById('task-status-filter').value = 'all';
+      document.getElementById('task-priority-filter').value = 'all';
+      this.renderFilteredTasks(StateManager.getState('tasks'));
+  }
+
+  static renderFilteredTasks(tasks) {
+      const container = document.getElementById('project-tasks-container');
+      if (!container) return;
+
+      if (tasks.length === 0) {
+          container.innerHTML = '<p class="text-muted">Задачи не найдены</p>';
+          return;
+      }
+
+      container.innerHTML = tasks.map(task =>
+          UIComponents.renderTemplate('task-card-template', {
+              ...task,
+              priorityText: Utils.getPriorityText(task.priority),
+              statusText: Utils.getStatusText(task.status),
+              assignee: task.assignee?.full_name || 'Не назначен',
+              dueDate: task.due_date ? Utils.formatDate(task.due_date) : 'Нет срока',
+              isOverdue: Utils.isOverdue(task.due_date),
+              hasSubtasks: !!(task.subtasks && task.subtasks.length > 0),
+              progress: task.subtasks && task.subtasks.length > 0 ?
+                  Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100) : 0
+          })
+      ).join('');
+  }
+
 
     static async showCreateTaskModal(projectHash) {
         try {
@@ -25,8 +105,8 @@ class TasksManager {
             const projectData = await ApiService.getProject(projectHash);
             const members = projectData.members || [];
 
-            // Получаем шаблон из UIComponents
-            const template = typeof UIComponents !== 'undefined' ?
+            // Получаем шаблон из встроенных шаблонов
+            const template = typeof UIComponents !== 'undefined' && UIComponents.templates.has('create-task-modal-template') ?
                 UIComponents.templates.get('create-task-modal-template') :
                 this.getCreateTaskFallbackTemplate(members);
 
@@ -680,10 +760,10 @@ class TasksManager {
     }
 
     static getOverdueTasks(tasks) {
-        return tasks.filter(task => Utils.isOverdue(task.due_date));
+        return tasks.filter(task => Utils.isOverdue(task.due_date) && task.status !== 'done');
     }
 
-    static getTasksAssignedToUser(tasks, userId) {
+    static getTasksAssignedToUser(tasks, userId = AuthManager.getCurrentUserId()) {
         return tasks.filter(task => task.assignee_id === userId);
     }
 }

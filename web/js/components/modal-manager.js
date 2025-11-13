@@ -36,6 +36,15 @@ class ModalManager {
                 }
             }
         }
+        if (options.templateData) {
+            try {
+                if (typeof UIComponents !== 'undefined') {
+                    finalTemplate = UIComponents.renderTemplate(`${modalId}-template`, options.templateData);
+                }
+            } catch (error) {
+                Utils.logError(`Error rendering template for ${modalId}:`, error);
+            }
+        }        
 
         const modalHTML = this.createModalHTML(modalId, title, finalTemplate, actions, size);
         const existingModal = document.getElementById(modalId);
@@ -138,7 +147,7 @@ class ModalManager {
             `;
         }).join('');
     }
-    
+
     static setupModalActions(modalId, actions, onSubmit) {
         const modalElement = document.getElementById(modalId);
         if (!modalElement) return;
@@ -385,16 +394,18 @@ class ModalManager {
 
     static showLoadingModal(message = 'Загрузка...') {
         const modalId = 'loading-modal-' + Date.now();
+
         return this.showModal(modalId, {
             template: `
-                <div class="loading-modal">
-                    <div class="spinner-border text-primary"></div>
-                    <p>${Utils.escapeHTML(message)}</p>
+                <div class="loading-modal text-center">
+                    <div class="spinner-border text-primary mb-3"></div>
+                    <p class="mb-0">${Utils.escapeHTML(message)}</p>
                 </div>
             `,
             size: 'small',
             closeOnBackdrop: false,
-            closeOnEscape: false
+            closeOnEscape: false,
+            actions: [] // Нет кнопок
         });
     }
 

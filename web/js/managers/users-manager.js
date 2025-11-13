@@ -51,6 +51,71 @@ class UsersManager {
       }
   }
 
+  static addSwipePreferences() {
+      // Возвращает настройки по умолчанию для свайпов
+      return {
+          swipe_enabled: true,
+          swipe_threshold: 60,
+          swipe_max_distance: 80,
+          long_press_delay: 500,
+          haptic_feedback: true,
+          haptic_intensity: 'medium'
+      };
+  }
+
+  static initSettingsIntegration() {
+      // Применяем настройки при их изменении
+      EventManager.on('preferences:updated', (prefs) => {
+          this.applyUserPreferences(prefs);
+      });
+
+      // Загружаем и применяем настройки при старте
+      this.loadAndApplyPreferences();
+  }
+
+  static async loadAndApplyPreferences() {
+      try {
+          const preferences = await this.loadUserPreferences();
+          this.applyUserPreferences(preferences);
+      } catch (error) {
+          Utils.logError('Failed to load preferences:', error);
+      }
+  }
+
+  static applyUserPreferences(preferences) {
+      // Применяем настройки свайпов
+      if (typeof SwipeManager !== 'undefined') {
+          if (preferences.swipe_threshold !== undefined) {
+              SwipeManager.setThreshold(preferences.swipe_threshold);
+          }
+          if (preferences.swipe_max_distance !== undefined) {
+              SwipeManager.setMaxSwipe(preferences.swipe_max_distance);
+          }
+          if (preferences.long_press_delay !== undefined) {
+              SwipeManager.setLongPressDelay(preferences.long_press_delay);
+          }
+          if (preferences.swipe_enabled !== undefined) {
+              preferences.swipe_enabled ? SwipeManager.enableSwipes() : SwipeManager.disableSwipes();
+          }
+      }
+
+      // Применяем настройки тактильной обратной связи
+      if (typeof HapticManager !== 'undefined') {
+          if (preferences.haptic_feedback !== undefined) {
+              preferences.haptic_feedback ? HapticManager.enable() : HapticManager.disable();
+          }
+          if (preferences.haptic_intensity !== undefined) {
+              HapticManager.setIntensity(preferences.haptic_intensity);
+          }
+      }
+
+      // Применяем тему
+      if (preferences.theme && typeof App !== 'undefined') {
+          App.applyTheme(preferences.theme);
+      }
+  }
+
+
     static async loadUserDataForSettings() {
         try {
             const user = AuthManager.getCurrentUser();
@@ -364,8 +429,8 @@ class UsersManager {
     }
 
     static showPreferencesModal() {
-        // Получаем шаблон из UIComponents
-        const template = typeof UIComponents !== 'undefined' ?
+        // Получаем шаблон из встроенных шаблонов
+        const template = typeof UIComponents !== 'undefined' && UIComponents.templates.has('settings-modal-template') ?
             UIComponents.templates.get('settings-modal-template') :
             this.getSettingsFallbackTemplate();
 
@@ -411,6 +476,256 @@ class UsersManager {
         `;
     }
 
+    static setupSwipePreferenceHandlers() {
+        // Обработчики для полей свайпов
+        const swipeEnabled = document.getElementById('swipe-enabled');
+        const swipeThreshold = document.getElementById('swipe-threshold');
+        const swipeDistance = document.getElementById('swipe-max-distance');
+        const longPressDelay = document.getElementById('long-press-delay');
+        const hapticEnabled = document.getElementById('haptic-enabled');
+        const hapticIntensity = document.getElementById('haptic-intensity');
+
+        // Включение/выключение свайпов
+        if (swipeEnabled) {
+            swipeEnabled.addEventListener('change', (e) => {
+                const enabled = e.target.checked;
+                if (enabled) {
+                    SwipeManager.enableSwipes();
+                } else {
+                    SwipeManager.disableSwipes();
+                }
+
+                // Сохраняем настройку немедленно
+                this.patchUserPreferences({
+                    swipe_enabled: enabled
+                }).catch(error => {
+                    Utils.logError('Failed to save swipe preference:', error);
+                });
+            });
+        }
+
+        // Настройка порога свайпа
+        if (swipeThreshold) {
+            swipeThreshold.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                SwipeManager.setThreshold(value);
+
+                // Обновляем значение рядом с ползунком
+                const valueDisplay = document.getElementById('swipe-threshold-value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = `${value}px`;
+                }
+            });
+
+            // Сохранение при отпускании ползунка
+            swipeThreshold.addEventListener('change', (e) => {
+                const value = parseInt(e.target.value);
+                this.patchUserPreferences({
+                    swipe_threshold: value
+                }).catch(error => {
+                    Utils.logError('Failed to save swipe threshold:', error);
+                });
+            });
+        }
+
+        // Максимальное расстояние свайпа
+        if (swipeDistance) {
+            swipeDistance.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                SwipeManager.setMaxSwipe(value);
+
+                const valueDisplay = document.getElementById('swipe-distance-value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = `${value}px`;
+                }
+            });
+
+            swipeDistance.addEventListener('change', (e) => {
+                const value = parseInt(e.target.value);
+                this.patchUserPreferences({
+                    swipe_max_distance: value
+                }).catch(error => {
+                    Utils.logError('Failed to save swipe distance:', error);
+                });
+            });
+        }
+
+        // Задержка долгого нажатия
+        if (longPressDelay) {
+            longPressDelay.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                SwipeManager.setLongPressDelay(value);
+
+                const valueDisplay = document.getElementById('long-press-value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = `${value}ms`;
+                }
+            });
+
+            longPressDelay.addEventListener('change', (e) => {
+                const value = parseInt(e.target.value);
+                this.patchUserPreferences({
+                    long_press_delay: value
+                }).catch(error => {
+                    Utils.logError('Failed to save long press delay:', error);
+                });
+            });
+        }
+
+        // Включение/выключение тактильной обратной связи
+        if (hapticEnabled) {
+            hapticEnabled.addEventListener('change', (e) => {
+                const enabled = e.target.checked;
+                if (enabled) {
+                    HapticManager.enable();
+                } else {
+                    HapticManager.disable();
+                }
+
+                this.patchUserPreferences({
+                    haptic_feedback: enabled
+                }).catch(error => {
+                    Utils.logError('Failed to save haptic preference:', error);
+                });
+            });
+        }
+
+        // Интенсивность тактильной обратной связи
+        if (hapticIntensity) {
+            hapticIntensity.addEventListener('change', (e) => {
+                const intensity = e.target.value;
+                HapticManager.setIntensity(intensity);
+
+                this.patchUserPreferences({
+                    haptic_intensity: intensity
+                }).catch(error => {
+                    Utils.logError('Failed to save haptic intensity:', error);
+                });
+            });
+        }
+
+        // Тестовые кнопки для проверки настроек
+        this.addTestButtons();
+    }
+
+    static addTestButtons() {
+        // Добавляем кнопки для тестирования свайпов и тактильной обратной связи
+        const swipeSection = document.querySelector('.swipe-preferences-section');
+        if (swipeSection && !document.getElementById('test-swipe-btn')) {
+            const testHTML = `
+                <div class="preference-test-buttons">
+                    <h6>Тестирование настроек</h6>
+                    <div class="test-buttons">
+                        <button class="btn btn-sm btn-outline" id="test-swipe-btn">
+                            <i class="fas fa-hand-point-up"></i> Тест свайпа
+                        </button>
+                        <button class="btn btn-sm btn-outline" id="test-haptic-btn">
+                            <i class="fas fa-vibrate"></i> Тест вибрации
+                        </button>
+                        <button class="btn btn-sm btn-outline" id="test-long-press-btn">
+                            <i class="fas fa-hand-rock"></i> Тест долгого нажатия
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            swipeSection.insertAdjacentHTML('beforeend', testHTML);
+
+            // Обработчики тестовых кнопок
+            document.getElementById('test-swipe-btn')?.addEventListener('click', () => {
+                HapticManager.swipeAction();
+                ToastManager.info('Свайп сработал! Проверьте настройки порога.');
+            });
+
+            document.getElementById('test-haptic-btn')?.addEventListener('click', () => {
+                HapticManager.medium();
+                ToastManager.info('Тактильная обратная связь сработала!');
+            });
+
+            document.getElementById('test-long-press-btn')?.addEventListener('click', () => {
+                HapticManager.longPress();
+                ToastManager.info('Долгое нажатие сработало!');
+            });
+        }
+    }
+
+    static createSimplePreferencesForm(preferences) {
+        return `
+            <form id="preferences-form">
+                <div class="preferences-section">
+                    <h5>Настройки свайпов и жестов</h5>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="swipe-enabled"
+                               ${preferences.swipe_enabled ? 'checked' : ''}>
+                        <label class="form-check-label" for="swipe-enabled">
+                            Включить свайп-жесты
+                        </label>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="swipe-threshold" class="form-label">
+                            Порог свайпа: <span id="swipe-threshold-value">${preferences.swipe_threshold}px</span>
+                        </label>
+                        <input type="range" class="form-range" id="swipe-threshold"
+                               min="30" max="120" value="${preferences.swipe_threshold}">
+                        <div class="form-text">Минимальное расстояние для активации свайпа</div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="swipe-max-distance" class="form-label">
+                            Макс. расстояние: <span id="swipe-distance-value">${preferences.swipe_max_distance}px</span>
+                        </label>
+                        <input type="range" class="form-range" id="swipe-max-distance"
+                               min="60" max="150" value="${preferences.swipe_max_distance}">
+                        <div class="form-text">Максимальное расстояние свайпа</div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="long-press-delay" class="form-label">
+                            Задержка долгого нажатия: <span id="long-press-value">${preferences.long_press_delay}ms</span>
+                        </label>
+                        <input type="range" class="form-range" id="long-press-delay"
+                               min="300" max="1000" step="100" value="${preferences.long_press_delay}">
+                        <div class="form-text">Время удержания для активации контекстного меню</div>
+                    </div>
+                </div>
+
+                <div class="preferences-section">
+                    <h5>Тактильная обратная связь</h5>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="haptic-enabled"
+                               ${preferences.haptic_feedback ? 'checked' : ''}>
+                        <label class="form-check-label" for="haptic-enabled">
+                            Включить вибрацию
+                        </label>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="haptic-intensity" class="form-label">Интенсивность вибрации</label>
+                        <select class="form-select" id="haptic-intensity">
+                            <option value="low" ${preferences.haptic_intensity === 'low' ? 'selected' : ''}>Низкая</option>
+                            <option value="medium" ${preferences.haptic_intensity === 'medium' ? 'selected' : ''}>Средняя</option>
+                            <option value="high" ${preferences.haptic_intensity === 'high' ? 'selected' : ''}>Высокая</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="preferences-section">
+                    <h5>Внешний вид</h5>
+                    <div class="form-group">
+                        <label for="pref-theme" class="form-label">Тема</label>
+                        <select class="form-select" id="pref-theme" name="theme">
+                            <option value="light" ${preferences.theme === 'light' ? 'selected' : ''}>Светлая</option>
+                            <option value="dark" ${preferences.theme === 'dark' ? 'selected' : ''}>Темная</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        `;
+    }
+
     static async loadAndRenderPreferences() {
         const container = document.getElementById('preferences-content');
         if (!container) return;
@@ -418,52 +733,23 @@ class UsersManager {
         try {
             const preferences = await this.loadUserPreferences();
 
-            // Используем fallback если шаблон не загружен
-            const template = UIComponents.templates.get('settings-modal-template');
-            if (template) {
-                // Рендерим через шаблон если доступен
-                const rendered = UIComponents.renderTemplate('settings-modal-template', {
-                    isDarkTheme: preferences.theme === 'dark',
-                    compactView: preferences.compact_view,
-                    pushNotifications: preferences.notifications_enabled,
-                    emailNotifications: preferences.email_notifications,
-                    soundNotifications: preferences.sound_notifications,
-                    autoSync: preferences.auto_sync,
-                    offlineMode: preferences.offline_mode,
-                    hapticFeedback: preferences.haptic_feedback,
-                    animations: preferences.animations,
-                    accessibilityMode: preferences.accessibility_mode
-                });
+            // Объединяем с настройками по умолчанию
+            const fullPreferences = {
+                ...this.addSwipePreferences(),
+                ...preferences
+            };
+
+            // Используем шаблон если доступен, иначе fallback
+            if (typeof UIComponents !== 'undefined' && UIComponents.templates.has('settings-modal-template')) {
+                const rendered = UIComponents.renderTemplate('settings-modal-template', fullPreferences);
                 container.innerHTML = rendered;
             } else {
-                // Fallback на старую логику
-                container.innerHTML = `
-                    <form id="preferences-form">
-                        <div class="preferences-section">
-                            <h5>Внешний вид</h5>
-                            <div class="form-group">
-                                <label for="pref-theme" class="form-label">Тема</label>
-                                <select class="form-select" id="pref-theme" name="theme">
-                                    <option value="light" ${preferences.theme === 'light' ? 'selected' : ''}>Светлая</option>
-                                    <option value="dark" ${preferences.theme === 'dark' ? 'selected' : ''}>Темная</option>
-                                    <option value="auto" ${preferences.theme === 'auto' ? 'selected' : ''}>Авто</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="preferences-section">
-                            <h5>Уведомления</h5>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="pref-notifications"
-                                       name="notifications_enabled" ${preferences.notifications_enabled ? 'checked' : ''}>
-                                <label class="form-check-label" for="pref-notifications">
-                                    Включить уведомления
-                                </label>
-                            </div>
-                        </div>
-                    </form>
-                `;
+                // Fallback на простую форму
+                container.innerHTML = this.createSimplePreferencesForm(fullPreferences);
             }
+
+            // Настраиваем обработчики для новых полей
+            this.setupSwipePreferenceHandlers();
 
         } catch (error) {
             container.innerHTML = `
@@ -480,7 +766,6 @@ class UsersManager {
             `;
         }
     }
-
 
     static async loadAndRenderPreferences() {
         const container = document.getElementById('preferences-content');

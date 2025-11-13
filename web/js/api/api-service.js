@@ -83,6 +83,70 @@ class ApiService {
         }
     }
 
+    // В класс ApiService добавить методы для полного покрытия API
+    static async getRootEndpoint() {
+        return await this.apiCall('/');
+    }
+
+    static async getUserById(userId) {
+        return await this.apiCall(`/users/${userId}`);
+    }
+
+    static async getUserProjects(userId = 'me') {
+        return await this.apiCall(`/users/${userId}/projects`);
+    }
+
+    static async patchUserPreferences(data) {
+        return await this.apiCall('/users/me/preferences', 'PATCH', data);
+    }
+
+    static async resetUserPreferences() {
+        return await this.apiCall('/users/me/preferences/reset', 'PUT');
+    }
+
+    static async getTaskDependencies(taskId) {
+        return await this.apiCall(`/tasks/${taskId}/dependencies`);
+    }
+
+    static async addTaskDependency(taskId, dependsOnId) {
+        return await this.apiCall(`/tasks/${taskId}/dependencies`, 'POST', {
+            depends_on_id: dependsOnId
+        });
+    }
+
+    static async addTaskComment(taskId, content) {
+        return await this.apiCall(`/tasks/${taskId}/comments`, 'POST', {
+            content: content
+        });
+    }
+
+    // Улучшенный метод с повторными попытками
+    static async retryWithRefresh(fn, maxRetries = 3) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await fn();
+            } catch (error) {
+                if (error.status === 401 && attempt < maxRetries) {
+                    await AuthManager.refreshToken();
+                    continue;
+                }
+                throw error;
+            }
+        }
+    }
+
+    // Безопасный вызов с обработкой сетевых ошибок
+    static async safeApiCall(endpoint, method = 'GET', data = null, params = {}) {
+        try {
+            return await this.apiCall(endpoint, method, data, params);
+        } catch (error) {
+            if (this.isNetworkError(error)) {
+                throw new Error('Проблемы с подключением к интернету. Проверьте соединение.');
+            }
+            throw error;
+        }
+    }
+
     // ==================== АУТЕНТИФИКАЦИЯ ====================
     static async getAuthToken(maxId, fullName, username = '') {
         return await this.apiCall('/auth/token', 'POST', {
@@ -287,20 +351,6 @@ class ApiService {
         }
     }
 
-    static async retryWithRefresh(fn, maxRetries = 3) {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                return await fn();
-            } catch (error) {
-                if (error.status === 401 && attempt < maxRetries) {
-                    // Попытка обновить токен
-                    await AuthManager.refreshToken();
-                    continue;
-                }
-                throw error;
-            }
-        }
-    }
 
     // Новый метод для обработки ошибок сети
     static isNetworkError(error) {
@@ -308,18 +358,6 @@ class ApiService {
                error.message?.includes('Network') ||
                error.message?.includes('fetch') ||
                error.name === 'TypeError';
-    }
-
-    // Новый метод для безопасных запросов
-    static async safeApiCall(endpoint, method = 'GET', data = null, params = {}) {
-        try {
-            return await this.apiCall(endpoint, method, data, params);
-        } catch (error) {
-            if (this.isNetworkError(error)) {
-                throw new Error('Проблемы с подключением к интернету. Проверьте соединение.');
-            }
-            throw error;
-        }
     }
 }
 

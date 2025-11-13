@@ -5,6 +5,19 @@ class AuthManager {
     static isAuthenticated = false;
     static tokenRefreshInterval = null;
 
+    static initPermissionSystem() {
+        EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
+            window.currentUserPermissions = PermissionManager.getPermissions(user.role);
+        });
+
+        // Также инициализируем при старте если пользователь уже залогинен
+        if (this.currentUser) {
+            window.currentUserPermissions = PermissionManager.getPermissions(this.currentUser.role);
+        }
+
+        Utils.log('Permission system initialized');
+    }
+
     static async initializeUser() {
         try {
             Utils.log('Starting user authentication process');
@@ -27,6 +40,7 @@ class AuthManager {
 
             // После успешной аутентификации
             this.startPeriodicUserUpdate();
+            this.initPermissionSystem(); // ← ДОБАВИТЬ ЗДЕСЬ
 
         } catch (error) {
             Utils.logError('User initialization failed:', error);
@@ -251,49 +265,15 @@ class AuthManager {
 
     static async refreshToken() {
         try {
-            // В нашем API нет отдельного endpoint для refresh token
-            // Используем стратегию silent re-authentication
-
-            // 1. Проверяем текущий токен
-            const isValid = await this.validateToken();
-
-            if (isValid) {
-                Utils.log('Token is still valid');
-                return true;
-            }
-
-            Utils.log('Token expired, attempting silent re-authentication');
-
-            // 2. Пробуем переаутентифицироваться тем же методом
+            // Используем существующий метод аутентификации для обновления токена
             if (Utils.isMaxEnvironment() && window.WebApp?.initDataUnsafe?.user) {
-                // MAX аутентификация
-                const success = await this.handleMaxAuth();
-                if (success) {
-                    Utils.log('Silent re-authentication via MAX successful');
-                    return true;
-                }
+                return await this.handleMaxAuth();
             }
-
-            // 3. Если MAX не сработал, пробуем тестовую аутентификацию (только development)
-            if (CONFIG.ENV === 'development') {
-                const success = await this.handleTestAuth();
-                if (success) {
-                    Utils.log('Silent re-authentication via test auth successful');
-                    return true;
-                }
-            }
-
-            // 4. Если ничего не сработало - очищаем данные и перезагружаем
-            Utils.logError('Silent re-authentication failed');
-            this.clearAuthData();
-            setTimeout(() => window.location.reload(), 1000);
-            return false;
-
+            return await this.handleTestAuth();
         } catch (error) {
             Utils.logError('Token refresh failed:', error);
             this.clearAuthData();
-            setTimeout(() => window.location.reload(), 1000);
-            return false;
+            window.location.reload();
         }
     }
 
@@ -508,59 +488,60 @@ class AuthManager {
 
 // Менеджер прав доступа
 class PermissionManager {
-    static can(user, action, resource, context = {}) {
-        if (!user) return false;
+  static can(user, action, resource, context = {}) {
+      if (!user) return false;
 
-        const role = user.role || 'member';
-        const permissions = this.getPermissions(role);
+      const role = user.role || 'member';
+      const projectRole = context.project?.current_user_role || context.project?.user_role;
+      const effectiveRole = projectRole || role;
 
-        return permissions[resource]?.includes(action) || false;
-    }
+      const permissions = this.getPermissions(effectiveRole);
+      return permissions[resource]?.includes(action) || false;
+  }
 
-    static getPermissions(role) {
-        const matrix = {
-            'owner': {
-                'project': ['read', 'write', 'delete', 'transfer', 'configure'],
-                'task': ['create', 'read', 'update', 'delete', 'assign'],
-                'team': ['invite', 'remove', 'promote', 'demote'],
-                'settings': ['modify']
-            },
-            'admin': {
-                'project': ['read', 'write', 'configure'],
-                'task': ['create', 'read', 'update', 'delete', 'assign'],
-                'team': ['invite', 'remove'],
-                'settings': ['modify']
-            },
-            'member': {
-                'project': ['read'],
-                'task': ['create', 'read', 'update_own'],
-                'team': [],
-                'settings': []
-            },
-            'guest': {
-                'project': ['read_public'],
-                'task': ['read_public'],
-                'team': [],
-                'settings': []
-            }
-        };
+  static getPermissions(role) {
+      const matrix = {
+          'owner': {
+              'project': ['read', 'write', 'delete', 'transfer', 'configure'],
+              'task': ['create', 'read', 'update', 'delete', 'assign'],
+              'team': ['invite', 'remove', 'promote', 'demote'],
+              'settings': ['modify'],
+              'notifications': ['read', 'manage']
+          },
+          'admin': {
+              'project': ['read', 'write', 'configure'],
+              'task': ['create', 'read', 'update', 'delete', 'assign'],
+              'team': ['invite', 'remove'],
+              'settings': ['modify'],
+              'notifications': ['read', 'manage']
+          },
+          'member': {
+              'project': ['read'],
+              'task': ['create', 'read', 'update_own'],
+              'team': [],
+              'settings': [],
+              'notifications': ['read']
+          },
+          'guest': {
+              'project': ['read_public'],
+              'task': ['read_public'],
+              'team': [],
+              'settings': [],
+              'notifications': []
+          }
+      };
+      return matrix[role] || matrix.member;
+  }
 
-        return matrix[role] || matrix.guest;
-    }
-
-    static checkAndExecute(user, action, resource, callback, context = {}) {
-        if (this.can(user, action, resource, context)) {
-            return callback();
-        } else {
-            if (typeof ToastManager !== 'undefined') {
-                ToastManager.error('Недостаточно прав для выполнения действия');
-            }
-            if (typeof HapticManager !== 'undefined') {
-                HapticManager.error();
-            }
-            return false;
-        }
-    }
+  static checkAndExecute(user, action, resource, callback, context = {}) {
+      if (this.can(user, action, resource, context)) {
+          return callback();
+      } else {
+          ToastManager.error('Недостаточно прав для выполнения действия');
+          HapticManager.error();
+          return false;
+      }
+  }
 }
 
 // Добавляем глобальные события аутентификации

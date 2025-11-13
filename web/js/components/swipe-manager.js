@@ -16,6 +16,60 @@ class SwipeManager {
         Utils.log('Swipe manager initialized');
     }
 
+    static setupMemberSwipes() {
+        // Обработка долгого нажатия на участников
+        document.addEventListener('contextmenu', (e) => {
+            const memberItem = e.target.closest('.member-item');
+            if (memberItem && this.hasMemberManagementRights(memberItem)) {
+                e.preventDefault();
+                const memberId = memberItem.getAttribute('data-member-id');
+                const projectHash = memberItem.closest('[data-project-hash]')?.getAttribute('data-project-hash');
+                this.showMemberContextMenu(memberId, projectHash, memberItem);
+            }
+        });
+    }
+
+    static showMemberContextMenu(memberId, projectHash, element) {
+        const menuItems = [
+            {
+                text: 'Изменить роль',
+                icon: 'fa-user-cog',
+                action: () => ProjectsManager.showMemberRoleModal(projectHash, memberId)
+            },
+            {
+                text: 'Исключить из проекта',
+                icon: 'fa-user-times',
+                danger: true,
+                action: () => ProjectsManager.removeMemberWithConfirmation(projectHash, memberId)
+            }
+        ];
+
+        ModalManager.showContextMenu({
+            triggerElement: element,
+            position: 'bottom-start',
+            items: menuItems
+        });
+    }
+
+    static setupNotificationSwipes() {
+        // Расширить обработку свайпов для уведомлений
+        this.notificationActions = {
+            left: (notificationId) => NotificationsManager.markNotificationAsRead(notificationId),
+            right: (notificationId) => NotificationsManager.deleteNotification(notificationId)
+        };
+    }
+
+    static hasMemberManagementRights(memberItem) {
+        const projectElement = memberItem.closest('[data-project-hash]');
+        const projectHash = projectElement?.getAttribute('data-project-hash');
+        const project = StateManager.getProjectByHash(projectHash);
+
+        if (!project) return false;
+
+        const userRole = project.current_user_role || project.user_role;
+        return ['owner', 'admin'].includes(userRole);
+    }
+
     static setupGlobalHandlers() {
         // Touch events
         document.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: true });
@@ -358,17 +412,16 @@ class SwipeManager {
         document.body.classList.add('swipes-disabled');
     }
 
-    // Настройка параметров свайпов
     static setThreshold(value) {
-        this.threshold = value;
+        this.threshold = Math.max(30, Math.min(120, value)); // Ограничение 30-120px
     }
 
     static setMaxSwipe(value) {
-        this.maxSwipe = value;
+        this.maxSwipe = Math.max(60, Math.min(150, value)); // Ограничение 60-150px
     }
 
     static setLongPressDelay(value) {
-        this.longPressDelay = value;
+        this.longPressDelay = Math.max(300, Math.min(1000, value)); // Ограничение 300-1000ms
     }
 }
 

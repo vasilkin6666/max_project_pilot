@@ -18,6 +18,7 @@ class HapticManager {
             supported: this.isSupported,
             maxEnvironment: this.isMaxEnvironment
         });
+        this.initHapticIntegration();
     }
 
     static success() { this.provideFeedback('success'); }
@@ -27,6 +28,37 @@ class HapticManager {
     static medium() { this.provideFeedback('medium'); }
     static heavy() { this.provideFeedback('heavy'); }
     static selection() { this.provideFeedback('selection'); }
+
+    static longPress() {
+        this.provideFeedback('medium');
+    }
+
+    static initHapticIntegration() {
+        // Интеграция с событиями проектов
+        EventManager.on(APP_EVENTS.PROJECT_CREATED, () => this.projectCreated());
+        EventManager.on(APP_EVENTS.PROJECT_UPDATED, () => this.success());
+        EventManager.on(APP_EVENTS.PROJECT_DELETED, () => this.projectDeleted());
+
+        // Интеграция с событиями задач
+        EventManager.on(APP_EVENTS.TASK_CREATED, () => this.taskCompleted());
+        EventManager.on(APP_EVENTS.TASK_UPDATED, (task) => {
+            if (task.status === 'done') this.taskCompleted();
+            if (Utils.isOverdue(task.due_date)) this.taskOverdue();
+        });
+        EventManager.on(APP_EVENTS.TASK_DELETED, () => this.error());
+
+        // Интеграция с уведомлениями
+        EventManager.on(APP_EVENTS.NOTIFICATIONS_LOADED, (notifications) => {
+            const unreadCount = notifications.filter(n => !n.is_read).length;
+            if (unreadCount > 0) this.notificationReceived();
+        });
+
+        // Интеграция с сетью
+        EventManager.on(APP_EVENTS.NETWORK_STATUS_CHANGED, (status) => {
+            if (status === 'online') this.success();
+            else this.warning();
+        });
+    }
 
     static provideFeedback(type) {
         if (!this.isSupported || !this.hasUserInteracted) return;
@@ -59,7 +91,7 @@ class HapticManager {
     }
 
     static projectCreated() { this.success(); }
-    static projectDeleted() { this.error(); }
+    static projectDeleted() { this.heavy(); }
     static taskCompleted() { this.success(); }
     static taskOverdue() { this.warning(); }
     static notificationReceived() { this.medium(); }
@@ -68,8 +100,14 @@ class HapticManager {
     static toggleSwitch() { this.light(); }
 
     static setIntensity(level) {
-        const intensities = { low: 0.5, medium: 1.0, high: 1.5 };
+        const intensities = {
+            low: 0.3,
+            medium: 0.6,
+            high: 1.0,
+            off: 0
+        };
         this.intensityMultiplier = intensities[level] || 1.0;
+        this.enabled = level !== 'off';
     }
 
     static enable() { this.enabled = true; }
