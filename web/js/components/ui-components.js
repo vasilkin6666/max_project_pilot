@@ -944,40 +944,58 @@ class UIComponents {
     }
     // Новый метод для обновления информации в настройках
     static updateAccountSettingsInfo(user) {
+        // Используем MAX данные если есть
+        let displayUser = { ...user };
+        const maxData = AuthManager.maxData;
+        if (maxData && maxData.user) {
+            const maxUser = maxData.user;
+            displayUser = {
+                ...displayUser,
+                full_name: maxUser.first_name && maxUser.last_name ?
+                    `${maxUser.first_name} ${maxUser.last_name}` : displayUser.full_name,
+                photo_url: maxUser.photo_url || displayUser.photo_url
+            };
+        }
+
         const avatar = document.getElementById('settings-user-avatar');
         const name = document.getElementById('settings-user-name');
         const userId = document.getElementById('settings-user-id');
         const email = document.getElementById('settings-user-email');
         const role = document.getElementById('settings-user-role');
+        const maxId = document.getElementById('settings-max-id');
 
         if (avatar) {
-            const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
+            const initials = Utils.getInitials(displayUser.full_name || displayUser.username || 'Пользователь');
             avatar.textContent = initials;
-
-            if (user.photo_url) {
-                avatar.style.backgroundImage = `url(${user.photo_url})`;
+            if (displayUser.photo_url) {
+                avatar.style.backgroundImage = `url(${displayUser.photo_url})`;
                 avatar.textContent = '';
             }
         }
 
         if (name) {
-            name.textContent = user.full_name || user.username || 'Пользователь';
+            name.textContent = displayUser.full_name || displayUser.username || 'Пользователь';
         }
 
         if (userId) {
-            userId.textContent = `ID: ${user.id || 'неизвестен'}`;
+            userId.textContent = `ID: ${displayUser.id || 'неизвестен'}`;
         }
 
         if (email) {
-            email.textContent = `Email: ${user.email || 'не указан'}`;
+            email.textContent = `Email: ${displayUser.email || 'не указан'}`;
         }
 
         if (role) {
-            const roleText = user.role ? UsersManager.getRoleText(user.role) : 'Участник';
+            const roleText = displayUser.role ? UsersManager.getRoleText(displayUser.role) : 'Участник';
             role.textContent = `Роль: ${roleText}`;
         }
-    }
 
+        if (maxId) {
+            const displayMaxId = AuthManager.getMaxUserId() || displayUser.max_id || displayUser.id || 'неизвестен';
+            maxId.textContent = `MAX ID: ${displayMaxId}`;
+        }
+    }
+    
     static setupGlobalHandlers() {
         // Обработка кликов по внешним ссылкам
         document.addEventListener('click', (e) => {
@@ -1229,26 +1247,45 @@ class UIComponents {
     }
 
     static updateUserInfo(user) {
+        // Используем MAX данные если есть
+        let displayUser = { ...user };
+        const maxData = AuthManager.maxData;
+        if (maxData && maxData.user) {
+            const maxUser = maxData.user;
+            displayUser = {
+                ...displayUser,
+                full_name: maxUser.first_name && maxUser.last_name ?
+                    `${maxUser.first_name} ${maxUser.last_name}` : displayUser.full_name,
+                photo_url: maxUser.photo_url || displayUser.photo_url
+            };
+        }
+
         const userNameEl = document.getElementById('user-name');
         const userAvatarEl = document.getElementById('user-avatar');
         const userInitialsEl = document.getElementById('user-initials');
 
         if (userNameEl) {
-            userNameEl.textContent = user.full_name || user.username || 'Пользователь';
-            userNameEl.setAttribute('title', user.full_name || user.username || 'Пользователь');
+            userNameEl.textContent = displayUser.full_name || displayUser.username || 'Пользователь';
+            userNameEl.setAttribute('title', displayUser.full_name || displayUser.username || 'Пользователь');
         }
 
         if (userAvatarEl) {
-            const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
+            const initials = Utils.getInitials(displayUser.full_name || displayUser.username || 'Пользователь');
             userAvatarEl.textContent = initials;
-            userAvatarEl.setAttribute('aria-label', `Аватар пользователя ${user.full_name || user.username}`);
+            userAvatarEl.setAttribute('aria-label', `Аватар пользователя ${displayUser.full_name || displayUser.username}`);
+
+            if (displayUser.photo_url) {
+                userAvatarEl.style.backgroundImage = `url(${displayUser.photo_url})`;
+                userAvatarEl.textContent = '';
+            }
         }
 
         if (userInitialsEl) {
-            const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
+            const initials = Utils.getInitials(displayUser.full_name || displayUser.username || 'Пользователь');
             userInitialsEl.textContent = initials;
         }
     }
+
 
     static updateNotificationBadge(notifications) {
         const badge = document.getElementById('notifications-badge');
@@ -1293,7 +1330,6 @@ class UIComponents {
 
     // ==================== РЕНДЕРИНГ ДАННЫХ ====================
 
-    // В метод renderProjects добавить обработчик кликов:
     static renderProjects(projects) {
         try {
             const container = document.getElementById('projects-list');
@@ -1302,16 +1338,13 @@ class UIComponents {
                 return;
             }
 
-            container.innerHTML = '';
-
-            if (!projects || !Array.isArray(projects) || projects.length === 0) {
-                this.showEmptyState(container, 'Проектов пока нет', 'fa-folder-open', `
-                    <button class="btn btn-primary" onclick="ProjectsManager.showCreateProjectModal()">
-                        <i class="fas fa-plus"></i> Создать проект
-                    </button>
-                `);
+            if (!projects || !Array.isArray(projects)) {
+                console.warn('Invalid projects data:', projects);
+                this.showEmptyState(container, 'Проектов пока нет');
                 return;
             }
+
+            container.innerHTML = '';
 
             // Рендерим проекты
             projects.forEach((projectData, index) => {
@@ -1373,7 +1406,7 @@ class UIComponents {
             }
         }
     }
-    
+
     static renderTasks(tasks) {
         const container = document.getElementById('tasks-container');
         if (!container) return;

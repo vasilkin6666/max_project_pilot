@@ -194,52 +194,46 @@ class App {
         // Проверка обязательных зависимостей
         const requiredClasses = ['CONFIG', 'Utils', 'EventManager', 'APP_EVENTS', 'ApiService'];
         const missing = requiredClasses.filter(cls => typeof window[cls] === 'undefined');
-
         if (missing.length > 0) {
             throw new Error(`Missing required classes: ${missing.join(', ')}`);
         }
 
+        const maxData = AuthManager.maxData;
+        if (maxData) {
+            Utils.log('MAX environment detected', {
+                hasUser: !!maxData.user,
+                language: maxData.user?.language_code,
+                hasPhoto: !!maxData.user?.photo_url
+            });
+
+            // Можно установить язык на основе MAX данных
+            const maxLanguage = AuthManager.getMaxLanguage();
+            if (maxLanguage && maxLanguage !== 'ru') {
+                // В будущем можно добавить мультиязычность
+                Utils.log(`MAX language detected: ${maxLanguage}`);
+            }
+        }
+
         Utils.log('Starting core systems initialization...');
 
-        // Добавляем флаги инициализации для всех менеджеров
+        // Инициализируем менеджеры последовательно
         const managers = [
             { name: 'StateManager', instance: StateManager },
             { name: 'CacheManager', instance: CacheManager },
             { name: 'SwipeManager', instance: SwipeManager },
             { name: 'HapticManager', instance: HapticManager },
-            { name: 'UsersManager', instance: UsersManager },
-            { name: 'JoinRequestsManager', instance: JoinRequestsManager }
+            { name: 'UsersManager', instance: UsersManager }
         ];
 
-        // Инициализируем только если не инициализированы
         for (const manager of managers) {
-            if (typeof manager.instance !== 'undefined' &&
-                (!manager.instance.initialized || typeof manager.instance.initialized === 'undefined')) {
-
-                if (typeof manager.instance.init === 'function') {
-                    manager.instance.init();
-                    manager.instance.initialized = true;
+            if (typeof manager.instance !== 'undefined' && typeof manager.instance.init === 'function') {
+                try {
+                    await manager.instance.init();
                     Utils.log(`${manager.name} initialized`);
+                } catch (error) {
+                    Utils.logError(`Error initializing ${manager.name}:`, error);
                 }
-            } else if (manager.instance.initialized) {
-                Utils.log(`${manager.name} already initialized, skipping`);
             }
-        }
-
-        // Search Manager (не требует флага)
-        if (typeof SearchManager !== 'undefined') {
-            SearchManager.buildSearchIndex();
-            Utils.log('Search manager initialized');
-        }
-
-        // Dashboard Manager (не требует флага)
-        if (typeof DashboardManager !== 'undefined') {
-            Utils.log('Dashboard manager initialized');
-        }
-
-        // Persistence Manager (только логирование)
-        if (typeof PersistenceManager !== 'undefined') {
-            Utils.log('Persistence manager available');
         }
 
         // Настройка обработчиков (только один раз)
@@ -249,18 +243,6 @@ class App {
             this.setupNetworkHandler();
             this.eventHandlersSetup = true;
         }
-
-        // Принудительно обновляем информацию пользователя при инициализации
-        if (AuthManager.isUserAuthenticated()) {
-            try {
-                await UsersManager.updateAccountSettingsInfo();
-            } catch (error) {
-                Utils.logError('Error updating user settings info:', error);
-            }
-        }
-
-        // Периодическое обновление данных
-        this.startDataRefreshInterval();
 
         Utils.log('All core systems initialized successfully');
     }
@@ -682,47 +664,51 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
 
         this.isApplyingTheme = true;
 
-        const lightTheme = document.getElementById('theme-light');
-        const darkTheme = document.getElementById('theme-dark');
+        try {
+            const lightTheme = document.getElementById('theme-light');
+            const darkTheme = document.getElementById('theme-dark');
 
-        if (theme === 'dark') {
-            if (lightTheme) lightTheme.disabled = true;
-            if (darkTheme) darkTheme.disabled = false;
-            document.body.setAttribute('data-theme', 'dark');
-            document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-            if (lightTheme) lightTheme.disabled = false;
-            if (darkTheme) darkTheme.disabled = true;
-            document.body.removeAttribute('data-theme');
-            document.documentElement.removeAttribute('data-theme');
-        }
-
-        // Сохраняем тему в StateManager
-        StateManager.setTheme(theme);
-
-        // Сохраняем тему в localStorage для быстрого доступа
-        localStorage.setItem('theme', theme);
-
-        // Принудительно применяем тему ко всем элементам
-        this.forceThemeApplication(theme);
-
-        // Сохраняем тему в настройках пользователя с задержкой и проверкой изменений
-        setTimeout(async () => {
-            if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
-                try {
-                    const currentPrefs = await UsersManager.loadUserPreferences();
-                    if (currentPrefs.theme !== theme) {
-                        await UsersManager.patchUserPreferences({ theme });
-                    }
-                } catch (error) {
-                    Utils.logError('Failed to save theme preference:', error);
-                } finally {
-                    this.isApplyingTheme = false;
-                }
+            if (theme === 'dark') {
+                if (lightTheme) lightTheme.disabled = true;
+                if (darkTheme) darkTheme.disabled = false;
+                document.body.setAttribute('data-theme', 'dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
             } else {
-                this.isApplyingTheme = false;
+                if (lightTheme) lightTheme.disabled = false;
+                if (darkTheme) darkTheme.disabled = true;
+                document.body.removeAttribute('data-theme');
+                document.documentElement.removeAttribute('data-theme');
             }
-        }, 100);
+
+            // Сохраняем тему в StateManager
+            StateManager.setTheme(theme);
+
+            // Сохраняем тему в localStorage для быстрого доступа
+            localStorage.setItem('theme', theme);
+
+            // Принудительно применяем тему ко всем элементам
+            this.forceThemeApplication(theme);
+
+            // Сохраняем тему в настройках пользователя с задержкой
+            setTimeout(async () => {
+                if (typeof UsersManager !== 'undefined' && AuthManager.isUserAuthenticated()) {
+                    try {
+                        const currentPrefs = await UsersManager.loadUserPreferences();
+                        if (currentPrefs.theme !== theme) {
+                            await UsersManager.patchUserPreferences({ theme });
+                        }
+                    } catch (error) {
+                        Utils.logError('Failed to save theme preference:', error);
+                    }
+                }
+            }, 1000); // Увеличиваем задержку
+
+        } finally {
+            // Сбрасываем флаг с задержкой чтобы предотвратить циклические вызовы
+            setTimeout(() => {
+                this.isApplyingTheme = false;
+            }, 500);
+        }
 
         Utils.log(`Theme changed to: ${theme}`);
     }

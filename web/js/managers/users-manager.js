@@ -17,21 +17,76 @@ class UsersManager {
       }
   }
 
+  static async updateUserFromMaxData() {
+      try {
+          const maxData = AuthManager.maxData;
+          if (!maxData || !maxData.user || !AuthManager.isUserAuthenticated()) {
+              return;
+          }
+
+          const maxUser = maxData.user;
+          const currentUser = AuthManager.getCurrentUser();
+          const updateData = {};
+
+          // Проверяем какие данные нужно обновить
+          const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
+
+          // Обновляем фото если его нет или оно из MAX
+          if (maxUser.photo_url && (!currentUser.photo_url || currentUser.photo_url.includes('oneme.ru'))) {
+              updateData.photo_url = maxUser.photo_url;
+          }
+
+          // Обновляем имя если оно из MAX и лучше текущего
+          if (maxFullName && maxFullName !== 'Пользователь MAX' &&
+              (!currentUser.full_name || currentUser.full_name === 'Пользователь MAX')) {
+              updateData.full_name = maxFullName;
+          }
+
+          // Обновляем username если его нет
+          if (maxUser.username && !currentUser.username) {
+              updateData.username = maxUser.username;
+          }
+
+          // Если есть изменения - обновляем профиль
+          if (Object.keys(updateData).length > 0) {
+              Utils.log('Updating user profile from MAX data:', updateData);
+              await this.updateUserProfile(updateData);
+          }
+
+      } catch (error) {
+          Utils.logError('Error updating user from MAX data:', error);
+      }
+  }
+
+
   static async updateAccountSettingsInfo() {
       try {
           const user = await UsersManager.loadUserDataForSettings();
           if (!user) return;
 
+          // Используем MAX данные если есть
+          let displayUser = { ...user };
+          const maxData = AuthManager.maxData;
+          if (maxData && maxData.user) {
+              const maxUser = maxData.user;
+              displayUser = {
+                  ...displayUser,
+                  full_name: maxUser.first_name && maxUser.last_name ?
+                      `${maxUser.first_name} ${maxUser.last_name}` : displayUser.full_name,
+                  photo_url: maxUser.photo_url || displayUser.photo_url
+              };
+          }
+
           const avatar = document.getElementById('settings-user-avatar');
           const name = document.getElementById('settings-user-name');
           const maxId = document.getElementById('settings-max-id');
+          const role = document.getElementById('settings-user-role');
 
           if (avatar) {
-              const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
+              const initials = Utils.getInitials(displayUser.full_name || displayUser.username || 'Пользователь');
               avatar.textContent = initials;
-
-              if (user.photo_url) {
-                  avatar.style.backgroundImage = `url(${user.photo_url})`;
+              if (displayUser.photo_url) {
+                  avatar.style.backgroundImage = `url(${displayUser.photo_url})`;
                   avatar.textContent = '';
               } else {
                   avatar.style.backgroundImage = '';
@@ -39,13 +94,19 @@ class UsersManager {
           }
 
           if (name) {
-              name.textContent = user.full_name || user.username || 'Пользователь';
+              name.textContent = displayUser.full_name || displayUser.username || 'Пользователь';
           }
 
           if (maxId) {
-              const displayMaxId = user.max_id || user.id || 'неизвестен';
+              const displayMaxId = AuthManager.getMaxUserId() || user.max_id || user.id || 'неизвестен';
               maxId.textContent = `MAX ID: ${displayMaxId}`;
           }
+
+          if (role) {
+              const roleText = user.role ? this.getRoleText(user.role) : 'Участник';
+              role.textContent = `Роль: ${roleText}`;
+          }
+
       } catch (error) {
           Utils.logError('Error updating account settings info:', error);
       }
@@ -116,27 +177,31 @@ class UsersManager {
   }
 
 
-    static async loadUserDataForSettings() {
-        try {
-            const user = AuthManager.getCurrentUser();
-            if (!user) return null;
+  static async loadUserDataForSettings() {
+      try {
+          const user = AuthManager.getCurrentUser();
+          if (!user) return null;
 
-            // Всегда загружаем свежие данные для настроек
-            const userData = await this.loadUserProfile('me');
-            const freshUser = userData.user || userData;
+          // Всегда загружаем свежие данные для настроек
+          const userData = await this.loadUserProfile('me');
+          const freshUser = userData.user || userData;
 
-            // Сохраняем в AuthManager для консистентности
-            if (typeof AuthManager !== 'undefined') {
-                AuthManager.currentUser = { ...AuthManager.currentUser, ...freshUser };
-            }
+          // Обновляем данные из MAX
+          await this.updateUserFromMaxData();
 
-            return freshUser;
-        } catch (error) {
-            Utils.logError('Error loading user data for settings:', error);
-            // Возвращаем базовые данные из AuthManager
-            return AuthManager.getCurrentUser();
-        }
-    }
+          // Сохраняем в AuthManager для консистентности
+          if (typeof AuthManager !== 'undefined') {
+              AuthManager.currentUser = { ...AuthManager.currentUser, ...freshUser };
+          }
+
+          return freshUser;
+
+      } catch (error) {
+          Utils.logError('Error loading user data for settings:', error);
+          // Возвращаем базовые данные из AuthManager
+          return AuthManager.getCurrentUser();
+      }
+  }
 
     static async loadUserProjects(userId = 'me') {
         try {
@@ -222,17 +287,14 @@ class UsersManager {
 
         try {
             const result = await ApiService.patchUserPreferences({ preferences });
-
             if (result && result.preferences) {
-                // ToastManager.success('Настройки обновлены'); // Убрать чтобы не мешать
                 HapticManager.success();
                 return result.preferences;
             }
-
             throw new Error('Не удалось обновить настройки');
         } catch (error) {
-            // Логируем ошибку, но не показываем пользователю если это не критично
-            if (!error.message.includes('network') && !error.message.includes('timeout')) {
+            // Логируем ошибку только если это не сетевые проблемы
+            if (!error.message?.includes('network') && !error.message?.includes('timeout')) {
                 Utils.logError('Error patching user preferences:', error);
             }
             throw error;

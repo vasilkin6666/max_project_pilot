@@ -147,6 +147,13 @@ class ApiService {
         }
     }
 
+    static isNetworkError(error) {
+        return error.message?.includes('network') ||
+               error.message?.includes('Network') ||
+               error.message?.includes('fetch') ||
+               error.name === 'TypeError';
+    }
+
     // ==================== АУТЕНТИФИКАЦИЯ ====================
     static async getAuthToken(maxId, fullName, username = '') {
         return await this.apiCall('/auth/token', 'POST', {
@@ -349,15 +356,6 @@ class ApiService {
         } catch (error) {
             return false;
         }
-    }
-
-
-    // Новый метод для обработки ошибок сети
-    static isNetworkError(error) {
-        return error.message?.includes('network') ||
-               error.message?.includes('Network') ||
-               error.message?.includes('fetch') ||
-               error.name === 'TypeError';
     }
 }
 

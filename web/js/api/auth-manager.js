@@ -4,6 +4,7 @@ class AuthManager {
     static currentUserId = null;
     static isAuthenticated = false;
     static tokenRefreshInterval = null;
+    static maxData = null;
 
     static initPermissionSystem() {
         EventManager.on(APP_EVENTS.USER_UPDATE, (user) => {
@@ -18,9 +19,50 @@ class AuthManager {
         Utils.log('Permission system initialized');
     }
 
+    static extractMaxDataFromUrl() {
+        try {
+            // Парсим данные из хэша URL
+            const urlParams = new URLSearchParams(window.location.hash.substring(1));
+            const webAppData = urlParams.get('WebAppData');
+
+            if (webAppData) {
+                const params = new URLSearchParams(webAppData);
+                const userJson = params.get('user');
+
+                if (userJson) {
+                    const userData = JSON.parse(decodeURIComponent(userJson));
+                    const maxData = {
+                        user: {
+                            id: userData.id,
+                            first_name: userData.first_name,
+                            last_name: userData.last_name,
+                            username: userData.username,
+                            language_code: userData.language_code,
+                            photo_url: userData.photo_url
+                        },
+                        auth_date: parseInt(params.get('auth_date')),
+                        hash: params.get('hash'),
+                        query_id: params.get('query_id'),
+                        chat: JSON.parse(decodeURIComponent(params.get('chat') || '{}')),
+                        ip: params.get('ip')
+                    };
+
+                    Utils.log('MAX data extracted from URL:', maxData);
+                    return maxData;
+                }
+            }
+        } catch (error) {
+            Utils.logError('Error extracting MAX data from URL:', error);
+        }
+        return null;
+    }
+
     static async initializeUser() {
         try {
             Utils.log('Starting user authentication process');
+
+            // Извлекаем данные MAX из URL
+            this.maxData = this.extractMaxDataFromUrl();
 
             // 1. Проверяем наличие валидного токена
             const token = localStorage.getItem('access_token');
@@ -31,6 +73,8 @@ class AuthManager {
                 const userLoaded = await this.loadCurrentUser();
                 if (userLoaded) {
                     Utils.log('User authenticated via existing token');
+                    // Обновляем данные из MAX если есть
+                    await this.updateUserFromMaxData();
                     return;
                 }
             }
@@ -40,12 +84,78 @@ class AuthManager {
 
             // После успешной аутентификации
             this.startPeriodicUserUpdate();
-            this.initPermissionSystem(); // ← ДОБАВИТЬ ЗДЕСЬ
+            this.initPermissionSystem();
 
         } catch (error) {
             Utils.logError('User initialization failed:', error);
             await this.handleAuthenticationFailure(error);
         }
+    }
+
+    static async performAuthentication() {
+        // Приоритеты аутентификации:
+        // 1. MAX данные из URL
+        // 2. MAX Web App
+        // 3. Тестовая аутентификация (только для разработки)
+
+        if (this.maxData && this.maxData.user) {
+            Utils.log('Attempting MAX URL authentication');
+            const urlSuccess = await this.handleMaxUrlAuth();
+            if (urlSuccess) return;
+        }
+
+        if (Utils.isMaxEnvironment() && window.WebApp?.initDataUnsafe?.user) {
+            Utils.log('Attempting MAX WebApp authentication');
+            const maxSuccess = await this.handleMaxAuth();
+            if (maxSuccess) return;
+        }
+
+        // Если MAX не сработал, пробуем тестовую аутентификацию (только в development)
+        if (CONFIG.ENV === 'development') {
+            Utils.log('Attempting test authentication (development mode)');
+            const testSuccess = await this.handleTestAuth();
+            if (testSuccess) return;
+        }
+
+        // Если ничего не сработало
+        throw new Error('No authentication method available');
+    }
+
+    static async handleMaxUrlAuth() {
+        try {
+            const userData = this.maxData.user;
+            const maxId = userData.id.toString();
+            const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
+            const username = userData.username || '';
+            const photoUrl = userData.photo_url || '';
+
+            Utils.log('MAX URL user data:', { maxId, fullName, username, photoUrl });
+
+            const authData = {
+                max_id: maxId,
+                full_name: fullName,
+                username: username,
+                photo_url: photoUrl,
+                auth_date: this.maxData.auth_date,
+                hash: this.maxData.hash,
+                chat: this.maxData.chat
+            };
+
+            const tokenData = await ApiService.getAuthToken(maxId, fullName, username);
+            if (tokenData?.access_token) {
+                await this.handleSuccessfulAuth(tokenData);
+                Utils.log('MAX URL authentication successful');
+                return true;
+            }
+
+        } catch (error) {
+            Utils.logError('MAX URL authentication failed:', error);
+            // Пробуем стандартный MAX auth как fallback
+            if (Utils.isMaxEnvironment() && window.WebApp?.initDataUnsafe?.user) {
+                return await this.handleMaxAuth();
+            }
+        }
+        return false;
     }
 
     static startPeriodicUserUpdate() {
@@ -60,28 +170,6 @@ class AuthManager {
                 }
             }
         }, 5 * 60 * 1000); // 5 минут
-    }
-
-    static async performAuthentication() {
-        // Приоритеты аутентификации:
-        // 1. MAX (Telegram Web App)
-        // 2. Тестовая аутентификация (только для разработки)
-
-        if (Utils.isMaxEnvironment() && window.WebApp?.initDataUnsafe?.user) {
-            Utils.log('Attempting MAX authentication');
-            const maxSuccess = await this.handleMaxAuth();
-            if (maxSuccess) return;
-        }
-
-        // Если MAX не сработал, пробуем тестовую аутентификацию (только в development)
-        if (CONFIG.ENV === 'development') {
-            Utils.log('Attempting test authentication (development mode)');
-            const testSuccess = await this.handleTestAuth();
-            if (testSuccess) return;
-        }
-
-        // Если ничего не сработало
-        throw new Error('No authentication method available');
     }
 
     static async handleMaxAuth() {
@@ -194,6 +282,9 @@ class AuthManager {
         this.currentUserId = tokenData.user?.id;
         this.isAuthenticated = true;
 
+        // Обновляем данные пользователя из MAX если есть
+        await this.updateUserFromMaxData();
+
         // Запускаем периодическую проверку токена
         this.startTokenRefresh();
 
@@ -205,38 +296,84 @@ class AuthManager {
 
         Utils.log('Authentication successful', {
             user: this.currentUser?.full_name,
-            id: this.currentUserId
+            id: this.currentUserId,
+            maxData: !!this.maxData
         });
     }
 
-    static async loadCurrentUser() {
-        try {
-            const userData = await ApiService.getCurrentUser();
 
-            this.currentUser = userData;
-            this.currentUserId = userData.id;
-            this.isAuthenticated = true;
-
-            this.updateUserUI();
-            EventManager.emit(APP_EVENTS.USER_UPDATE, userData);
-
-            Utils.log('Current user loaded successfully');
-            return true;
-
-        } catch (error) {
-            Utils.logError('Failed to load current user:', error);
-
-            // Если ошибка аутентификации - очищаем токен
-            if (error.status === 401 || error.message?.includes('401')) {
-                Utils.log('Token invalid, clearing authentication data');
-                this.clearAuthData();
-                // Перезагружаем страницу для повторной аутентификации
-                setTimeout(() => window.location.reload(), 1000);
+        static async updateUserFromMaxData() {
+            if (!this.maxData || !this.maxData.user || !this.isAuthenticated) {
+                return;
             }
 
-            return false;
+            try {
+                const maxUser = this.maxData.user;
+                const updateData = {};
+
+                // Обновляем фото если его нет или оно из MAX
+                if (maxUser.photo_url && (!this.currentUser.photo_url || this.currentUser.photo_url.includes('oneme.ru'))) {
+                    updateData.photo_url = maxUser.photo_url;
+                }
+
+                // Обновляем имя если оно из MAX
+                const maxFullName = `${maxUser.first_name || ''} ${maxUser.last_name || ''}`.trim();
+                if (maxFullName && maxFullName !== 'Пользователь MAX' &&
+                    (!this.currentUser.full_name || this.currentUser.full_name === 'Пользователь MAX')) {
+                    updateData.full_name = maxFullName;
+                }
+
+                // Обновляем username если его нет
+                if (maxUser.username && !this.currentUser.username) {
+                    updateData.username = maxUser.username;
+                }
+
+                // Если есть изменения - обновляем профиль
+                if (Object.keys(updateData).length > 0) {
+                    Utils.log('Updating user profile from MAX data:', updateData);
+
+                    if (typeof UsersManager !== 'undefined') {
+                        await UsersManager.updateUserProfile(updateData);
+                    } else {
+                        // Fallback: обновляем локально
+                        this.currentUser = { ...this.currentUser, ...updateData };
+                        EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
+                    }
+                }
+
+            } catch (error) {
+                Utils.logError('Error updating user from MAX data:', error);
+            }
         }
-    }
+
+        static async loadCurrentUser() {
+            try {
+                const userData = await ApiService.getCurrentUser();
+                this.currentUser = userData;
+                this.currentUserId = userData.id;
+                this.isAuthenticated = true;
+
+                // Обновляем данные из MAX после загрузки
+                await this.updateUserFromMaxData();
+
+                this.updateUserUI();
+                EventManager.emit(APP_EVENTS.USER_UPDATE, userData);
+
+                Utils.log('Current user loaded successfully');
+                return true;
+
+            } catch (error) {
+                Utils.logError('Failed to load current user:', error);
+                // Если ошибка аутентификации - очищаем токен
+                if (error.status === 401 || error.message?.includes('401')) {
+                    Utils.log('Token invalid, clearing authentication data');
+                    this.clearAuthData();
+                    // Перезагружаем страницу для повторной аутентификации
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+                return false;
+            }
+        }
 
     static startTokenRefresh() {
         // Очищаем предыдущий интервал
@@ -306,26 +443,59 @@ class AuthManager {
     static updateUserUI() {
         if (!this.currentUser) return;
 
+        // Используем данные из MAX если есть
+        let displayUser = { ...this.currentUser };
+        if (this.maxData && this.maxData.user) {
+            const maxUser = this.maxData.user;
+            displayUser = {
+                ...displayUser,
+                // Приоритет у MAX данных для отображения
+                full_name: maxUser.first_name && maxUser.last_name ?
+                    `${maxUser.first_name} ${maxUser.last_name}` : displayUser.full_name,
+                photo_url: maxUser.photo_url || displayUser.photo_url
+            };
+        }
+
         // Обновляем аватар пользователя
         const userAvatar = document.getElementById('user-avatar');
         if (userAvatar) {
-            const initials = Utils.getInitials(this.currentUser.full_name || 'Пользователь');
+            const initials = Utils.getInitials(displayUser.full_name || 'Пользователь');
             userAvatar.textContent = initials;
 
-            // Добавляем фото если есть
-            if (this.currentUser.photo_url) {
-                userAvatar.style.backgroundImage = `url(${this.currentUser.photo_url})`;
+            // Добавляем фото если есть (приоритет у MAX фото)
+            if (displayUser.photo_url) {
+                userAvatar.style.backgroundImage = `url(${displayUser.photo_url})`;
                 userAvatar.textContent = '';
             }
         }
 
-        // Обновляем имя пользователя
+        // Обновляем имя пользователя в настройках если есть элемент
         const userNameElement = document.getElementById('user-name');
         if (userNameElement) {
-            userNameElement.textContent = this.currentUser.full_name || 'Пользователь';
+            userNameElement.textContent = displayUser.full_name || 'Пользователь';
         }
 
-        EventManager.emit(APP_EVENTS.USER_UPDATE, this.currentUser);
+        // Обновляем информацию в настройках через UIComponents
+        if (typeof UIComponents !== 'undefined') {
+            UIComponents.updateUserInfo(displayUser);
+            UIComponents.updateAccountSettingsInfo(displayUser);
+        }
+
+        EventManager.emit(APP_EVENTS.USER_UPDATE, displayUser);
+    }
+
+    static getMaxUserId() {
+        if (this.maxData && this.maxData.user) {
+            return this.maxData.user.id;
+        }
+        return this.currentUser?.max_id || this.currentUser?.id;
+    }
+
+    static getMaxLanguage() {
+        if (this.maxData && this.maxData.user && this.maxData.user.language_code) {
+            return this.maxData.user.language_code;
+        }
+        return 'ru'; // fallback
     }
 
     static async handleAuthenticationFailure(error) {
