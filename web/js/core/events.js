@@ -56,42 +56,27 @@ class EventManager {
 
 // Глобальные события приложения
 const APP_EVENTS = {
-    // Аутентификация
-    USER_LOGIN: 'user:login',
-    USER_LOGOUT: 'user:logout',
     USER_UPDATE: 'user:update',
+    USER_LOGGED_IN: 'user:logged_in',
+    USER_LOGGED_OUT: 'user:logged_out',
 
-    // Проекты
-    PROJECTS_LOADED: 'projects:loaded',
+    PROJECTS_LOADED: 'projects:loaded',       // ← ОБЯЗАТЕЛЬНО
+    PROJECTS_UPDATED: 'projects:updated',
     PROJECT_CREATED: 'project:created',
-    PROJECT_UPDATED: 'project:updated',
     PROJECT_DELETED: 'project:deleted',
 
-    // Задачи
     TASKS_LOADED: 'tasks:loaded',
     TASK_CREATED: 'task:created',
-    TASK_UPDATED: 'task:updated',
-    TASK_DELETED: 'task:deleted',
 
-    // Уведомления
     NOTIFICATIONS_LOADED: 'notifications:loaded',
-    NOTIFICATION_READ: 'notification:read',
 
-    // UI события
-    THEME_CHANGED: 'ui:theme-changed',
-    VIEW_CHANGED: 'ui:view-changed',
-    MODAL_OPENED: 'ui:modal-opened',
-    MODAL_CLOSED: 'ui:modal-closed',
-
-    // Данные
-    DATA_LOADING: 'data:loading',
+    THEME_CHANGED: 'theme:changed',
+    NETWORK_STATUS_CHANGED: 'network:status',
     DATA_LOADED: 'data:loaded',
-    DATA_ERROR: 'data:error',
+    STATE_UPDATED: 'state:updated',
 
-    // Синхронизация
-    SYNC_STARTED: 'sync:started',
-    SYNC_COMPLETED: 'sync:completed',
-    SYNC_FAILED: 'sync:failed'
+    MODAL_OPENED: 'modal:opened',
+    MODAL_CLOSED: 'modal:closed',
 };
 
 // Экспорт

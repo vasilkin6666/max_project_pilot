@@ -113,39 +113,28 @@ class App {
     static async init() {
         try {
             Utils.log('App initialization started');
-            this.showLoadingOverlay();
 
-            await this.checkSystemRequirements();
+            // 1. Инициализация ядра
             await this.initializeCore();
 
-            // 1. Аутентификация — обязательна ДО любого API
+            // 2. UI
+            await UIComponents.init();
+
+            // 3. Авторизация
             await AuthManager.initializeUser();
 
-            // 2. ТЕМА — безопасно, finalTheme объявлена внутри applyTheme
-            const savedTheme = StateManager.getState('ui.theme') ||
-                               localStorage.getItem('theme') ||
-                               CONFIG.UI.THEME.LIGHT;
-            this.applyTheme(savedTheme); // ← finalTheme внутри метода
-
-            // 3. UI-компоненты
-            if (typeof UIComponents === 'undefined') {
-                throw new Error('UIComponents not loaded');
+            // 4. Загрузка данных (только если авторизован)
+            if (this.isAuthenticated()) {
+                await this.loadInitialData();
+                this.startBackgroundProcesses();
+            } else {
+                Utils.log('User not authenticated, skipping data load');
+                this.showAuthScreen?.();
             }
-            UIComponents.init();
 
-            // 4. Данные
-            await this.loadInitialData();
-
-            this.hideLoadingOverlay();
-            this.startBackgroundProcesses();
-            this.activateUnusedComponents();
-            this.setupCompleteEventSystem();
-
-            Utils.log('App initialization completed');
-            EventManager.emit(APP_EVENTS.DATA_LOADED);
         } catch (error) {
             Utils.logError('App initialization failed:', error);
-            this.handleInitError(error);
+            this.handleCriticalError(error);
         }
     }
 
@@ -404,29 +393,16 @@ class App {
     // ---------- ДАННЫЕ ----------
     static async loadInitialData() {
         try {
-            Utils.log('Starting initial data load...');
-
-            const results = await Promise.allSettled([
-                DashboardManager.loadDashboard(),
-                NotificationsManager.loadNotifications(),
-                ProjectsManager.loadProjects?.(),
-                TasksManager.loadTasks?.(),
-                UsersManager.loadCurrentUser?.()
-            ]);
-
-            results.forEach((result, i) => {
-                if (result.status === 'rejected') {
-                    Utils.logError(`Initial load [${i}] failed:`, result.reason);
-                }
-            });
-
-            EventManager.emit(APP_EVENTS.INITIAL_DATA_LOADED);
-            Utils.log('Initial data load completed');
-        } catch (error) {
-            Utils.logError('Critical error in loadInitialData:', error);
-            ToastManager?.error('Не удалось загрузить данные');
-            EventManager.emit(APP_EVENTS.DATA_ERROR, error);
+            await DashboardManager.loadDashboard();
+            EventManager.emit(APP_EVENTS.DATA_LOADED);
+        } catch (e) {
+            Utils.logError('Initial load failed', e);
         }
+    }
+
+    static isAuthenticated() {
+        // Проверяем токен и флаг
+        return !!AuthManager.getToken() && StateManager.getState('user') !== null;
     }
 
     static startBackgroundProcesses() {
@@ -449,32 +425,14 @@ class App {
     }
 
     static async syncData() {
-        if (!AuthManager.isUserAuthenticated()) {
-            Utils.log('Sync skipped: not authenticated');
+        if (!this.isAuthenticated()) {
+            Utils.log('syncData: not authenticated, skipping');
             return;
         }
-
         try {
-            Utils.log('Starting data sync...');
-
-            const results = await Promise.allSettled([
-                DashboardManager.loadDashboard(),
-                NotificationsManager.loadNotifications(),
-                ProjectsManager.refreshProjects?.(),
-                TasksManager.refreshTasks?.()
-            ]);
-
-            results.forEach((result, i) => {
-                if (result.status === 'rejected') {
-                    Utils.logError(`Sync [${i}] failed:`, result.reason);
-                }
-            });
-
-            EventManager.emit(APP_EVENTS.DATA_SYNCED);
-            Utils.log('Data sync completed');
-        } catch (error) {
-            Utils.logError('Sync error:', error);
-            ToastManager?.error('Ошибка синхронизации');
+            await DashboardManager.loadDashboard();
+        } catch (e) {
+            Utils.logError('Sync failed', e);
         }
     }
 

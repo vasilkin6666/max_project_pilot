@@ -1,9 +1,11 @@
 // Менеджер дашборда
 class DashboardManager {
   static async loadDashboard() {
-      // ЗАЩИТА: не грузим, если не авторизован
-      if (!App.isAuthenticated()) {
-          Utils.log('loadDashboard skipped: user not authenticated');
+      // НЕ проверяем App.isAuthenticated() здесь!
+      // Доверимся, что вызываем только после авторизации
+
+      if (!AuthManager.getToken()) {
+          Utils.log('loadDashboard: no token, skipping');
           return;
       }
 
@@ -11,46 +13,43 @@ class DashboardManager {
           StateManager.setLoading(true);
           Utils.log('Loading dashboard...');
 
-          const dashboardData = await CacheManager.getWithCache(
+          const data = await CacheManager.getWithCache(
               'dashboard',
               () => ApiService.getDashboard(),
               'dashboard',
-              { retryOnAuthError: true } // ← ВАЖНО: повтор при 401
+              { retryOnAuthError: true }
           );
 
-          if (!dashboardData) throw new Error('Empty dashboard data');
+          if (!data) throw new Error('Empty dashboard');
 
-          const projects = Array.isArray(dashboardData.projects) ? dashboardData.projects : [];
-          StateManager.setState('dashboard', dashboardData);
+          const projects = Array.isArray(data.projects) ? data.projects : [];
+          StateManager.setState('dashboard', data);
           StateManager.setState('projects', projects);
 
-          this.updateStats(dashboardData);
-          this.renderProjects(projects);
+          UIComponents.updateStats(data);
+          UIComponents.renderProjects(projects);
 
           // Приоритетные задачи
-          try {
-              const tasksData = await ApiService.getTasks({ status: 'todo', limit: 10 });
-              const tasks = Array.isArray(tasksData?.tasks) ? tasksData.tasks : [];
-              StateManager.setState('tasks', tasks);
-              this.renderPriorityTasks(tasks);
-          } catch (e) {
-              Utils.logError('Failed to load tasks:', e);
-          }
+          const tasks = await ApiService.getTasks({ status: 'todo', limit: 10 }).catch(() => ({ tasks: [] }));
+          StateManager.setState('tasks', tasks.tasks || []);
+          UIComponents.renderPriorityTasks(tasks.tasks || []);
 
+          EventManager.emit(APP_EVENTS.PROJECTS_LOADED, projects);
           EventManager.emit(APP_EVENTS.DATA_LOADED);
-          Utils.log('Dashboard loaded successfully');
+
+          Utils.log('Dashboard loaded');
       } catch (error) {
           if (error.status === 401) {
-              Utils.log('401 in loadDashboard → redirect to auth');
-              App.logout(); // или App.redirectToLogin()
+              AuthManager.logout();
               return;
           }
           Utils.logError('Dashboard load error:', error);
-          this.showErrorState(document.getElementById('projects-list'), 'Не удалось загрузить проекты');
+          UIComponents.showErrorState('#projects-list', 'Не удалось загрузить проекты');
       } finally {
           StateManager.setLoading(false);
       }
   }
+
 
     static updateStats(data) {
         // Используем данные из dashboard response

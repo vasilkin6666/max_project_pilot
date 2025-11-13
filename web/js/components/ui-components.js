@@ -1,14 +1,12 @@
 //ui-components.js
 class UIComponents {
-  static init() {
-      if (this.isInitialized) {
-          Utils.log('UI components already initialized');
-          return;
-      }
+  static async init() {
+      if (this.isInitialized) return;
 
-      // 1. Сначала — шаблоны (критично!)
-      this.loadTemplates().then(() => {
+      try {
+          await this.loadTemplates();
           Utils.log('Templates loaded, proceeding with init');
+
           this.initNavigation();
           this.initTheme();
           this.initSearch();
@@ -16,20 +14,13 @@ class UIComponents {
           this.setupGlobalHandlers();
           this.setupResponsiveBehavior();
 
-          // После всего — пытаемся загрузить дашборд
-          if (typeof App !== 'undefined' && App.isAuthenticated()) {
-              this.loadDashboard().catch(err => {
-                  Utils.logError('Dashboard load failed on init:', err);
-              });
-          }
-
           this.isInitialized = true;
           Utils.log('UI components initialized');
-      }).catch(err => {
-          Utils.logError('Failed to load templates:', err);
+      } catch (err) {
+          Utils.logError('UI init failed:', err);
           this.createFallbackTemplates();
           this.isInitialized = true;
-      });
+      }
   }
 
     static templates = new Map();
@@ -495,69 +486,26 @@ class UIComponents {
     }
 
     static initEventListeners() {
-        // === ЗАЩИТА ОТ НЕОПРЕДЕЛЁННЫХ СОБЫТИЙ ===
         const safeOn = (event, handler) => {
             if (event && typeof handler === 'function') {
                 EventManager.on(event, handler);
             } else {
-                console.warn(`Event "${event}" is undefined or handler is not a function`);
+                console.warn(`Event "${event}" is missing or handler invalid`);
             }
         };
 
-        // === Глобальные события ===
-        safeOn(APP_EVENTS.USER_UPDATE, user => {
-            if (user) {
-                this.updateUserInfo(user);
-                this.updateAccountSettingsInfo(user);
-            }
+        // === ТОЛЬКО СУЩЕСТВУЮЩИЕ СОБЫТИЯ ===
+        safeOn(APP_EVENTS.USER_UPDATE, user => user && this.updateUserInfo(user));
+        safeOn(APP_EVENTS.NOTIFICATIONS_LOADED, n => Array.isArray(n) && this.updateNotificationBadge(n));
+        safeOn(APP_EVENTS.PROJECTS_LOADED, projects => Array.isArray(projects) && this.renderProjects(projects));
+        safeOn(APP_EVENTS.PROJECTS_UPDATED, projects => Array.isArray(projects) && this.renderProjects(projects));
+        safeOn(APP_EVENTS.STATE_UPDATED, state => {
+            const p = state?.projects;
+            if (Array.isArray(p)) setTimeout(() => this.renderProjects(p), 100);
         });
-
-        safeOn(APP_EVENTS.NOTIFICATIONS_LOADED, notifications => {
-            if (Array.isArray(notifications)) {
-                this.updateNotificationBadge(notifications);
-            }
-        });
-
-        safeOn(APP_EVENTS.PROJECTS_UPDATED, projects => {
-            if (Array.isArray(projects)) {
-                this.renderProjects(projects);
-            } else {
-                Utils.log('PROJECTS_UPDATED: invalid data', projects);
-            }
-        });
-
-        safeOn(APP_EVENTS.STATE_UPDATED, newState => {
-            const projects = newState?.projects;
-            if (Array.isArray(projects)) {
-                setTimeout(() => this.renderProjects(projects), 100);
-            }
-        });
-
-        safeOn(APP_EVENTS.TASKS_LOADED, tasks => {
-            if (Array.isArray(tasks)) {
-                this.renderTasks(tasks);
-            }
-        });
-
-        safeOn(APP_EVENTS.THEME_CHANGED, theme => {
-            if (theme) this.updateThemeUI(theme);
-        });
-
-        safeOn(APP_EVENTS.NETWORK_STATUS_CHANGED, status => {
-            if (status) this.updateNetworkStatusUI(status);
-        });
-
-        safeOn(APP_EVENTS.MODAL_OPENED, modalId => {
-            if (modalId) this.handleModalOpened(modalId);
-        });
-
-        safeOn(APP_EVENTS.MODAL_CLOSED, modalId => {
-            if (modalId) this.handleModalClosed(modalId);
-        });
-
-        safeOn(APP_EVENTS.DATA_LOADED, () => {
-            this.ensureRequiredTemplates();
-        });
+        safeOn(APP_EVENTS.TASKS_LOADED, tasks => Array.isArray(tasks) && this.renderTasks(tasks));
+        safeOn(APP_EVENTS.THEME_CHANGED, theme => theme && this.updateThemeUI(theme));
+        safeOn(APP_EVENTS.DATA_LOADED, () => this.ensureRequiredTemplates());
 
         Utils.log('Event listeners initialized');
     }
@@ -1170,15 +1118,10 @@ class UIComponents {
 
     static renderProjects(projects) {
         const container = document.getElementById('projects-list');
-        if (!container) {
-            console.warn('Projects container not found');
-            return;
-        }
+        if (!container) return;
 
-        // === ЗАЩИТА ОТ NULL / UNDEFINED ===
         if (!Array.isArray(projects)) {
-            Utils.log('renderProjects: invalid or null projects', projects);
-            this.showEmptyState(container, 'Проектов пока нет');
+            this.showEmptyState(container, 'Проектов нет');
             return;
         }
 
@@ -1188,57 +1131,26 @@ class UIComponents {
         }
 
         container.innerHTML = '';
-        let lastSerialized = null;
-
-        projects.forEach((projectData, index) => {
-            const project = projectData?.project || projectData;
+        projects.forEach((p, i) => {
+            const project = p?.project || p;
             if (!project?.hash) return;
 
-            const serialized = JSON.stringify(project);
-            if (lastSerialized === serialized) {
-                Utils.log('Duplicate project skipped');
-                return;
-            }
-            lastSerialized = serialized;
-
             setTimeout(() => {
-                try {
-                    const cardHTML = this.renderProjectCardWithTemplate(project);
-                    if (!cardHTML) return;
+                const html = this.renderProjectCardWithTemplate(project);
+                if (!html) return;
+                const el = document.createElement('div');
+                el.innerHTML = html;
+                const card = el.firstChild;
+                container.appendChild(card);
 
-                    const wrapper = document.createElement('div');
-                    wrapper.innerHTML = cardHTML.trim();
-                    const card = wrapper.firstElementChild;
-                    if (!card) return;
-
-                    card.addEventListener('click', (e) => {
-                        if (e.target.closest('button, .swipe-action')) return;
-                        const hash = project.hash;
-                        if (typeof ProjectView !== 'undefined') {
-                            ProjectView.openProject(hash);
-                        } else if (typeof ProjectsManager !== 'undefined') {
-                            ProjectsManager.openProjectDetail(hash);
-                        }
-                    });
-
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateY(20px)';
-                    container.appendChild(card);
-
-                    requestAnimationFrame(() => {
-                        card.style.opacity = '1';
-                        card.style.transform = 'translateY(0)';
-                        card.style.transition = 'all 0.3s ease';
-                    });
-                } catch (err) {
-                    Utils.logError('Error rendering project card:', err);
-                }
-            }, index * 50);
+                card.addEventListener('click', e => {
+                    if (e.target.closest('button, .swipe-action')) return;
+                    ProjectView.openProject?.(project.hash) || ProjectsManager.openProjectDetail(project.hash);
+                });
+            }, i * 50);
         });
-
-        Utils.log(`Rendered ${projects.length} projects`);
     }
-
+    
     static renderTasks(tasks) {
         const container = document.getElementById('tasks-container');
         if (!container) return;
