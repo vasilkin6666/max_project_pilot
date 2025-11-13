@@ -1,6 +1,6 @@
 class ProjectView {
     static currentProject = null;
-    static isOpening = false; /
+    static isOpening = false;
 
     static async openProject(projectHash) {
         if (this.currentProject?.hash === projectHash) {
