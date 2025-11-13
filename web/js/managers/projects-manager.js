@@ -1,67 +1,83 @@
 // Менеджер проектов
 class ProjectsManager {
-    static async loadProjects(forceRefresh = false) {
-        try {
-            StateManager.setLoading(true);
+  static async loadProjects(forceRefresh = false) {
+      try {
+          StateManager.setLoading(true);
 
-            let data;
-            if (forceRefresh) {
-                // Принудительное обновление - пропускаем кэш
-                data = await ApiService.getProjects();
-                // Сохраняем в кэш
-                if (data && typeof CacheManager !== 'undefined') {
-                    CacheManager.set('projects', data, 5 * 60 * 1000); // 5 минут
-                }
-            } else {
-                // Используем кэш
-                data = await CacheManager.getWithCache(
-                    'projects',
-                    () => ApiService.getProjects(),
-                    'projects'
-                );
-            }
+          let data;
+          const cacheKey = `projects-${AuthManager.getCurrentUserId()}`;
 
-            const projects = data.projects || [];
+          if (forceRefresh) {
+              data = await ApiService.getProjects();
+              if (data && typeof CacheManager !== 'undefined') {
+                  const cacheData = {
+                      ...data,
+                      _timestamp: Date.now(),
+                      _userId: AuthManager.getCurrentUserId()
+                  };
+                  CacheManager.set(cacheKey, cacheData, 5 * 60 * 1000);
+              }
+          } else {
+              data = await CacheManager.getWithCache(
+                  cacheKey,
+                  () => ApiService.getProjects(),
+                  'projects'
+              );
 
-            // ОБРАБАТЫВАЕМ ДАННЫЕ ПРОЕКТОВ ДЛЯ КОРРЕКТНОГО ОТОБРАЖЕНИЯ РОЛИ
-            const processedProjects = this.processProjectsData(projects);
+              if (data && data._userId !== AuthManager.getCurrentUserId()) {
+                  data = await ApiService.getProjects();
+                  const cacheData = {
+                      ...data,
+                      _timestamp: Date.now(),
+                      _userId: AuthManager.getCurrentUserId()
+                  };
+                  CacheManager.set(cacheKey, cacheData, 5 * 60 * 1000);
+              }
+          }
 
-            StateManager.setState('projects', processedProjects);
-            EventManager.emit(APP_EVENTS.PROJECTS_LOADED, processedProjects);
-            Utils.log('Projects loaded successfully', { count: processedProjects.length, forceRefresh });
-            return processedProjects;
-        } catch (error) {
-            Utils.logError('Projects load error:', error);
-            EventManager.emit(APP_EVENTS.DATA_ERROR, error);
-            throw error;
-        } finally {
-            StateManager.setLoading(false);
-        }
-    }
+          const projects = data.projects || [];
+          const processedProjects = this.processProjectsData(projects);
 
-    // Обработка данных проектов для корректного отображения роли
+          StateManager.setState('projects', processedProjects);
+          EventManager.emit(APP_EVENTS.PROJECTS_LOADED, processedProjects);
+
+          Utils.log('Projects loaded successfully', {
+              count: processedProjects.length,
+              forceRefresh,
+              roles: processedProjects.map(p => p.user_role)
+          });
+
+          return processedProjects;
+      } catch (error) {
+          Utils.logError('Projects load error:', error);
+          EventManager.emit(APP_EVENTS.DATA_ERROR, error);
+          throw error;
+      } finally {
+          StateManager.setLoading(false);
+      }
+  }
+
+    // УЛУЧШЕННЫЙ МЕТОД ОБРАБОТКИ ДАННЫХ ПРОЕКТОВ
     static processProjectsData(projects) {
         if (!projects || !Array.isArray(projects)) {
             return [];
         }
 
         return projects.map(project => {
-            // Если проект пришел как объект с полем project (структура API)
             if (project.project) {
                 return {
                     ...project.project,
-                    user_role: project.current_user_role || project.role || 'member',
-                    current_user_role: project.current_user_role || project.role || 'member', // Дублируем для надежности
-                    stats: project.stats || {},
+                    user_role: project.current_user_role || project.role || project.project.user_role || 'member',
+                    current_user_role: project.current_user_role || project.role || project.project.user_role || 'member',
+                    stats: project.stats || project.project.stats || {},
                     has_access: project.has_access !== false,
-                    members: project.members || []
+                    members: project.members || project.project.members || []
                 };
             }
 
-            // Если проект пришел напрямую
             return {
                 ...project,
-                user_role: project.user_role || project.current_user_role || 'member',
+                user_role: project.current_user_role || project.user_role || 'member',
                 current_user_role: project.current_user_role || project.user_role || 'member',
                 stats: project.stats || {},
                 has_access: project.has_access !== false,
@@ -70,7 +86,6 @@ class ProjectsManager {
         });
     }
 
-    // Защита от перезагрузки при GET-параметрах
     static clearUrlParams() {
         if (window.location.search.includes('title=')) {
             const url = new URL(window.location);
@@ -83,47 +98,15 @@ class ProjectsManager {
         // Очищаем URL от параметров формы
         this.clearUrlParams();
 
+        // Получаем шаблон из UIComponents
+        const template = typeof UIComponents !== 'undefined' ?
+            UIComponents.templates.get('create-project-modal-template') :
+            this.getCreateProjectFallbackTemplate();
+
         ModalManager.showModal('create-project', {
             title: 'Создание проекта',
             size: 'medium',
-            template: `
-                <form id="create-project-form">
-                    <div class="form-group">
-                        <label for="project-title" class="form-label">Название проекта *</label>
-                        <input type="text" class="form-control" id="project-title" name="title" required
-                               placeholder="Введите название проекта" maxlength="100">
-                        <div class="form-text">Максимум 100 символов</div>
-                    </div>
-                    <div class="form-group">
-                        <label for="project-description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="project-description" name="description" rows="3"
-                                  placeholder="Опишите ваш проект (необязательно)" maxlength="500"></textarea>
-                        <div class="form-text">Максимум 500 символов</div>
-                    </div>
-                    <div class="form-group">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="project-private" name="is_private" checked>
-                            <label class="form-check-label" for="project-private">
-                                Приватный проект
-                            </label>
-                            <div class="form-text">
-                                Только приглашенные пользователи смогут увидеть проект
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="project-approval" name="requires_approval">
-                            <label class="form-check-label" for="project-approval">
-                                Требовать одобрение для присоединения
-                            </label>
-                            <div class="form-text">
-                                Новые участники должны быть одобрены владельцем/админом
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            `,
+            template: template,
             actions: [
                 {
                     text: 'Отмена',
@@ -147,6 +130,47 @@ class ProjectsManager {
                 }
             }
         });
+    }
+
+    static getCreateProjectFallbackTemplate() {
+        return `
+            <form id="create-project-form">
+                <div class="form-group">
+                    <label for="project-title" class="form-label">Название проекта *</label>
+                    <input type="text" class="form-control" id="project-title" name="title" required
+                           placeholder="Введите название проекта" maxlength="100">
+                    <div class="form-text">Максимум 100 символов</div>
+                </div>
+                <div class="form-group">
+                    <label for="project-description" class="form-label">Описание</label>
+                    <textarea class="form-control" id="project-description" name="description" rows="3"
+                              placeholder="Опишите ваш проект (необязательно)" maxlength="500"></textarea>
+                    <div class="form-text">Максимум 500 символов</div>
+                </div>
+                <div class="form-group">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="project-private" name="is_private" checked>
+                        <label class="form-check-label" for="project-private">
+                            Приватный проект
+                        </label>
+                        <div class="form-text">
+                            Только приглашенные пользователи смогут увидеть проект
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="project-approval" name="requires_approval">
+                        <label class="form-check-label" for="project-approval">
+                            Требовать одобрение для присоединения
+                        </label>
+                        <div class="form-text">
+                            Новые участники должны быть одобрены владельцем/админом
+                        </div>
+                    </div>
+                </div>
+            </form>
+        `;
     }
 
     static async handleCreateProjectSubmit() {
@@ -194,25 +218,21 @@ class ProjectsManager {
             Utils.log('API Call: POST /api/projects/', projectData);
             const result = await ApiService.createProject(projectData);
 
-            // Проверка ответа
             if (!result || !result.project) {
                 throw new Error(result?.error || 'Сервер не вернул проект');
             }
 
-            // ДОБАВЛЯЕМ РОЛЬ ВЛАДЕЛЬЦА К ПРОЕКТУ
             const projectWithRole = {
                 ...result.project,
-                user_role: 'owner', // Явно указываем роль владельца
-                current_user_role: 'owner' // И для совместимости с API
+                user_role: 'owner',
+                current_user_role: 'owner'
             };
 
             ToastManager.success(`Проект "${result.project.title}" создан!`);
             HapticManager.projectCreated();
 
-            // ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СПИСОК ПРОЕКТОВ С ОЧИСТКОЙ КЭША
-            await this.loadProjects(true); // forceRefresh = true
+            await this.loadProjects(true);
 
-            // Дополнительно инвалидируем кэш
             if (typeof CacheManager !== 'undefined') {
                 CacheManager.invalidate('projects');
                 CacheManager.invalidate('dashboard');

@@ -1,4 +1,4 @@
-/* Dark theme variables */
+/* Dark theme variables - ИСПРАВЛЕННАЯ ВЕРСИЯ */
 [data-theme="dark"] {
     /* Colors */
     --primary-color: #7367f0;
@@ -8,71 +8,73 @@
     --danger-color: #ea5455;
     --info-color: #00cfe8;
 
-    /* Backgrounds - улучшенная контрастность */
+    /* Backgrounds */
     --bg-primary: #0f1419;
     --bg-secondary: #1a1f2b;
     --bg-tertiary: #252a38;
 
-    /* Text - улучшенная читаемость */
+    /* Text */
     --text-primary: #ffffff;
     --text-secondary: #d0d4e0;
     --text-muted: #8a8f9d;
 
-    /* Borders - более заметные границы */
+    /* Borders */
     --border-color: #3a4150;
 
     /* Shadows */
     --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.35);
-
-    /* Overlays */
-    --overlay-light: rgba(26, 31, 43, 0.9);
-    --overlay-dark: rgba(0, 0, 0, 0.5);
 }
 
-/* Улучшения контрастности для темной темы */
-[data-theme="dark"] .form-control,
-[data-theme="dark"] .form-select {
-    background: var(--bg-tertiary);
-    border-color: var(--border-color);
+/* ДОБАВЛЕННЫЕ СТИЛИ ДЛЯ ТЕМНОЙ ТЕМЫ */
+[data-theme="dark"] .main-content {
+    background: var(--bg-primary);
     color: var(--text-primary);
 }
 
-[data-theme="dark"] .form-control:focus,
-[data-theme="dark"] .form-select:focus {
-    background: var(--bg-tertiary);
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(115, 103, 240, 0.2);
-}
-
-[data-theme="dark"] .card,
-[data-theme="dark"] .project-card,
-[data-theme="dark"] .task-card {
+[data-theme="dark"] .quick-actions .btn-outline,
+[data-theme="dark"] #filter-btn,
+[data-theme="dark"] #sort-btn {
     background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-}
-
-[data-theme="dark"] .stat-card {
-    background: var(--bg-tertiary);
-}
-
-[data-theme="dark"] .btn-outline {
     border-color: var(--border-color);
     color: var(--text-secondary);
 }
 
-[data-theme="dark"] .btn-outline:hover {
+[data-theme="dark"] .quick-actions .btn-outline:hover,
+[data-theme="dark"] #filter-btn:hover,
+[data-theme="dark"] #sort-btn:hover {
     background: var(--bg-tertiary);
-    border-color: var(--primary-color);
     color: var(--text-primary);
 }
 
-/* Улучшение читаемости текста */
-[data-theme="dark"] .text-muted {
-    color: var(--text-muted) !important;
+[data-theme="dark"] .priority-tasks {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
 }
 
-[data-theme="dark"] .section-title {
+[data-theme="dark"] .notifications-container {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] .notification-item {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .notification-item.unread {
+    background: rgba(115, 103, 240, 0.08);
+}
+
+[data-theme="dark"] .settings-container {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-group {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .setting-title {
     color: var(--text-primary);
 }
 
@@ -84,70 +86,63 @@
     color: var(--text-muted);
 }
 
-[data-theme="dark"] .modal-content {
-    background: var(--bg-secondary);
+[data-theme="dark"] .account-info {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
     color: var(--text-primary);
 }
 
-[data-theme="dark"] .context-menu {
-    background: var(--bg-secondary);
-    border-color: var(--border-color);
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
 }
 
 [data-theme="dark"] .search-container {
     background: var(--bg-secondary);
 }
 
-[data-theme="dark"] .bottom-nav {
+[data-theme="dark"] .search-input {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .search-section {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .section-title {
+    color: var(--text-secondary);
+}
+
+/* Улучшенные стили для карточек в темной теме */
+[data-theme="dark"] .project-card,
+[data-theme="dark"] .task-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .project-card:hover,
+[data-theme="dark"] .task-card:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Стили для статистики */
+[data-theme="dark"] .stats-row {
     background: var(--bg-secondary);
     border-color: var(--border-color);
 }
 
-[data-theme="dark"] .nav-item {
-    color: var(--text-secondary);
-}
-
-[data-theme="dark"] .nav-item:hover,
-[data-theme="dark"] .nav-item.active {
+[data-theme="dark"] .stat-item .stat-value {
     color: var(--primary-color);
 }
 
-[data-theme="dark"] .btn-icon {
+[data-theme="dark"] .stat-item .stat-label {
     color: var(--text-secondary);
-}
-
-[data-theme="dark"] .btn-icon:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-}
-
-/* Улучшение скроллбаров для темной темы */
-[data-theme="dark"] ::-webkit-scrollbar-track {
-    background: var(--bg-tertiary);
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-hover);
-}
-
-/* Улучшение контрастности для состояний */
-[data-theme="dark"] .subtask-item,
-[data-theme="dark"] .comment-item {
-    background: var(--bg-tertiary);
-}
-
-[data-theme="dark"] .search-result-item:hover {
-    background: var(--bg-tertiary);
-}
-
-[data-theme="dark"] .notification-item.unread {
-    background: rgba(115, 103, 240, 0.08);
-}
-
-[data-theme="dark"] .progress-bar {
-    background: var(--bg-tertiary);
 }

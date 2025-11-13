@@ -82,7 +82,7 @@ class App {
             { name: 'SwipeManager', instance: SwipeManager },
             { name: 'HapticManager', instance: HapticManager },
             { name: 'UsersManager', instance: UsersManager },
-            { name: 'JoinRequestsManager', instance: JoinRequestsManager } // Добавьте эту строку
+            { name: 'JoinRequestsManager', instance: JoinRequestsManager }
         ];
 
         // Инициализируем только если не инициализированы
@@ -124,6 +124,15 @@ class App {
             this.eventHandlersSetup = true;
         }
 
+        // Принудительно обновляем информацию пользователя при инициализации
+        if (AuthManager.isUserAuthenticated()) {
+            try {
+                await UsersManager.updateAccountSettingsInfo();
+            } catch (error) {
+                Utils.logError('Error updating user settings info:', error);
+            }
+        }
+
         // Периодическое обновление данных
         this.startDataRefreshInterval();
 
@@ -133,7 +142,7 @@ class App {
     static startDataRefreshInterval() {
         // Обновляем данные каждые 2 минуты для предотвращения устаревания
         setInterval(async () => {
-            if (AuthManager.isAuthenticated) {
+            if (AuthManager.isUserAuthenticated()) {
                 try {
                     // Обновляем проекты
                     if (typeof ProjectsManager !== 'undefined') {
@@ -387,6 +396,13 @@ class App {
                     NotificationsManager.loadNotifications();
                 }
             }, 60 * 1000); // Каждую минуту
+
+            // Периодически обновляем информацию пользователя
+            setInterval(() => {
+                if (AuthManager.isUserAuthenticated()) {
+                    UsersManager.updateAccountSettingsInfo();
+                }
+            }, 30000); // Каждые 30 секунд
         }
 
         // Очистка старого кэша (для всех пользователей)
@@ -543,10 +559,12 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
             if (lightTheme) lightTheme.disabled = true;
             if (darkTheme) darkTheme.disabled = false;
             document.body.setAttribute('data-theme', 'dark');
+            document.documentElement.setAttribute('data-theme', 'dark'); // Добавляем для html
         } else {
             if (lightTheme) lightTheme.disabled = false;
             if (darkTheme) darkTheme.disabled = true;
             document.body.removeAttribute('data-theme');
+            document.documentElement.removeAttribute('data-theme');
         }
 
         // Сохраняем тему в StateManager
@@ -555,7 +573,64 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
         // Сохраняем тему в localStorage для быстрого доступа
         localStorage.setItem('theme', theme);
 
+        // Принудительно применяем тему ко всем элементам
+        this.forceThemeApplication(theme);
+
         Utils.log(`Theme changed to: ${theme}`);
+    }
+
+    // НОВЫЙ МЕТОД ДЛЯ ПРИНУДИТЕЛЬНОГО ПРИМЕНЕНИЯ ТЕМЫ
+    static forceThemeApplication(theme) {
+        // Принудительно обновляем основные элементы
+        const mainContent = document.querySelector('.main-content');
+        const notificationsView = document.getElementById('notifications-view');
+        const settingsView = document.getElementById('settings-view');
+
+        if (mainContent) {
+            mainContent.style.backgroundColor = theme === 'dark' ? '#0f1419' : '#f8f8f8';
+            mainContent.style.color = theme === 'dark' ? '#ffffff' : '#2a2a2a';
+        }
+
+        // Обновляем кнопки фильтров и сортировки
+        const filterBtn = document.getElementById('filter-btn');
+        const sortBtn = document.getElementById('sort-btn');
+
+        if (filterBtn) {
+            filterBtn.style.backgroundColor = theme === 'dark' ? '#1a1f2b' : '#ffffff';
+            filterBtn.style.borderColor = theme === 'dark' ? '#3a4150' : '#e0e0e0';
+            filterBtn.style.color = theme === 'dark' ? '#d0d4e0' : '#6e6b7b';
+        }
+
+        if (sortBtn) {
+            sortBtn.style.backgroundColor = theme === 'dark' ? '#1a1f2b' : '#ffffff';
+            sortBtn.style.borderColor = theme === 'dark' ? '#3a4150' : '#e0e0e0';
+            sortBtn.style.color = theme === 'dark' ? '#d0d4e0' : '#6e6b7b';
+        }
+
+        // Обновляем секцию приоритетных задач
+        const priorityTasks = document.querySelector('.priority-tasks');
+        if (priorityTasks) {
+            priorityTasks.style.backgroundColor = theme === 'dark' ? '#1a1f2b' : '#ffffff';
+            priorityTasks.style.borderColor = theme === 'dark' ? '#3a4150' : '#e0e0e0';
+        }
+
+        // Обновляем контейнер уведомлений
+        const notificationsContainer = document.querySelector('.notifications-container');
+        if (notificationsContainer) {
+            notificationsContainer.style.backgroundColor = theme === 'dark' ? '#0f1419' : '#f8f8f8';
+        }
+
+        // Обновляем настройки
+        const settingsContainer = document.querySelector('.settings-container');
+        if (settingsContainer) {
+            settingsContainer.style.backgroundColor = theme === 'dark' ? '#0f1419' : '#f8f8f8';
+            settingsContainer.style.color = theme === 'dark' ? '#ffffff' : '#2a2a2a';
+        }
+
+        // Триггерим событие изменения темы для всех подписчиков
+        setTimeout(() => {
+            EventManager.emit(APP_EVENTS.THEME_CHANGED, theme);
+        }, 100);
     }
 
     static getCurrentTheme() {
@@ -628,6 +703,7 @@ ${Utils.escapeHTML(error.message || 'Unknown error')}
                         <div class="system-info">
                             <div><strong>Сеть:</strong> <span class="badge ${networkStatus === 'online' ? 'success' : 'warning'}">${networkStatus}</span></div>
                             <div><strong>Пользователь:</strong> ${user ? user.full_name || user.username : 'Не аутентифицирован'}</div>
+                            <div><strong>MAX ID:</strong> ${user ? (user.max_id || user.id || 'неизвестен') : 'неизвестен'}</div>
                             <div><strong>Тема:</strong> ${this.getCurrentTheme()}</div>
                             <div><strong>Версия:</strong> ${CONFIG.VERSION}</div>
                         </div>
@@ -742,6 +818,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    // Принудительно применяем тему при загрузке
+    setTimeout(() => {
+        const currentTheme = App.getCurrentTheme();
+        App.forceThemeApplication(currentTheme);
+    }, 1000);
 
     // Запуск приложения с небольшой задержкой для полной загрузки DOM
     setTimeout(() => {

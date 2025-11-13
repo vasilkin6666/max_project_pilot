@@ -1,16 +1,15 @@
 //ui-components.js
-// Компоненты пользовательского интерфейса (полная исправленная версия)
 class UIComponents {
-    static init() {
-        this.initNavigation();
-        this.initTheme();
-        this.initSearch();
-        this.initEventListeners();
-        this.loadTemplates();
-        this.setupGlobalHandlers();
+  static init() {
+      this.initNavigation();
+      this.initTheme();
+      this.initSearch();
+      this.initEventListeners();
+      this.loadTemplates();
+      this.setupGlobalHandlers();
 
-        Utils.log('UI components initialized');
-    }
+      Utils.log('UI components initialized');
+  }
 
     static templates = new Map();
 
@@ -22,13 +21,14 @@ class UIComponents {
                 return;
             }
 
+            // ИСПРАВЛЕННЫЕ ПУТИ - относительные от корня
             const templateFiles = [
-                './templates/project-card.html',
-                './templates/task-card.html',
-                './templates/notification-item.html',
-                './templates/modals/create-project.html',
-                './templates/modals/create-task.html',
-                './templates/modals/settings.html'
+                'templates/project-card.html',
+                'templates/task-card.html',
+                'templates/notification-item.html',
+                'templates/modals/create-project.html',
+                'templates/modals/create-task.html',
+                'templates/modals/settings.html'
             ];
 
             let loadedCount = 0;
@@ -183,7 +183,10 @@ class UIComponents {
                         </div>
                     </div>
                 </div>
-            `
+            `,
+            'create-project-modal-template': this.getCreateProjectFallbackTemplate(),
+            'create-task-modal-template': this.getCreateTaskFallbackTemplate(),
+            'settings-modal-template': this.getSettingsFallbackTemplate()
         };
 
         Object.entries(requiredTemplates).forEach(([templateId, templateContent]) => {
@@ -194,6 +197,116 @@ class UIComponents {
                 console.log(`✅ Required template available: ${templateId}`);
             }
         });
+    }
+
+    static getCreateProjectFallbackTemplate() {
+        return `
+            <form id="create-project-form">
+                <div class="form-group">
+                    <label for="project-title" class="form-label">Название проекта *</label>
+                    <input type="text" class="form-control" id="project-title" name="title" required
+                           placeholder="Введите название проекта" maxlength="100">
+                    <div class="form-text">Максимум 100 символов</div>
+                </div>
+                <div class="form-group">
+                    <label for="project-description" class="form-label">Описание</label>
+                    <textarea class="form-control" id="project-description" name="description" rows="3"
+                              placeholder="Опишите ваш проект (необязательно)" maxlength="500"></textarea>
+                    <div class="form-text">Максимум 500 символов</div>
+                </div>
+                <div class="form-group">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="project-private" name="is_private" checked>
+                        <label class="form-check-label" for="project-private">
+                            Приватный проект
+                        </label>
+                        <div class="form-text">
+                            Только приглашенные пользователи смогут увидеть проект
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="project-approval" name="requires_approval">
+                        <label class="form-check-label" for="project-approval">
+                            Требовать одобрение для присоединения
+                        </label>
+                        <div class="form-text">
+                            Новые участники должны быть одобрены владельцем/админом
+                        </div>
+                    </div>
+                </div>
+            </form>
+        `;
+    }
+
+    static getCreateTaskFallbackTemplate() {
+        return `
+            <form id="create-task-form">
+                <div class="form-group">
+                    <label for="task-title" class="form-label">Название задачи *</label>
+                    <input type="text" class="form-control" id="task-title" required
+                           placeholder="Введите название задачи">
+                </div>
+
+                <div class="form-group">
+                    <label for="task-description" class="form-label">Описание</label>
+                    <textarea class="form-control" id="task-description" rows="3"
+                              placeholder="Опишите задачу (необязательно)"></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="task-assignee" class="form-label">Исполнитель</label>
+                            <select class="form-select" id="task-assignee">
+                                <option value="">Не назначен</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="task-priority" class="form-label">Приоритет</label>
+                            <select class="form-select" id="task-priority">
+                                <option value="low">Низкий</option>
+                                <option value="medium" selected>Средний</option>
+                                <option value="high">Высокий</option>
+                                <option value="urgent">Срочный</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="task-due-date" class="form-label">Срок выполнения</label>
+                    <input type="datetime-local" class="form-control" id="task-due-date">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Подзадачи</label>
+                    <div id="subtasks-container">
+                        <!-- Подзадачи будут добавляться динамически -->
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2"
+                            onclick="TasksManager.addSubtaskField()">
+                        <i class="fas fa-plus"></i> Добавить подзадачу
+                    </button>
+                </div>
+            </form>
+        `;
+    }
+
+    static getSettingsFallbackTemplate() {
+        return `
+            <div class="user-preferences">
+                <div id="preferences-content">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Загрузка настроек...</p>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     static createFallbackTemplate(file) {
@@ -212,6 +325,15 @@ class UIComponents {
             case 'notification-item-template':
                 fallbackContent = '<div class="notification-item">{{message}}</div>';
                 break;
+            case 'create-project-modal-template':
+                fallbackContent = this.getCreateProjectFallbackTemplate();
+                break;
+            case 'create-task-modal-template':
+                fallbackContent = this.getCreateTaskFallbackTemplate();
+                break;
+            case 'settings-modal-template':
+                fallbackContent = this.getSettingsFallbackTemplate();
+                break;
             default:
                 fallbackContent = `<div class="fallback-template">Шаблон ${templateId}</div>`;
         }
@@ -227,7 +349,7 @@ class UIComponents {
         const template = this.templates.get(templateId);
         if (!template) {
             Utils.logError(`Template not found: ${templateId}`);
-            return this.createProjectCardFallback(data);
+            return this.getFallbackTemplate(templateId, data);
         }
 
         try {
@@ -262,7 +384,47 @@ class UIComponents {
 
         } catch (error) {
             Utils.logError(`Error rendering template ${templateId}:`, error);
-            return this.createProjectCardFallback(data);
+            return this.getFallbackTemplate(templateId, data);
+        }
+    }
+
+    static getFallbackTemplate(templateId, data) {
+        switch(templateId) {
+            case 'project-card-template':
+                return this.createProjectCardFallback(data);
+            case 'task-card-template':
+                return this.createTaskCard(data);
+            case 'create-project-modal-template':
+                return this.getCreateProjectFallbackTemplate();
+            case 'create-task-modal-template':
+                return this.getCreateTaskFallbackTemplate();
+            case 'settings-modal-template':
+                return this.getSettingsFallbackTemplate();
+            case 'notification-item-template':
+                return `<div class="notification-item">${data.message || 'Уведомление'}</div>`;
+            default:
+                return `<div class="template-error">Шаблон ${templateId} не найден</div>`;
+        }
+    }
+
+    static async preloadModalTemplates() {
+        const modalTemplates = [
+            'create-project-modal-template',
+            'create-task-modal-template',
+            'settings-modal-template'
+        ];
+
+        let needsReload = false;
+        for (const templateId of modalTemplates) {
+            if (!this.templates.has(templateId)) {
+                needsReload = true;
+                break;
+            }
+        }
+
+        if (needsReload) {
+            Utils.log('Some modal templates missing, reloading templates...');
+            await this.loadTemplates();
         }
     }
 
@@ -426,25 +588,70 @@ class UIComponents {
     }
 
     static initEventListeners() {
+        // Навигация по вкладкам
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                const viewName = item.getAttribute('data-view');
+                if (viewName) {
+                    this.showView(viewName);
+
+                    // Обновляем активное состояние
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+
+                    if (typeof HapticManager !== 'undefined') {
+                        HapticManager.light();
+                    }
+                }
+            });
+        });
+
+        // Кнопка создания проекта теперь в header - ДОБАВЛЕНА ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ШАБЛОНОВ
+        const createProjectBtn = document.getElementById('create-project-btn');
+        if (createProjectBtn) {
+            createProjectBtn.addEventListener('click', async () => {
+                // Предварительная загрузка шаблонов перед открытием модального окна
+                await this.preloadModalTemplates();
+                if (typeof ProjectsManager !== 'undefined') {
+                    ProjectsManager.showCreateProjectModal();
+                } else {
+                    Utils.logError('ProjectsManager not available');
+                }
+            });
+        }
+
         // Кнопка уведомлений
         const notificationsBtn = document.getElementById('notifications-btn');
         if (notificationsBtn) {
             notificationsBtn.addEventListener('click', () => {
                 this.showView('notifications-view');
-                // Обновляем навигацию
                 document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
                 document.querySelector('.nav-item[data-view="notifications-view"]')?.classList.add('active');
-
-                if (typeof HapticManager !== 'undefined') {
-                    HapticManager.buttonPress();
-                }
+                HapticManager.buttonPress();
             });
         }
-        
+
+        // ИСПРАВЛЕННАЯ КНОПКА ЗАЯВОК НА ВСТУПЛЕНИЕ
         const joinRequestsBtn = document.getElementById('join-requests-btn');
         if (joinRequestsBtn) {
-            joinRequestsBtn.addEventListener('click', () => {
-                // Логика открытия модального окна заявок
+            joinRequestsBtn.addEventListener('click', async () => {
+                // Показываем заявки для всех проектов, где пользователь имеет права
+                const projects = StateManager.getState('projects') || [];
+                const userProjectsWithAccess = projects.filter(project => {
+                    const role = project.current_user_role || project.user_role;
+                    return ['owner', 'admin'].includes(role);
+                });
+
+                if (userProjectsWithAccess.length === 0) {
+                    ToastManager.info('У вас нет проектов с правами для управления заявками');
+                    return;
+                }
+
+                // Показываем модальное окно со списком проектов для управления заявками
+                this.showJoinRequestsProjectsModal(userProjectsWithAccess);
             });
         }
 
@@ -460,10 +667,12 @@ class UIComponents {
             });
         }
 
-        // Кнопка настроек
+        // Кнопка настроек - ДОБАВЛЕНА ПРЕДВАРИТЕЛЬНАЯ ЗАГРУЗКА ШАБЛОНОВ
         const settingsBtn = document.getElementById('settings-btn');
         if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
+            settingsBtn.addEventListener('click', async () => {
+                // Предварительная загрузка шаблонов перед открытием настроек
+                await this.preloadModalTemplates();
                 if (typeof UsersManager !== 'undefined') {
                     UsersManager.showPreferencesModal();
                 } else {
@@ -580,9 +789,231 @@ class UIComponents {
             this.updateAccountSettingsInfo(user); // Новый метод
         });
 
+        // ДОБАВЛЕНЫ ОБРАБОТЧИКИ ДЛЯ СОБЫТИЙ ШАБЛОНОВ
+        EventManager.on(APP_EVENTS.MODAL_OPENED, (modalId) => {
+            Utils.log(`Modal opened: ${modalId}`);
+            this.handleModalOpened(modalId); // ВЫЗОВ НОВОГО МЕТОДА
+        });
+
+        EventManager.on(APP_EVENTS.MODAL_CLOSED, (modalId) => {
+            Utils.log(`Modal closed: ${modalId}`);
+            this.handleModalClosed(modalId); // ВЫЗОВ НОВОГО МЕТОДА
+        });
+
+        EventManager.on(APP_EVENTS.DATA_LOADED, () => {
+            // При загрузке данных убедиться что основные шаблоны доступны
+            this.ensureRequiredTemplates();
+        });
+
         Utils.log('Event listeners initialized');
     }
 
+    static showJoinRequestsProjectsModal(projects) {
+        const projectsWithAccess = projects.filter(project =>
+            ['owner', 'admin'].includes(project.current_user_role || project.user_role)
+        );
+
+        if (projectsWithAccess.length === 0) {
+            ToastManager.info('Нет проектов с правами для управления заявками');
+            return;
+        }
+
+        ModalManager.showModal('join-requests-projects', {
+            title: 'Управление заявками на вступление',
+            size: 'medium',
+            template: `
+                <div class="join-requests-projects">
+                    <p>Выберите проект для просмотра заявок на вступление:</p>
+                    <div class="projects-list">
+                        ${projectsWithAccess.map(project => `
+                            <div class="project-item" onclick="UIComponents.openJoinRequestsForProject('${project.hash}')">
+                                <div class="project-info">
+                                    <h5>${Utils.escapeHTML(project.title)}</h5>
+                                    <span class="project-role">${Utils.escapeHTML(project.current_user_role || project.user_role)}</span>
+                                </div>
+                                <div class="project-actions">
+                                    <button class="btn btn-primary btn-sm"
+                                            onclick="event.stopPropagation(); UIComponents.openJoinRequestsForProject('${project.hash}')">
+                                        <i class="fas fa-user-plus"></i> Просмотреть заявки
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            actions: [
+                {
+                    text: 'Закрыть',
+                    type: 'secondary',
+                    action: 'close'
+                }
+            ]
+        });
+    }
+
+    static openJoinRequestsForProject(projectHash) {
+        if (typeof JoinRequestsManager !== 'undefined') {
+            JoinRequestsManager.showJoinRequestsModal(projectHash);
+        } else {
+            ToastManager.error('Менеджер заявок недоступен');
+        }
+    }
+
+    static handleModalOpened(modalId) {
+        // Выполняем специфичные действия при открытии разных модальных окон
+        switch(modalId) {
+            case 'create-project':
+                // Автофокус на поле названия при создании проекта
+                setTimeout(() => {
+                    const titleInput = document.getElementById('project-title');
+                    if (titleInput) titleInput.focus();
+                }, 300);
+                break;
+
+            case 'create-task':
+                // Автофокус на поле названия при создании задачи
+                setTimeout(() => {
+                    const titleInput = document.getElementById('task-title');
+                    if (titleInput) titleInput.focus();
+                }, 300);
+                break;
+
+            case 'join-requests':
+                // Загрузка заявок при открытии окна
+                const projectHash = this.getCurrentProjectHashFromModal();
+                if (projectHash && typeof JoinRequestsManager !== 'undefined') {
+                    JoinRequestsManager.loadAndRenderJoinRequests(projectHash);
+                }
+                break;
+
+            case 'user-preferences':
+                // Обновление информации пользователя в настройках
+                if (typeof UsersManager !== 'undefined') {
+                    UsersManager.updateAccountSettingsInfo();
+                }
+                break;
+        }
+
+        // Глобальные действия для всех модальных окон
+        this.disableBackgroundInteractions();
+        this.addModalOverlay();
+    }
+
+
+    static handleModalClosed(modalId) {
+        // Выполняем специфичные действия при закрытии разных модальных окон
+        switch(modalId) {
+            case 'create-project':
+            case 'create-task':
+                // Очистка форм после закрытия
+                const form = document.getElementById(`${modalId.replace('create-', '')}-form`);
+                if (form) form.reset();
+                break;
+
+            case 'join-requests':
+                // Обновление уведомлений после работы с заявками
+                if (typeof NotificationsManager !== 'undefined') {
+                    NotificationsManager.loadNotifications();
+                }
+                break;
+        }
+
+        // Глобальные действия для всех модальных окон
+        this.enableBackgroundInteractions();
+        this.removeModalOverlay();
+
+        // Эмитим кастомное событие для дополнительной обработки
+        EventManager.emit('modal:after-close', modalId);
+    }
+
+    static disableBackgroundInteractions() {
+        // Блокируем скролл на заднем фоне
+        document.body.style.overflow = 'hidden';
+
+        // Добавляем класс для визуального затемнения фона
+        document.body.classList.add('modal-open');
+    }
+
+    static enableBackgroundInteractions() {
+        // Восстанавливаем скролл
+        document.body.style.overflow = '';
+
+        // Убираем класс затемнения
+        document.body.classList.remove('modal-open');
+    }
+
+    static addModalOverlay() {
+        // Создаем оверлей для модальных окон
+        let overlay = document.getElementById('modal-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'modal-overlay';
+            overlay.className = 'modal-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1040;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            document.body.appendChild(overlay);
+
+            // Анимация появления
+            setTimeout(() => {
+                overlay.style.opacity = '1';
+            }, 10);
+
+            // Закрытие по клику на оверлей
+            overlay.addEventListener('click', () => {
+                ModalManager.closeCurrentModal();
+            });
+        }
+    }
+
+    static removeModalOverlay() {
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    }
+
+    static getCurrentProjectHashFromModal() {
+        // Получаем project hash из активного модального окна
+        const modal = document.querySelector('.modal.show');
+        if (modal) {
+            const projectItem = modal.querySelector('[data-project-hash]');
+            return projectItem ? projectItem.getAttribute('data-project-hash') : null;
+        }
+        return null;
+    }
+
+    static ensureModalTemplate(modalId) {
+        const templateId = `${modalId}-modal-template`;
+        if (!this.templates.has(templateId)) {
+            Utils.log(`Modal template not found: ${templateId}, creating fallback`);
+            switch(modalId) {
+                case 'create-project':
+                    this.templates.set(templateId, this.getCreateProjectFallbackTemplate());
+                    break;
+                case 'create-task':
+                    this.templates.set(templateId, this.getCreateTaskFallbackTemplate());
+                    break;
+                case 'user-preferences':
+                    this.templates.set(templateId, this.getSettingsFallbackTemplate());
+                    break;
+            }
+        }
+    }
     // Новый метод для обновления информации в настройках
     static updateAccountSettingsInfo(user) {
         const avatar = document.getElementById('settings-user-avatar');

@@ -26,6 +26,7 @@ class NotificationsManager {
       }
   }
 
+  // ОБНОВЛЕННЫЙ МЕТОД renderNotifications
   static renderNotifications(notifications) {
       const container = document.getElementById('notifications-list');
       if (!container) return;
@@ -49,7 +50,8 @@ class NotificationsManager {
           const joinRequestNotifications = notifications.filter(n =>
               n.type === 'join_request' ||
               (n.title && n.title.includes('вступление')) ||
-              (n.message && n.message.includes('хочет присоединиться'))
+              (n.message && n.message.includes('хочет присоединиться')) ||
+              (n.message && n.message.includes('join request'))
           );
 
           if (joinRequestNotifications.length > 0) {
@@ -70,7 +72,8 @@ class NotificationsManager {
       const otherNotifications = notifications.filter(n => {
           const isJoinRequest = n.type === 'join_request' ||
                               (n.title && n.title.includes('вступление')) ||
-                              (n.message && n.message.includes('хочет присоединиться'));
+                              (n.message && n.message.includes('хочет присоединиться')) ||
+                              (n.message && n.message.includes('join request'));
           return !isJoinRequest;
       });
 
@@ -90,6 +93,59 @@ class NotificationsManager {
       container.innerHTML = html || this.getEmptyStateHTML();
   }
 
+  // УЛУЧШЕННЫЙ МЕТОД ДЛЯ ЗАЯВОК НА ВСТУПЛЕНИЕ
+  static renderJoinRequestNotification(notification) {
+      const isUnread = !notification.is_read;
+
+      // Извлекаем информацию о проекте из уведомления
+      const projectHash = this.extractProjectHashFromNotification(notification);
+
+      // Извлекаем информацию о пользователе
+      const userName = notification.data?.user_name ||
+                      notification.data?.user?.full_name ||
+                      'Пользователь';
+
+      const projectName = notification.data?.project_name ||
+                         notification.data?.project?.title ||
+                         'Проект';
+
+      // Извлекаем requestId
+      const requestId = notification.data?.request_id ||
+                       notification.id;
+
+      return `
+          <div class="notification-item join-request ${isUnread ? 'unread' : ''}"
+               data-notification-id="${notification.id}"
+               data-project-hash="${projectHash}">
+              <div class="notification-content">
+                  <div class="notification-icon">
+                      <i class="fas fa-user-plus"></i>
+                  </div>
+                  <div class="notification-details">
+                      <h5 class="notification-title">Запрос на вступление</h5>
+                      <p class="notification-message">
+                          ${Utils.escapeHTML(userName)} хочет присоединиться к проекту "${Utils.escapeHTML(projectName)}"
+                      </p>
+                      <div class="notification-actions">
+                          <button class="btn btn-success btn-sm"
+                                  onclick="JoinRequestsManager.approveJoinRequest('${projectHash}', ${requestId})">
+                              <i class="fas fa-check"></i> Принять
+                          </button>
+                          <button class="btn btn-danger btn-sm"
+                                  onclick="JoinRequestsManager.rejectJoinRequest('${projectHash}', ${requestId})">
+                              <i class="fas fa-times"></i> Отклонить
+                          </button>
+                      </div>
+                  </div>
+              </div>
+              <div class="notification-time">
+                  ${Utils.formatDate(notification.created_at)}
+              </div>
+          </div>
+      `;
+  }
+
+  // УЛУЧШЕННЫЙ МЕТОД ИЗВЛЕЧЕНИЯ PROJECT_HASH
   static extractProjectHashFromNotification(notification) {
       // Пробуем разные способы извлечения project_hash
       if (notification.data && notification.data.project_hash) {
@@ -98,6 +154,10 @@ class NotificationsManager {
 
       if (notification.project_hash) {
           return notification.project_hash;
+      }
+
+      if (notification.data && notification.data.project) {
+          return notification.data.project.hash || notification.data.project.project_hash;
       }
 
       // Ищем в сообщении
@@ -119,46 +179,6 @@ class NotificationsManager {
       }
 
       return '';
-  }
-
-  static renderJoinRequestNotification(notification) {
-      const isUnread = !notification.is_read;
-
-      // Извлекаем информацию о проекте из уведомления
-      const projectHash = this.extractProjectHashFromNotification(notification);
-      const userName = notification.data?.user_name || 'Пользователь';
-      const projectName = notification.data?.project_name || 'Проект';
-
-      return `
-          <div class="notification-item join-request ${isUnread ? 'unread' : ''}"
-               data-notification-id="${notification.id}"
-               data-project-hash="${projectHash}">
-              <div class="notification-content">
-                  <div class="notification-icon">
-                      <i class="fas fa-user-plus"></i>
-                  </div>
-                  <div class="notification-details">
-                      <h5 class="notification-title">Запрос на вступление</h5>
-                      <p class="notification-message">
-                          ${Utils.escapeHTML(userName)} хочет присоединиться к проекту "${Utils.escapeHTML(projectName)}"
-                      </p>
-                      <div class="notification-actions">
-                          <button class="btn btn-success btn-sm"
-                                  onclick="JoinRequestsManager.approveJoinRequest('${projectHash}', ${notification.id})">
-                              <i class="fas fa-check"></i> Принять
-                          </button>
-                          <button class="btn btn-danger btn-sm"
-                                  onclick="JoinRequestsManager.rejectJoinRequest('${projectHash}', ${notification.id})">
-                              <i class="fas fa-times"></i> Отклонить
-                          </button>
-                      </div>
-                  </div>
-              </div>
-              <div class="notification-time">
-                  ${Utils.formatDate(notification.created_at)}
-              </div>
-          </div>
-      `;
   }
 
     static updateNotificationBadge(notifications) {
@@ -229,18 +249,6 @@ class NotificationsManager {
                 </div>
             </div>
         `;
-    }
-
-    static extractProjectHashFromNotification(notification) {
-        // Извлекаем project_hash из данных уведомления
-        // В реальном приложении это может быть свойство notification
-        if (notification.data && notification.data.project_hash) {
-            return notification.data.project_hash;
-        }
-
-        // Альтернативный способ извлечения из сообщения или других полей
-        const hashMatch = notification.message?.match(/project[_-]hash[:\s]*([a-zA-Z0-9]+)/i);
-        return hashMatch ? hashMatch[1] : '';
     }
 
     static getEmptyStateHTML() {

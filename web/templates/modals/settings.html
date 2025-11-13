@@ -1,7 +1,22 @@
 <!-- Шаблон модального окна настроек -->
 <script type="text/template" id="settings-modal-template">
     <div class="settings-modal">
-        <div class="settings-section">
+        <!-- ДОБАВЛЕННЫЙ БЛОК АККАУНТА -->
+        <div class="setting-group">
+            <h3 class="setting-title">Аккаунт</h3>
+            <div class="account-info">
+                <div class="account-avatar-large">
+                    <div class="user-avatar-large" id="settings-user-avatar">U</div>
+                </div>
+                <div class="account-details">
+                    <h4 id="settings-user-name">Загрузка...</h4>
+                    <p class="text-muted" id="settings-max-id">MAX ID: загрузка...</p>
+                    <p class="text-muted" id="settings-user-role">Роль: загрузка...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
             <h4 class="settings-section-title">Внешний вид</h4>
 
             <div class="setting-item">
@@ -37,7 +52,7 @@
             </div>
         </div>
 
-        <div class="settings-section">
+        <div class="setting-group">
             <h4 class="settings-section-title">Уведомления</h4>
 
             <div class="setting-item">
@@ -80,7 +95,7 @@
             </div>
         </div>
 
-        <div class="settings-section">
+        <div class="setting-group">
             <h4 class="settings-section-title">Данные и синхронизация</h4>
 
             <div class="setting-item">
@@ -121,7 +136,7 @@
             </div>
         </div>
 
-        <div class="settings-section">
+        <div class="setting-group">
             <h4 class="settings-section-title">Дополнительно</h4>
 
             <div class="setting-item">

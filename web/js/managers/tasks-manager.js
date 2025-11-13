@@ -1,24 +1,23 @@
 // Менеджер задач
 class TasksManager {
-    static async loadProjectTasks(projectHash) {
-        try {
-            const data = await ApiService.getProjectTasks(projectHash);
-            const tasks = data.tasks || [];
+  static async loadProjectTasks(projectHash) {
+      try {
+          const data = await ApiService.getProjectTasks(projectHash);
+          const tasks = data.tasks || [];
 
-            // Обновляем глобальное состояние задач
-            const currentTasks = StateManager.getState('tasks');
-            const updatedTasks = currentTasks.filter(t => t.project_hash !== projectHash).concat(tasks);
-            StateManager.setState('tasks', updatedTasks);
+          const currentTasks = StateManager.getState('tasks');
+          const updatedTasks = currentTasks.filter(t => t.project_hash !== projectHash).concat(tasks);
+          StateManager.setState('tasks', updatedTasks);
 
-            EventManager.emit(APP_EVENTS.TASKS_LOADED, tasks);
-            Utils.log('Project tasks loaded', { projectHash, count: tasks.length });
+          EventManager.emit(APP_EVENTS.TASKS_LOADED, tasks);
+          Utils.log('Project tasks loaded', { projectHash, count: tasks.length });
 
-            return tasks;
-        } catch (error) {
-            Utils.logError('Error loading project tasks:', error);
-            throw error;
-        }
-    }
+          return tasks;
+      } catch (error) {
+          Utils.logError('Error loading project tasks:', error);
+          throw error;
+      }
+  }
 
     static async showCreateTaskModal(projectHash) {
         try {
@@ -26,67 +25,15 @@ class TasksManager {
             const projectData = await ApiService.getProject(projectHash);
             const members = projectData.members || [];
 
+            // Получаем шаблон из UIComponents
+            const template = typeof UIComponents !== 'undefined' ?
+                UIComponents.templates.get('create-task-modal-template') :
+                this.getCreateTaskFallbackTemplate(members);
+
             ModalManager.showModal('create-task', {
                 title: 'Создание задачи',
                 size: 'large',
-                template: `
-                    <form id="create-task-form">
-                        <div class="form-group">
-                            <label for="task-title" class="form-label">Название задачи *</label>
-                            <input type="text" class="form-control" id="task-title" required
-                                   placeholder="Введите название задачи">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="task-description" class="form-label">Описание</label>
-                            <textarea class="form-control" id="task-description" rows="3"
-                                      placeholder="Опишите задачу (необязательно)"></textarea>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="task-assignee" class="form-label">Исполнитель</label>
-                                    <select class="form-select" id="task-assignee">
-                                        <option value="">Не назначен</option>
-                                        ${members.map(member => `
-                                            <option value="${member.user_id}">
-                                                ${Utils.escapeHTML(member.user?.full_name || 'Пользователь')}
-                                            </option>
-                                        `).join('')}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="task-priority" class="form-label">Приоритет</label>
-                                    <select class="form-select" id="task-priority">
-                                        <option value="low">Низкий</option>
-                                        <option value="medium" selected>Средний</option>
-                                        <option value="high">Высокий</option>
-                                        <option value="urgent">Срочный</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="task-due-date" class="form-label">Срок выполнения</label>
-                            <input type="datetime-local" class="form-control" id="task-due-date">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Подзадачи</label>
-                            <div id="subtasks-container">
-                                <!-- Подзадачи будут добавляться динамически -->
-                            </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm mt-2"
-                                    onclick="TasksManager.addSubtaskField()">
-                                <i class="fas fa-plus"></i> Добавить подзадачу
-                            </button>
-                        </div>
-                    </form>
-                `,
+                template: template,
                 actions: [
                     {
                         text: 'Отмена',
@@ -99,17 +46,82 @@ class TasksManager {
                         action: 'submit',
                         onClick: () => this.handleCreateTaskSubmit(projectHash)
                     }
-                ]
+                ],
+                onShow: () => {
+                    // Добавляем первое поле подзадачи
+                    this.addSubtaskField();
+                }
             });
-
-            // Добавляем первое поле подзадачи
-            this.addSubtaskField();
 
         } catch (error) {
             Utils.logError('Error loading task creation data:', error);
             ToastManager.error('Ошибка загрузки данных');
         }
     }
+
+    static getCreateTaskFallbackTemplate(members = []) {
+        const membersOptions = members.map(member => `
+            <option value="${member.user_id}">
+                ${Utils.escapeHTML(member.user?.full_name || 'Пользователь')}
+            </option>
+        `).join('');
+
+        return `
+            <form id="create-task-form">
+                <div class="form-group">
+                    <label for="task-title" class="form-label">Название задачи *</label>
+                    <input type="text" class="form-control" id="task-title" required
+                           placeholder="Введите название задачи">
+                </div>
+
+                <div class="form-group">
+                    <label for="task-description" class="form-label">Описание</label>
+                    <textarea class="form-control" id="task-description" rows="3"
+                              placeholder="Опишите задачу (необязательно)"></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="task-assignee" class="form-label">Исполнитель</label>
+                            <select class="form-select" id="task-assignee">
+                                <option value="">Не назначен</option>
+                                ${membersOptions}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="task-priority" class="form-label">Приоритет</label>
+                            <select class="form-select" id="task-priority">
+                                <option value="low">Низкий</option>
+                                <option value="medium" selected>Средний</option>
+                                <option value="high">Высокий</option>
+                                <option value="urgent">Срочный</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="task-due-date" class="form-label">Срок выполнения</label>
+                    <input type="datetime-local" class="form-control" id="task-due-date">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Подзадачи</label>
+                    <div id="subtasks-container">
+                        <!-- Подзадачи будут добавляться динамически -->
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2"
+                            onclick="TasksManager.addSubtaskField()">
+                        <i class="fas fa-plus"></i> Добавить подзадачу
+                    </button>
+                </div>
+            </form>
+        `;
+    }
+
 
     static addSubtaskField() {
         const container = document.getElementById('subtasks-container');
@@ -200,10 +212,8 @@ class TasksManager {
                 ToastManager.success('Задача создана успешно!');
                 HapticManager.taskCompleted();
 
-                // ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ СПИСОК ЗАДАЧ ПРОЕКТА
                 await this.loadProjectTasks(projectHash);
 
-                // Инвалидируем кэш
                 CacheManager.invalidate('tasks');
                 CacheManager.invalidate('dashboard');
 
@@ -586,7 +596,7 @@ class TasksManager {
             }
         }
     }
-    
+
     static deleteTaskWithConfirmation(taskId) {
         const task = StateManager.getState('tasks').find(t => t.id == taskId);
         if (!task) return;

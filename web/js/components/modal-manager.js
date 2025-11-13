@@ -17,10 +17,27 @@ class ModalManager {
             onClose = null,
             onSubmit = null,
             closeOnBackdrop = true,
-            closeOnEscape = true
+            closeOnEscape = true,
+            templateData = {} // ДОБАВЛЕН ПАРАМЕТР ДЛЯ ДАННЫХ ШАБЛОНА
         } = options;
 
-        const modalHTML = this.createModalHTML(modalId, title, template, actions, size);
+        // ДОБАВЛЕНА ОБРАБОТКА ШАБЛОНОВ С ПЕРЕМЕННЫМИ
+        let finalTemplate = template;
+        if (template && typeof template === 'string' && template.includes('{{')) {
+            // Если шаблон содержит переменные, пробуем рендерить через UIComponents
+            if (typeof UIComponents !== 'undefined') {
+                try {
+                    const renderedTemplate = UIComponents.renderTemplate(`${modalId}-template`, templateData);
+                    if (renderedTemplate && !renderedTemplate.includes('template-error')) {
+                        finalTemplate = renderedTemplate;
+                    }
+                } catch (error) {
+                    Utils.logError(`Error rendering template for ${modalId}:`, error);
+                }
+            }
+        }
+
+        const modalHTML = this.createModalHTML(modalId, title, finalTemplate, actions, size);
         const existingModal = document.getElementById(modalId);
         if (existingModal) existingModal.remove();
 
@@ -121,7 +138,7 @@ class ModalManager {
             `;
         }).join('');
     }
-
+    
     static setupModalActions(modalId, actions, onSubmit) {
         const modalElement = document.getElementById(modalId);
         if (!modalElement) return;

@@ -1,64 +1,75 @@
 // Менеджер пользователей
 class UsersManager {
-    static async loadUserProfile(userId = 'me') {
-        try {
-            let userData;
+  static async loadUserProfile(userId = 'me') {
+      try {
+          let userData;
 
-            if (userId === 'me') {
-                userData = await ApiService.getCurrentUser();
-            } else {
-                userData = await ApiService.getUserById(userId);
-            }
+          if (userId === 'me') {
+              userData = await ApiService.getCurrentUser();
+          } else {
+              userData = await ApiService.getUserById(userId);
+          }
 
-            return userData;
-        } catch (error) {
-            Utils.logError('Error loading user profile:', error);
-            throw error;
-        }
-    }
+          return userData;
+      } catch (error) {
+          Utils.logError('Error loading user profile:', error);
+          throw error;
+      }
+  }
 
-    // Добавить метод для загрузки данных в настройки
+  static async updateAccountSettingsInfo() {
+      try {
+          const user = await UsersManager.loadUserDataForSettings();
+          if (!user) return;
+
+          const avatar = document.getElementById('settings-user-avatar');
+          const name = document.getElementById('settings-user-name');
+          const maxId = document.getElementById('settings-max-id');
+
+          if (avatar) {
+              const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
+              avatar.textContent = initials;
+
+              if (user.photo_url) {
+                  avatar.style.backgroundImage = `url(${user.photo_url})`;
+                  avatar.textContent = '';
+              } else {
+                  avatar.style.backgroundImage = '';
+              }
+          }
+
+          if (name) {
+              name.textContent = user.full_name || user.username || 'Пользователь';
+          }
+
+          if (maxId) {
+              const displayMaxId = user.max_id || user.id || 'неизвестен';
+              maxId.textContent = `MAX ID: ${displayMaxId}`;
+          }
+      } catch (error) {
+          Utils.logError('Error updating account settings info:', error);
+      }
+  }
+
     static async loadUserDataForSettings() {
         try {
             const user = AuthManager.getCurrentUser();
             if (!user) return null;
 
-            // Используем данные из AuthManager или загружаем свежие
+            // Всегда загружаем свежие данные для настроек
             const userData = await this.loadUserProfile('me');
-            return userData.user || userData;
+            const freshUser = userData.user || userData;
+
+            // Сохраняем в AuthManager для консистентности
+            if (typeof AuthManager !== 'undefined') {
+                AuthManager.currentUser = { ...AuthManager.currentUser, ...freshUser };
+            }
+
+            return freshUser;
         } catch (error) {
             Utils.logError('Error loading user data for settings:', error);
             // Возвращаем базовые данные из AuthManager
             return AuthManager.getCurrentUser();
-        }
-    }
-
-    // Обновить метод в UIComponents для отображения данных пользователя
-    static async updateAccountSettingsInfo() {
-        try {
-            const user = await UsersManager.loadUserDataForSettings();
-            if (!user) return;
-
-            const avatar = document.getElementById('settings-user-avatar');
-            const name = document.getElementById('settings-user-name');
-            const maxId = document.getElementById('settings-max-id');
-
-            if (avatar) {
-                const initials = Utils.getInitials(user.full_name || user.username || 'Пользователь');
-                avatar.textContent = initials;
-                avatar.style.backgroundImage = user.photo_url ? `url(${user.photo_url})` : '';
-            }
-
-            if (name) {
-                name.textContent = user.full_name || user.username || 'Пользователь';
-            }
-
-            if (maxId) {
-                // Отображаем MAX ID из данных пользователя
-                maxId.textContent = `MAX ID: ${user.max_id || user.id || 'неизвестен'}`;
-            }
-        } catch (error) {
-            Utils.logError('Error updating account settings info:', error);
         }
     }
 
@@ -341,19 +352,15 @@ class UsersManager {
     }
 
     static showPreferencesModal() {
+        // Получаем шаблон из UIComponents
+        const template = typeof UIComponents !== 'undefined' ?
+            UIComponents.templates.get('settings-modal-template') :
+            this.getSettingsFallbackTemplate();
+
         ModalManager.showModal('user-preferences', {
             title: 'Настройки пользователя',
             size: 'large',
-            template: `
-                <div class="user-preferences">
-                    <div id="preferences-content">
-                        <div class="loading-state">
-                            <div class="spinner"></div>
-                            <p>Загрузка настроек...</p>
-                        </div>
-                    </div>
-                </div>
-            `,
+            template: template,
             actions: [
                 {
                     text: 'Сбросить настройки',
@@ -378,6 +385,90 @@ class UsersManager {
             }
         });
     }
+
+    static getSettingsFallbackTemplate() {
+        return `
+            <div class="user-preferences">
+                <div id="preferences-content">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Загрузка настроек...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    static async loadAndRenderPreferences() {
+        const container = document.getElementById('preferences-content');
+        if (!container) return;
+
+        try {
+            const preferences = await this.loadUserPreferences();
+
+            // Используем fallback если шаблон не загружен
+            const template = UIComponents.templates.get('settings-modal-template');
+            if (template) {
+                // Рендерим через шаблон если доступен
+                const rendered = UIComponents.renderTemplate('settings-modal-template', {
+                    isDarkTheme: preferences.theme === 'dark',
+                    compactView: preferences.compact_view,
+                    pushNotifications: preferences.notifications_enabled,
+                    emailNotifications: preferences.email_notifications,
+                    soundNotifications: preferences.sound_notifications,
+                    autoSync: preferences.auto_sync,
+                    offlineMode: preferences.offline_mode,
+                    hapticFeedback: preferences.haptic_feedback,
+                    animations: preferences.animations,
+                    accessibilityMode: preferences.accessibility_mode
+                });
+                container.innerHTML = rendered;
+            } else {
+                // Fallback на старую логику
+                container.innerHTML = `
+                    <form id="preferences-form">
+                        <div class="preferences-section">
+                            <h5>Внешний вид</h5>
+                            <div class="form-group">
+                                <label for="pref-theme" class="form-label">Тема</label>
+                                <select class="form-select" id="pref-theme" name="theme">
+                                    <option value="light" ${preferences.theme === 'light' ? 'selected' : ''}>Светлая</option>
+                                    <option value="dark" ${preferences.theme === 'dark' ? 'selected' : ''}>Темная</option>
+                                    <option value="auto" ${preferences.theme === 'auto' ? 'selected' : ''}>Авто</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="preferences-section">
+                            <h5>Уведомления</h5>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="pref-notifications"
+                                       name="notifications_enabled" ${preferences.notifications_enabled ? 'checked' : ''}>
+                                <label class="form-check-label" for="pref-notifications">
+                                    Включить уведомления
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                `;
+            }
+
+        } catch (error) {
+            container.innerHTML = `
+                <div class="error-state">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>Ошибка загрузки настроек</h3>
+                    <p>${Utils.escapeHTML(error.message)}</p>
+                    <button class="btn btn-primary" onclick="UsersManager.loadAndRenderPreferences()">
+                        <i class="fas fa-refresh"></i> Попробовать снова
+                    </button>
+                </div>
+            `;
+        }
+    }
+
 
     static async loadAndRenderPreferences() {
         const container = document.getElementById('preferences-content');
@@ -501,7 +592,7 @@ class UsersManager {
                 try {
                     await this.resetUserPreferences();
                     ModalManager.closeCurrentModal();
-                    this.showPreferencesModal(); // Перезагружаем модалку
+                    this.showPreferencesModal();
                 } catch (error) {
                     // Ошибка уже обработана
                 }
