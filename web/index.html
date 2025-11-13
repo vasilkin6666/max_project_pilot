@@ -879,7 +879,29 @@
             }
 
             static async joinProject(projectHash) {
-                return this.post(`/projects/${projectHash}/join`);
+                try {
+                    const response = await ApiService.joinProject(projectHash);
+
+                    if (response.status === 'joined') {
+                        this.showSuccess('Вы успешно присоединились к проекту!');
+                        // Открываем проект
+                        await this.openProject(projectHash);
+                    } else if (response.status === 'pending_approval') {
+                        this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
+                        // Закрываем поиск и возвращаемся к дашборду
+                        this.showDashboard();
+                    }
+                } catch (error) {
+                    console.error('Error joining project:', error);
+                    if (error.message.includes('400') && error.message.includes('already a member')) {
+                        this.showError('Вы уже являетесь участником этого проекта');
+                        await this.openProject(projectHash);
+                    } else if (error.message.includes('400') && error.message.includes('already pending')) {
+                        this.showError('Заявка на вступление уже отправлена');
+                    } else {
+                        this.showError('Ошибка вступления в проект: ' + error.message);
+                    }
+                }
             }
 
             static async regenerateInvite(projectHash) {
@@ -1098,7 +1120,6 @@
 
             static renderProjects(projects) {
                 const container = document.getElementById('projectsList');
-
                 if (!projects || projects.length === 0) {
                     container.innerHTML = `
                         <div style="text-align: center; padding: 40px; border: 1px solid #ccc; border-radius: 4px;">
@@ -1112,8 +1133,20 @@
                 }
 
                 container.innerHTML = projects.map(project => {
+                    // ИСПРАВЛЕНО: Правильное получение данных проекта и статистики
                     const projectData = project.project || project;
+
+                    // Получаем статистику из разных возможных источников
                     const stats = project.stats || projectData.stats || {};
+
+                    // ИСПРАВЛЕНО: Правильные названия полей статистики
+                    const membersCount = stats.members_count || stats.membersCount || 0;
+                    const tasksCount = stats.tasks_count || stats.tasksCount || 0;
+                    const doneTasks = stats.tasks_done || stats.done_tasks || stats.doneTasks || 0;
+                    const inProgressTasks = stats.tasks_in_progress || stats.in_progress_tasks || stats.inProgressTasks || 0;
+                    const todoTasks = stats.tasks_todo || stats.todo_tasks || stats.todoTasks || 0;
+
+                    console.log('Project stats for', projectData.title, ':', stats); // Для отладки
 
                     return `
                         <div style="padding: 15px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px; cursor: pointer;"
@@ -1121,9 +1154,11 @@
                             <div style="font-weight: bold; font-size: 18px; margin-bottom: 8px;">${this.escapeHtml(projectData.title)}</div>
                             <div style="color: #666; margin-bottom: 10px;">${this.escapeHtml(projectData.description || 'Без описания')}</div>
                             <div style="display: flex; gap: 15px; font-size: 14px; color: #888; flex-wrap: wrap;">
-                                <span>Участников: ${stats.members_count || 0}</span>
-                                <span>Задач: ${stats.tasks_count || 0}</span>
-                                <span>Выполнено: ${stats.tasks_done || 0}</span>
+                                <span>Участников: ${membersCount}</span>
+                                <span>Задач: ${tasksCount}</span>
+                                <span>Выполнено: ${doneTasks}</span>
+                                <span>В работе: ${inProgressTasks}</span>
+                                <span>К выполнению: ${todoTasks}</span>
                             </div>
                         </div>
                     `;
@@ -1153,11 +1188,13 @@
             }
 
             static updateStats(projects, recentTasks) {
+                // ИСПРАВЛЕНО: Правильный подсчет статистики
                 document.getElementById('projectsCount').textContent = projects.length;
 
                 const totalTasks = projects.reduce((sum, project) => {
-                    const stats = (project.project || project).stats || {};
-                    return sum + (stats.tasks_count || 0);
+                    const projectData = project.project || project;
+                    const stats = project.stats || projectData.stats || {};
+                    return sum + (stats.tasks_count || stats.tasksCount || 0);
                 }, 0);
 
                 document.getElementById('tasksCount').textContent = totalTasks;
