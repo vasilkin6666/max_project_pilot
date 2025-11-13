@@ -1,11 +1,6 @@
 // Менеджер дашборда
 class DashboardManager {
   static async loadDashboard() {
-    if (typeof AuthManager === 'undefined' || !AuthManager.getToken) {
-        Utils.log('AuthManager not available, skipping dashboard load');
-        StateManager.setLoading(false);
-        return;
-    }
       try {
           StateManager.setLoading(true);
           Utils.log('Loading dashboard...');
@@ -33,16 +28,28 @@ class DashboardManager {
           StateManager.setState('dashboard', data);
           StateManager.setState('projects', projects);
 
-          // Обновляем UI
-          UIComponents.updateStats(data);
-          UIComponents.renderProjects(projects);
+          // ✅ ЗАМЕНИТЕ вызов UIComponents.updateStats на this.updateStats
+          this.updateStats(data);
+
+          // ✅ ИСПОЛЬЗУЙТЕ правильный метод для рендеринга проектов
+          if (typeof UIComponents !== 'undefined') {
+              UIComponents.renderProjects(projects);
+          } else {
+              this.renderProjects(projects);
+          }
 
           // Загружаем задачи (если есть токен)
           if (AuthManager.getToken()) {
               try {
                   const tasks = await ApiService.getTasks({ status: 'todo', limit: 10 });
                   StateManager.setState('tasks', tasks.tasks || []);
-                  UIComponents.renderPriorityTasks(tasks.tasks || []);
+
+                  // ✅ ИСПОЛЬЗУЙТЕ правильный метод для рендеринга задач
+                  if (typeof UIComponents !== 'undefined') {
+                      UIComponents.renderPriorityTasks(tasks.tasks || []);
+                  } else {
+                      this.renderPriorityTasks(tasks.tasks || []);
+                  }
               } catch (taskError) {
                   Utils.logError('Error loading tasks:', taskError);
                   // Не блокируем из-за ошибки задач
@@ -61,13 +68,16 @@ class DashboardManager {
           if (error.status === 401) {
               Utils.log('Authentication required for dashboard');
           } else {
-              UIComponents.showErrorState('#projects-list', 'Не удалось загрузить проекты');
+              // ✅ ИСПРАВЛЕННЫЙ вызов showErrorState
+              const projectsList = document.getElementById('projects-list');
+              if (projectsList) {
+                  this.showErrorState(projectsList, 'Не удалось загрузить проекты');
+              }
           }
       } finally {
           StateManager.setLoading(false);
       }
   }
-
 
     static updateStats(data) {
         // Используем данные из dashboard response
@@ -143,12 +153,79 @@ class DashboardManager {
         }
     }
 
+    static renderPriorityTasks(tasks) {
+        const container = document.getElementById('priority-tasks-list');
+        if (!container) return;
+
+        if (!tasks || tasks.length === 0) {
+            container.innerHTML = this.getEmptyTasksHTML();
+            return;
+        }
+
+        this.showLoadingState(container);
+
+        requestAnimationFrame(() => {
+            container.innerHTML = '';
+            tasks.forEach((task, index) => {
+                setTimeout(() => {
+                    try {
+                        const cardHTML = this.renderTaskCardWithTemplate(task);
+                        const card = document.createElement('div');
+                        card.innerHTML = cardHTML;
+
+                        const cardElement = card.firstElementChild;
+                        if (cardElement) {
+                            container.appendChild(cardElement);
+
+                            // Добавляем обработчик клика
+                            cardElement.addEventListener('click', () => {
+                                TasksManager.openTaskDetail(task.id);
+                            });
+
+                            // Добавляем анимацию появления с проверкой существования
+                            if (cardElement.style) {
+                                cardElement.style.animationDelay = `${index * 50}ms`;
+                            }
+                            cardElement.classList.add('fade-in');
+                        }
+                    } catch (error) {
+                        Utils.logError('Error rendering task card:', error);
+                    }
+                }, index * 50);
+            });
+        });
+    }
+
     static updateCounter(elementId, count) {
         const element = document.getElementById(elementId);
         if (element) {
             // Анимация изменения числа
             this.animateCounter(element, parseInt(element.textContent) || 0, count);
         }
+    }
+
+    static animateCounter(element, from, to) {
+        const duration = 500; // ms
+        const startTime = performance.now();
+
+        function update(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // Easing function
+            const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+            const currentValue = Math.floor(from + (to - from) * easeOutQuart);
+
+            element.textContent = currentValue;
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            } else {
+                element.textContent = to;
+            }
+        }
+
+        requestAnimationFrame(update);
     }
 
     static initAdvancedStats() {
@@ -206,29 +283,7 @@ class DashboardManager {
         return stats;
     }
 
-    static animateCounter(element, from, to) {
-        const duration = 500; // ms
-        const startTime = performance.now();
 
-        function update(currentTime) {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-
-            // Easing function
-            const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-            const currentValue = Math.floor(from + (to - from) * easeOutQuart);
-
-            element.textContent = currentValue;
-
-            if (progress < 1) {
-                requestAnimationFrame(update);
-            } else {
-                element.textContent = to;
-            }
-        }
-
-        requestAnimationFrame(update);
-    }
 
     static renderProjects(projects) {
         if (!Array.isArray(projects)) return;
@@ -337,34 +392,59 @@ class DashboardManager {
         `;
     }
 
-    static showErrorState() {
-        const projectsContainer = document.getElementById('projects-list');
-        const tasksContainer = document.getElementById('priority-tasks-list');
+    static showErrorState(container, message = 'Ошибка загрузки') {
+        if (!container || typeof container.innerHTML === 'undefined') {
+            Utils.logError('Invalid container provided for error state');
+            return;
+        }
 
-        if (projectsContainer) {
-            projectsContainer.innerHTML = `
+        try {
+            container.innerHTML = `
                 <div class="error-state">
                     <div class="error-icon">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
-                    <h3>Ошибка загрузки проектов</h3>
+                    <h3>${Utils.escapeHTML(message)}</h3>
                     <button class="btn btn-primary" onclick="DashboardManager.loadDashboard()">
                         <i class="fas fa-refresh"></i> Попробовать снова
                     </button>
                 </div>
             `;
+        } catch (error) {
+            Utils.logError('Error showing error state:', error);
         }
+    }
 
-        if (tasksContainer) {
-            tasksContainer.innerHTML = `
-                <div class="error-state">
-                    <div class="error-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <h3>Ошибка загрузки задач</h3>
-                </div>
-            `;
-        }
+    static updateStats(data) {
+        // Используем данные из dashboard response
+        const projects = data.projects || [];
+
+        // Рассчитываем статистику на основе проектов
+        const totalTasks = projects.reduce((sum, project) => sum + (project.total_tasks || 0), 0);
+        const doneTasks = projects.reduce((sum, project) => sum + (project.done_tasks || 0), 0);
+        const activeProjects = projects.filter(project => {
+            const progress = project.total_tasks > 0 ?
+                Math.round((project.done_tasks / project.total_tasks) * 100) : 0;
+            return progress < 100;
+        }).length;
+
+        // Для просроченных задач нужен отдельный запрос или расчет
+        const overdueTasks = 0; // Временное значение
+
+        // Обновляем счетчики
+        this.updateCounter('active-projects-count', activeProjects);
+        this.updateCounter('overdue-tasks-count', overdueTasks);
+        this.updateCounter('total-tasks-count', totalTasks);
+        this.updateCounter('completed-tasks-count', doneTasks);
+
+        // Возвращаем статистику для использования в других методах
+        return {
+            activeProjects,
+            overdueTasks,
+            totalTasks,
+            completedTasks: doneTasks,
+            totalProjects: projects.length
+        };
     }
 
     // Методы для обновления отдельных компонентов дашборда
