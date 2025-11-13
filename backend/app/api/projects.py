@@ -86,7 +86,7 @@ async def create_project(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
         )
-        
+
 @router.get("/")
 async def get_user_projects(
     current_user: User = Depends(get_current_user),
@@ -578,13 +578,13 @@ async def get_join_requests(
 
     return {"requests": formatted_requests}
 
-@router.post("/{project_hash}/join-requests/{request_id}/approve")
-async def approve_join_request(
+@router.get("/{project_hash}/join-requests/all")
+async def get_all_join_requests(
     project_hash: str,
-    request_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    """Получить все заявки на вступление (включая обработанные)"""
     result = await db.execute(select(Project).where(Project.hash == project_hash))
     project = result.scalar_one_or_none()
     if not project:
@@ -597,31 +597,130 @@ async def approve_join_request(
         )
     )
     member = membership.scalar_one_or_none()
-    if not member or member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+    if not member or member.role not in ["owner", "admin"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     result = await db.execute(
-        select(JoinRequest).where(
-            JoinRequest.id == request_id,
-            JoinRequest.project_id == project.id,
-            JoinRequest.status == "pending"
-        )
+        select(JoinRequest)
+        .where(JoinRequest.project_id == project.id)
+        .order_by(JoinRequest.requested_at.desc())
+        .options(selectinload(JoinRequest.join_request_user))
     )
-    join_request = result.scalar_one_or_none()
-    if not join_request:
-        raise HTTPException(status_code=404, detail="Join request not found")
+    requests = result.scalars().all()
 
-    # Добавить пользователя как участника
-    new_member = ProjectMember(project_id=project.id, user_id=join_request.user_id, role=ProjectRole.MEMBER)
-    db.add(new_member)
+    formatted_requests = []
+    for req in requests:
+        formatted_requests.append({
+            "id": req.id,
+            "project_id": req.project_id,
+            "user_id": req.user_id,
+            "status": req.status,
+            "requested_at": req.requested_at,
+            "processed_by_id": req.processed_by_id,
+            "processed_at": req.processed_at,
+            "user": {
+                "id": req.join_request_user.id,
+                "max_id": req.join_request_user.max_id,
+                "full_name": req.join_request_user.full_name,
+                "username": req.join_request_user.username
+            } if req.join_request_user else None
+        })
+    return {"requests": formatted_requests}
 
-    # Обновить статус запроса
-    join_request.status = "approved"
-    join_request.processed_by_id = current_user.id
-    join_request.processed_at = func.now()
+@router.post("/{project_hash}/join-requests/{request_id}/approve")
+async def approve_join_request(
+    project_hash: str,
+    request_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Одобрить заявку на вступление в проект"""
+    try:
+        logger.info(f"Approving join request {request_id} for project {project_hash}")
 
-    await db.commit()
-    return {"status": "success", "message": "Join request approved"}
+        # Находим проект
+        result = await db.execute(select(Project).where(Project.hash == project_hash))
+        project = result.scalar_one_or_none()
+        if not project:
+            logger.error(f"Project not found: {project_hash}")
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Проверяем права доступа
+        membership = await db.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id == current_user.id
+            )
+        )
+        member = membership.scalar_one_or_none()
+        if not member or member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+            logger.error(f"User {current_user.id} doesn't have permission to approve requests")
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Находим заявку (ищем по ID и проекту, без проверки статуса)
+        result = await db.execute(
+            select(JoinRequest).where(
+                JoinRequest.id == request_id,
+                JoinRequest.project_id == project.id
+            )
+        )
+        join_request = result.scalar_one_or_none()
+
+        if not join_request:
+            logger.error(f"Join request {request_id} not found for project {project.id}")
+            raise HTTPException(status_code=404, detail="Join request not found")
+
+        # Проверяем, не обработана ли уже заявка
+        if join_request.status != "pending":
+            logger.warning(f"Join request {request_id} already processed with status: {join_request.status}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Join request already {join_request.status}"
+            )
+
+        # Проверяем, не является ли пользователь уже участником
+        existing_member = await db.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id == join_request.user_id
+            )
+        )
+        if existing_member.scalar_one_or_none():
+            logger.warning(f"User {join_request.user_id} is already a member of project {project.id}")
+            # Помечаем заявку как отклоненную (дублирующая)
+            join_request.status = "rejected"
+            join_request.processed_by_id = current_user.id
+            join_request.processed_at = func.now()
+            await db.commit()
+            raise HTTPException(status_code=400, detail="User is already a member")
+
+        # Добавляем пользователя как участника
+        new_member = ProjectMember(
+            project_id=project.id,
+            user_id=join_request.user_id,
+            role=ProjectRole.MEMBER
+        )
+        db.add(new_member)
+
+        # Обновляем статус заявки
+        join_request.status = "approved"
+        join_request.processed_by_id = current_user.id
+        join_request.processed_at = func.now()
+
+        await db.commit()
+
+        logger.info(f"Join request {request_id} approved successfully")
+        return {"status": "success", "message": "Join request approved"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error approving join request {request_id}: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
 
 @router.post("/{project_hash}/join-requests/{request_id}/reject")
 async def reject_join_request(
@@ -630,39 +729,65 @@ async def reject_join_request(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(Project).where(Project.hash == project_hash))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    """Отклонить заявку на вступление в проект"""
+    try:
+        logger.info(f"Rejecting join request {request_id} for project {project_hash}")
 
-    membership = await db.execute(
-        select(ProjectMember).where(
-            ProjectMember.project_id == project.id,
-            ProjectMember.user_id == current_user.id
+        # Находим проект
+        result = await db.execute(select(Project).where(Project.hash == project_hash))
+        project = result.scalar_one_or_none()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Проверяем права доступа
+        membership = await db.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id == current_user.id
+            )
         )
-    )
-    member = membership.scalar_one_or_none()
-    if not member or member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Access denied")
+        member = membership.scalar_one_or_none()
+        if not member or member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+            raise HTTPException(status_code=403, detail="Access denied")
 
-    result = await db.execute(
-        select(JoinRequest).where(
-            JoinRequest.id == request_id,
-            JoinRequest.project_id == project.id,
-            JoinRequest.status == "pending"
+        # Находим заявку
+        result = await db.execute(
+            select(JoinRequest).where(
+                JoinRequest.id == request_id,
+                JoinRequest.project_id == project.id
+            )
         )
-    )
-    join_request = result.scalar_one_or_none()
-    if not join_request:
-        raise HTTPException(status_code=404, detail="Join request not found")
+        join_request = result.scalar_one_or_none()
 
-    # Обновить статус запроса
-    join_request.status = "rejected"
-    join_request.processed_by_id = current_user.id
-    join_request.processed_at = func.now()
+        if not join_request:
+            raise HTTPException(status_code=404, detail="Join request not found")
 
-    await db.commit()
-    return {"status": "success", "message": "Join request rejected"}
+        # Проверяем, не обработана ли уже заявка
+        if join_request.status != "pending":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Join request already {join_request.status}"
+            )
+
+        # Обновляем статус заявки
+        join_request.status = "rejected"
+        join_request.processed_by_id = current_user.id
+        join_request.processed_at = func.now()
+
+        await db.commit()
+
+        logger.info(f"Join request {request_id} rejected successfully")
+        return {"status": "success", "message": "Join request rejected"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error rejecting join request {request_id}: {str(e)}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
 
 @router.post("/{project_hash}/regenerate-invite")
 async def regenerate_invite(

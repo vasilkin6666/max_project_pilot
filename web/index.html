@@ -1918,25 +1918,25 @@
 
             static async approveJoinRequest(requestId) {
                 if (!currentProject) return;
-
                 try {
                     console.log('Approving join request:', requestId, 'for project:', currentProject.hash);
-
                     await ApiService.approveJoinRequest(currentProject.hash, requestId);
                     this.showSuccess('Заявка одобрена!');
-
                     // Перезагружаем список заявок и участников
                     await this.showJoinRequests();
-
                     // Обновляем список участников проекта
                     if (currentProject && currentProject.hash) {
                         await this.loadProjectMembers(currentProject.hash);
                     }
-
                 } catch (error) {
                     console.error('Error approving join request:', error);
                     if (error.message.includes('404')) {
                         this.showError('Заявка не найдена. Возможно, она уже была обработана.');
+                        // Перезагружаем список заявок, чтобы показать актуальные данные
+                        await this.showJoinRequests();
+                    } else if (error.message.includes('400')) {
+                        this.showError('Заявка уже обработана или пользователь уже является участником.');
+                        await this.showJoinRequests();
                     } else {
                         this.showError('Ошибка одобрения заявки: ' + error.message);
                     }
