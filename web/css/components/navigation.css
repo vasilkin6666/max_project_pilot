@@ -123,3 +123,80 @@
     color: var(--max-primary);
   }
 }
+
+/* Добавить в navigation.css */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--neutral-50);
+  border-top: 1px solid var(--neutral-200);
+  z-index: 1000;
+  padding: var(--space-2) var(--space-3);
+  backdrop-filter: blur(20px);
+}
+
+[data-theme="dark"] .mobile-nav {
+  background: var(--neutral-800);
+  border-top-color: var(--neutral-700);
+}
+
+.mobile-nav-items {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+  color: var(--neutral-500);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  position: relative;
+}
+
+.mobile-nav-item.active {
+  color: var(--max-primary);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.mobile-nav-item .nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: var(--space-1);
+}
+
+.mobile-nav-item .nav-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--error);
+  color: white;
+  border-radius: var(--radius-full);
+  width: 16px;
+  height: 16px;
+  font-size: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .nav-main {
+    display: none;
+  }
+
+  .mobile-nav {
+    display: block;
+  }
+
+  .header {
+    padding-bottom: 60px; /* Space for mobile nav */
+  }
+}

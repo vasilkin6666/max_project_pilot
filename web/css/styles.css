@@ -516,3 +516,101 @@ body {
   background-color: var(--neutral-800);
   border: 1px solid var(--neutral-700);
 }
+
+/* Добавить в styles.css */
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 var(--space-3);
+  }
+
+  .dashboard-stats {
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .stat-item {
+    margin-right: 0;
+    margin-bottom: var(--space-2);
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .projects-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .project-header {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .project-stats {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .project-actions {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .project-actions .btn {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .task-header {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .task-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .comment-form {
+    flex-direction: column;
+  }
+
+  .modal-content {
+    min-width: calc(100vw - var(--space-6));
+    margin: var(--space-3);
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+
+/* Swipe gestures for mobile */
+.view {
+  overflow-x: hidden;
+}
+
+/* Better touch targets */
+.btn, .nav-item, .task-card, .project-card {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Improved scrolling */
+.main-content {
+  -webkit-overflow-scrolling: touch;
+}

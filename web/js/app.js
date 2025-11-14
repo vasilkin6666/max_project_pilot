@@ -147,6 +147,108 @@ class App {
       this.eventHandlers.clear();
   }
 
+  // Mobile navigation
+  function initMobileNavigation() {
+    const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    const fab = document.createElement('button');
+    fab.className = 'fab';
+    fab.innerHTML = '+';
+    fab.id = 'mainFab';
+
+    const fabMenu = document.createElement('div');
+    fabMenu.className = 'fab-menu';
+    fabMenu.innerHTML = `
+      <button class="fab-item" id="fabCreateProject">📁</button>
+      <button class="fab-item" id="fabCreateTask">✅</button>
+      <button class="fab-item" id="fabQuickNote">📝</button>
+    `;
+
+    document.body.appendChild(fab);
+    document.body.appendChild(fabMenu);
+
+    // Mobile nav item clicks
+    mobileNavItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        // Remove active class from all items
+        mobileNavItems.forEach(i => i.classList.remove('active'));
+
+        // Add active class to clicked item
+        item.classList.add('active');
+
+        const view = item.dataset.view;
+        if (view) {
+          showView(view);
+        }
+      });
+    });
+
+    // FAB functionality
+    fab.addEventListener('click', () => {
+      fabMenu.classList.toggle('open');
+    });
+
+    // FAB item functionality
+    document.getElementById('fabCreateProject').addEventListener('click', () => {
+      App.showCreateProjectModal();
+      fabMenu.classList.remove('open');
+    });
+
+    document.getElementById('fabCreateTask').addEventListener('click', () => {
+      App.showCreateTaskModal();
+      fabMenu.classList.remove('open');
+    });
+
+    // Close FAB menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
+        fabMenu.classList.remove('open');
+      }
+    });
+  }
+
+  // Swipe gestures for cards
+  function initSwipeGestures() {
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+
+    document.addEventListener('touchstart', (e) => {
+      const card = e.target.closest('.project-card, .task-card');
+      if (card) {
+        startX = e.touches[0].clientX;
+        isSwiping = true;
+      }
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isSwiping) return;
+
+      currentX = e.touches[0].clientX;
+      const card = e.target.closest('.project-card, .task-card');
+
+      if (card) {
+        const diff = startX - currentX;
+        if (diff > 50) {
+          card.classList.add('swiped');
+        } else if (diff < -50) {
+          card.classList.remove('swiped');
+        }
+      }
+    });
+
+    document.addEventListener('touchend', () => {
+      isSwiping = false;
+    });
+  }
+
+  // Initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    initMobileNavigation();
+    initSwipeGestures();
+  });
+
     static async loadData() {
         try {
             console.log('Loading data...');
