@@ -48,15 +48,14 @@ class ProjectPilotApp {
     async initializeModules() {
         console.log('Initializing modules...');
 
-        // Создаем экземпляры модулей
-        this.modules.utils = Utils; // Статический класс
+        this.modules.utils = Utils;
         this.modules.cache = new CacheManager();
         this.modules.auth = new AuthManager();
         this.modules.api = new ApiService();
         this.modules.notifications = new NotificationManager();
         this.modules.gestures = new GestureManager();
 
-        // Initialize each module
+        // Initialize each module with better error handling
         for (const [name, module] of Object.entries(this.modules)) {
             try {
                 if (typeof module.init === 'function') {
@@ -67,7 +66,11 @@ class ProjectPilotApp {
                 }
             } catch (error) {
                 console.error(`Failed to initialize module ${name}:`, error);
-                throw error;
+                // Не прерываем инициализацию при ошибке в отдельных модулях
+                if (name === 'auth' || name === 'api') {
+                    // Критические модули - пробрасываем ошибку
+                    throw error;
+                }
             }
         }
     }
@@ -151,21 +154,20 @@ class ProjectPilotApp {
             // Authenticate user
             await this.authenticateUser();
 
-            // Load user preferences
-            await this.loadUserPreferences();
-
-            // Load dashboard data
-            await this.loadDashboardData();
-
-            // Load notifications
-            await this.modules.notifications.loadNotifications();
+            // Load user preferences only if authenticated
+            if (this.modules.auth.isAuthenticated) {
+                await this.loadUserPreferences();
+                await this.loadDashboardData();
+                await this.modules.notifications.loadNotifications();
+            }
 
         } catch (error) {
             console.error('Error loading initial data:', error);
-            throw error;
+            // Не прерываем работу приложения при ошибках загрузки данных
+            Utils.showToast('Ошибка загрузки данных', 'error');
         }
     }
-
+    
     async authenticateUser() {
         console.log('Authenticating user...');
 

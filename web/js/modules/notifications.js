@@ -9,15 +9,12 @@ class NotificationManager {
 
     async init() {
         console.log('Notification manager initialized');
-
-        // Create toast container
         this.createToastContainer();
 
-        // Load existing notifications
-        await this.loadNotifications();
-
-        // Start polling for new notifications
-        this.startPolling();
+        // Не загружаем уведомления сразу, если пользователь не авторизован
+        if (window.App?.modules?.auth?.isAuthenticated) {
+            await this.loadNotifications();
+        }
 
         return Promise.resolve();
     }
@@ -69,6 +66,12 @@ class NotificationManager {
 
     // System notifications
     async loadNotifications() {
+        // Проверяем авторизацию перед загрузкой уведомлений
+        if (!window.App?.modules?.auth?.isAuthenticated) {
+            console.log('Skipping notifications load - user not authenticated');
+            return;
+        }
+
         try {
             const api = window.App?.modules?.api;
             if (!api) return;
@@ -79,6 +82,11 @@ class NotificationManager {
             this.updateNotificationBadge();
         } catch (error) {
             console.error('Error loading notifications:', error);
+            // Не показываем ошибку для неавторизованных пользователей
+            if (!error.message.includes('Authentication required') &&
+                !error.message.includes('401')) {
+                Utils.showToast('Ошибка загрузки уведомлений', 'error');
+            }
         }
     }
 

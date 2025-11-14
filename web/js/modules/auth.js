@@ -8,10 +8,7 @@ class AuthManager {
 
     async init() {
         console.log('Auth manager initialized');
-
-        // Try to restore session from storage
         await this.restoreSession();
-
         return Promise.resolve();
     }
 
@@ -81,12 +78,14 @@ class AuthManager {
     setToken(token) {
         this.token = token;
         this.isAuthenticated = true;
-        Utils.setStorage('access_token', token);
+        // Сохраняем как строку, не как JSON
+        localStorage.setItem('access_token', token);
     }
 
     getToken() {
         if (!this.token) {
-            this.token = Utils.getStorage('access_token');
+            // Получаем как строку, не парсим JSON
+            this.token = localStorage.getItem('access_token');
         }
         return this.token;
     }
@@ -96,6 +95,7 @@ class AuthManager {
             const api = window.App?.modules?.api;
             if (!api) return false;
 
+            // Проверяем, существует ли endpoint refresh
             const tokenData = await api.refreshAuthToken();
             if (tokenData?.access_token) {
                 this.setToken(tokenData.access_token);
@@ -103,6 +103,8 @@ class AuthManager {
             }
         } catch (error) {
             console.error('Token refresh failed:', error);
+            // Если endpoint не существует, просто возвращаем false
+            return false;
         }
         return false;
     }
@@ -110,15 +112,14 @@ class AuthManager {
     clearToken() {
         this.token = null;
         this.isAuthenticated = false;
-        Utils.removeStorage('access_token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('current_user');
     }
 
     // User management
     setCurrentUser(user) {
         this.currentUser = user;
         Utils.setStorage('current_user', user);
-
-        // Update UI if needed
         this.updateUserUI(user);
     }
 
@@ -154,7 +155,7 @@ class AuthManager {
             const api = window.App?.modules?.api;
             if (!api) return false;
 
-            // Verify token is still valid by making a simple request
+            // Проверяем токен через запрос к текущему пользователю
             const user = await api.getCurrentUser();
             this.setCurrentUser(user);
             this.isAuthenticated = true;
@@ -168,29 +169,21 @@ class AuthManager {
     }
 
     async logout() {
-        // Clear all auth-related data
         this.clearToken();
         this.currentUser = null;
         this.isAuthenticated = false;
 
-        // Clear user from storage
-        Utils.removeStorage('current_user');
-
-        // Clear cache
         const cache = window.App?.modules?.cache;
         if (cache) {
             cache.clear();
         }
 
-        // Redirect to login or show auth screen
         this.showAuthScreen();
-
         console.log('User logged out');
     }
 
     // UI updates
     updateUserUI(user) {
-        // Update user name in header
         const userNameElement = document.getElementById('userName');
         const userInitialsElement = document.getElementById('userInitials');
 
@@ -205,11 +198,7 @@ class AuthManager {
     }
 
     showAuthScreen() {
-        // Implement your auth screen logic here
-        // This could show a login modal or redirect to auth page
         Utils.showToast('Вы вышли из системы', 'info');
-
-        // For now, just reload the page to trigger auth flow
         setTimeout(() => {
             window.location.reload();
         }, 1000);

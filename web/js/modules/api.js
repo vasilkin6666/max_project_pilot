@@ -1,25 +1,24 @@
 // API service with caching and error handling
 class ApiService {
-  constructor() {
-      this.config = {
-          API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api',
-          RETRY_ATTEMPTS: 3,
-          RETRY_DELAY: 1000,
-          TIMEOUT: 30000
-      };
+    constructor() {
+        this.config = {
+            API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api',
+            RETRY_ATTEMPTS: 3,
+            RETRY_DELAY: 1000,
+            TIMEOUT: 30000
+        };
 
-      this.cache = null;
-      this.auth = null;
-  }
+        this.cache = null;
+        this.auth = null;
+    }
 
-  async init() {
-      console.log('API service initialized');
-      this.cache = window.App?.modules?.cache;
-      this.auth = window.App?.modules?.auth;
-      return Promise.resolve();
-  }
+    async init() {
+        console.log('API service initialized');
+        this.cache = window.App?.modules?.cache;
+        this.auth = window.App?.modules?.auth;
+        return Promise.resolve();
+    }
 
-    // Base request method
     async request(endpoint, options = {}) {
         const token = this.auth?.getToken();
         const url = `${this.config.API_BASE_URL}${endpoint}`;
@@ -35,9 +34,13 @@ class ApiService {
 
         const config = {
             ...options,
-            headers,
-            signal: AbortSignal.timeout(this.config.TIMEOUT)
+            headers
         };
+
+        // Добавляем timeout только если поддерживается
+        if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+            config.signal = AbortSignal.timeout(this.config.TIMEOUT);
+        }
 
         console.log(`API Request: ${config.method || 'GET'} ${url}`);
 
@@ -46,22 +49,31 @@ class ApiService {
                 const response = await fetch(url, config);
 
                 if (response.status === 401) {
-                    // Token might be expired, try to refresh
+                    // Token expired, try to refresh only if endpoint exists
                     if (this.auth && attempt === 1) {
-                        const refreshed = await this.auth.refreshToken();
-                        if (refreshed) {
-                            // Retry with new token
-                            headers['Authorization'] = `Bearer ${this.auth.getToken()}`;
-                            continue;
+                        try {
+                            const refreshed = await this.auth.refreshToken();
+                            if (refreshed) {
+                                // Retry with new token
+                                headers['Authorization'] = `Bearer ${this.auth.getToken()}`;
+                                continue;
+                            }
+                        } catch (refreshError) {
+                            console.log('Token refresh not available or failed');
                         }
                     }
-                    // If refresh failed or not available, redirect to login
+                    // If refresh failed or not available, logout
                     this.handleUnauthorized();
                     throw new Error('Authentication required');
                 }
 
                 if (!response.ok) {
-                    const errorText = await response.text();
+                    let errorText = 'Unknown error';
+                    try {
+                        errorText = await response.text();
+                    } catch (e) {
+                        // Ignore text parsing errors
+                    }
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
@@ -77,12 +89,17 @@ class ApiService {
                     throw error;
                 }
 
-                if (error.name === 'AbortError') {
+                if (error.name === 'AbortError' || error.name === 'TimeoutError') {
                     throw new Error('Request timeout');
                 }
 
-                // Wait before retry
-                await Utils.wait(this.config.RETRY_DELAY * attempt);
+                // Wait before retry only for network errors
+                if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                    await Utils.wait(this.config.RETRY_DELAY * attempt);
+                } else {
+                    // For other errors (like 404), don't retry
+                    throw error;
+                }
             }
         }
     }
@@ -107,7 +124,6 @@ class ApiService {
             body: JSON.stringify(data)
         });
 
-        // Invalidate relevant cache
         if (useCache && this.cache) {
             this.invalidateCacheForEndpoint(endpoint);
         }
@@ -180,9 +196,9 @@ class ApiService {
 
         let userMessage = 'Произошла ошибка при выполнении запроса';
 
-        if (error.name === 'AbortError') {
+        if (error.name === 'AbortError' || error.name === 'TimeoutError') {
             userMessage = 'Превышено время ожидания ответа от сервера';
-        } else if (error.message.includes('NetworkError')) {
+        } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
             userMessage = 'Ошибка сети. Проверьте подключение к интернету';
         } else if (error.message.includes('500')) {
             userMessage = 'Внутренняя ошибка сервера';
@@ -190,6 +206,8 @@ class ApiService {
             userMessage = 'Запрашиваемый ресурс не найден';
         } else if (error.message.includes('403')) {
             userMessage = 'Доступ запрещен';
+        } else if (error.message.includes('401')) {
+            userMessage = 'Требуется авторизация';
         }
 
         Utils.showToast(userMessage, 'error');
@@ -197,7 +215,6 @@ class ApiService {
 
     handleUnauthorized() {
         Utils.showToast('Требуется авторизация', 'error');
-        // You might want to redirect to login page here
         if (this.auth) {
             this.auth.logout();
         }
@@ -213,9 +230,10 @@ class ApiService {
     }
 
     async refreshAuthToken() {
-        // Implementation depends on your auth system
-        return this.post('/auth/refresh', {}, false);
+        throw new Error('Refresh endpoint not available');
     }
+
+
 
     // Project endpoints
     async getProjects() {
