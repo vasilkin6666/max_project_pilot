@@ -9,6 +9,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <style>
+        /* Стили для пульсирующей надписи */
+        .pulsing-text {
+            animation: pulse 2s infinite;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .pulsing-text:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+            }
+        }
+    </style>
 </head>
 <body class="safe-area">
     <!-- ИСПРАВЛЕНО: Новая структура загрузочной заставки -->
@@ -23,8 +57,10 @@
             <div class="loading-bar-container">
                 <div class="loading-bar-progress" id="loadingBarProgress"></div>
             </div>
-            <!-- ИСПРАВЛЕНО: Добавлена кнопка "Начать" -->
-            <button id="startButton" class="start-button" style="display: none;">Начать</button>
+            <!-- ИСПРАВЛЕНО: Заменена кнопка на пульсирующую надпись -->
+            <div id="tapToStart" class="pulsing-text" style="display: none;">
+                Нажми на экран
+            </div>
         </div>
         <div class="spark-container" id="sparkContainer"></div> <!-- Контейнер для искр -->
     </div>
@@ -605,41 +641,53 @@
             console.log('Initializing App...');
             // Инициализируем приложение, ожидаем завершения
             await App.init();
-            console.log('App initialized successfully, hiding loader and showing main app container.');
+            console.log('App initialized successfully, showing tap to start message.');
 
             // Находим элементы заставки и основного контейнера
             const loadingOverlay = document.getElementById('loading');
-            const appContainer = document.getElementById('app'); // ВАЖНО: ваш контейнер называется "app", а не "appContainer"
+            const tapToStart = document.getElementById('tapToStart');
+            const appContainer = document.getElementById('app');
 
-            // Скрываем заставку
-            if (loadingOverlay) {
-                // Плавное скрытие заставки (если в CSS задан transition)
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => {
-                    loadingOverlay.style.display = 'none';
-                    // Показываем основной контейнер приложения
-                    if (appContainer) {
-                        appContainer.style.display = 'block'; // Изменен ID с 'appContainer' на 'app'
-                        // Теперь вызываем отображение дашборда или другой начальной вкладки
-                        App.showDashboard(); // Предполагается, что такой метод есть в js/app.js
-                    }
-                }, 500); // Время должно соответствовать transition в CSS, если используется
+            // Показываем надпись "Нажми на экран" после загрузки
+            if (loadingOverlay && tapToStart) {
+                tapToStart.style.display = 'block';
+
+                // Добавляем обработчик клика на всю заставку
+                loadingOverlay.addEventListener('click', function() {
+                    console.log('Loading overlay clicked, hiding loader and showing main app.');
+
+                    // Плавное скрытие заставки
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                        // Показываем основной контейнер приложения
+                        if (appContainer) {
+                            appContainer.style.display = 'block';
+                            // Теперь вызываем отображение дашборда или другой начальной вкладки
+                            App.showDashboard();
+                        }
+                    }, 500);
+                });
             } else {
-                 // Если заставка не найдена, просто покажем контейнер и вызовем дашборд
-                 if (appContainer) {
-                     appContainer.style.display = 'block';
-                     App.showDashboard();
-                 }
+                // Если что-то пошло не так, показываем приложение через 3 секунды
+                console.warn('Loading overlay elements not found, showing app after timeout');
+                setTimeout(() => {
+                    if (loadingOverlay) loadingOverlay.style.display = 'none';
+                    if (appContainer) {
+                        appContainer.style.display = 'block';
+                        App.showDashboard();
+                    }
+                }, 3000);
             }
         } catch (error) {
             console.error('Critical error during app initialization:', error);
             // В случае критической ошибки инициализации, можно показать сообщение
             const loadingOverlay = document.getElementById('loading');
             if (loadingOverlay) {
-                loadingOverlay.innerHTML = `<div class="loading-content"><h2>Ошибка приложения</h2><p>Произошла ошибка: ${error.message || 'Неизвестная ошибка'}</p></div>`;
+                loadingOverlay.innerHTML = `<div class="loading-content"><h2>Ошибка приложения</h2><p>Произошла ошибка: ${error.message || 'Неизвестная ошибка'}</p><button onclick="location.reload()">Перезагрузить</button></div>`;
             }
         }
     });
-</script>
+    </script>
 </body>
 </html>

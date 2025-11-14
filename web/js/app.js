@@ -421,9 +421,8 @@ class App {
     static async openProject(projectHash) {
         try {
             console.log('Opening project:', projectHash);
-            const projectData = await ApiService.getProject(projectHash); // Используем метод из index.txt
+            const projectData = await ApiService.getProject(projectHash);
 
-            // ИСПРАВЛЕНО: Правильное получение данных проекта
             currentProject = projectData.project || projectData;
             currentProject.members = projectData.members || [];
 
@@ -436,9 +435,9 @@ class App {
             document.getElementById('projectHashInfo').style.display = 'block';
 
             // Update stats
-            document.getElementById('projectMembersCount').textContent = currentProject.members.length; // Используем локальные данные
-            // Для задач нужно загрузить их
-            const tasksResponse = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
+            document.getElementById('projectMembersCount').textContent = currentProject.members.length;
+
+            const tasksResponse = await ApiService.getTasks(currentProject.hash);
             const tasks = tasksResponse.tasks || [];
             const totalTasks = tasks.length;
             const doneTasks = tasks.filter(t => t.status === 'done').length;
@@ -448,9 +447,15 @@ class App {
             document.getElementById('projectDoneTasks').textContent = doneTasks;
             document.getElementById('projectInProgressTasks').textContent = inProgressTasks;
 
-            // Load tasks and members
+            // Load tasks and members (с обработкой ошибок)
             await this.loadProjectTasks(currentProject.hash);
-            await this.loadProjectMembers(currentProject.hash);
+
+            try {
+                await this.loadProjectMembers(currentProject.hash);
+            } catch (memberError) {
+                console.error('Failed to load members, but continuing:', memberError);
+                // Можно показать уведомление, но не блокировать весь процесс
+            }
 
             // Switch view
             this.showView('projectView');
@@ -459,7 +464,7 @@ class App {
             this.showError('Ошибка открытия проекта: ' + error.message);
         }
     }
-
+    
     static async loadProjectTasks(projectHash) {
         try {
             const response = await ApiService.getTasks(projectHash); // ИСПРАВЛЕНО: используем правильный маршрут
@@ -497,7 +502,7 @@ class App {
 
     static async loadProjectMembers(projectHash) {
         try {
-            const response = await ApiService.getProjectMembers(projectHash); // Используем метод из index.txt
+            const response = await ApiService.getProjectMembers(projectHash);
             const members = response.members || [];
             const container = document.getElementById('projectMembersList');
 
@@ -521,10 +526,10 @@ class App {
                 let canChangeRole = false;
                 let canRemoveMember = false;
 
-                if (currentUser.id === currentProject.owner_id) { // Current user is owner
+                if (currentUser.id === currentProject.owner_id) {
                     canChangeRole = !isCurrentUser && !isOwnerMember;
                     canRemoveMember = !isCurrentUser && !isOwnerMember;
-                } else if (currentUser.role === ProjectRole.ADMIN) { // Current user is admin
+                } else if (currentUser.role === ProjectRole.ADMIN) {
                     canChangeRole = !isCurrentUser && !isOwnerMember && !isAdminMember;
                     canRemoveMember = !isCurrentUser && !isOwnerMember && !isAdminMember;
                 }
@@ -543,7 +548,9 @@ class App {
 
         } catch (error) {
             console.error('Error loading project members:', error);
-            this.showError('Ошибка загрузки участников проекта: ' + error.message);
+            // Более мягкая обработка ошибки - не показываем alert для этой не критичной функции
+            const container = document.getElementById('projectMembersList');
+            container.innerHTML = '<p>Не удалось загрузить список участников</p>';
         }
     }
 

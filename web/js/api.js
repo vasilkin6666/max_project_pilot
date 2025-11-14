@@ -1,7 +1,7 @@
 // api.js
 // Конфигурация
 const CONFIG = {
-    API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api' // Используем URL из index.txt
+    API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
 };
 
 // API сервис
@@ -9,13 +9,16 @@ class ApiService {
     static async request(endpoint, options = {}) {
         const token = AuthManager.getToken();
         const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+
         const headers = {
             'Content-Type': 'application/json',
             ...options.headers
         };
+
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
+
         console.log(`API Request: ${options.method || 'GET'} ${url}`);
 
         try {
@@ -23,13 +26,28 @@ class ApiService {
                 ...options,
                 headers
             });
+
             if (!response.ok) {
-                const errorText = await response.text();
+                let errorText;
+                try {
+                    errorText = await response.text();
+                } catch {
+                    errorText = response.statusText;
+                }
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
-            const data = await response.json();
-            console.log(`API Response:`, data);
-            return data;
+
+            // Проверяем, есть ли контент для парсинга
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                console.log(`API Response:`, data);
+                return data;
+            } else {
+                // Если ответ не JSON, возвращаем пустой объект
+                console.log(`API Response: Non-JSON response`);
+                return {};
+            }
         } catch (error) {
             console.error('API request failed:', error);
             throw error;
@@ -139,9 +157,8 @@ class ApiService {
     }
 
     // Task endpoints
-    // ИСПРАВЛЕНО: Используем правильный маршрут из index.txt
     static async getTasks(projectHash) {
-        return this.get(`/tasks/projects/${projectHash}/tasks`); // <-- Вот тут изменение
+        return this.get(`/tasks/projects/${projectHash}/tasks`);
     }
 
     static async getTask(taskId) {
