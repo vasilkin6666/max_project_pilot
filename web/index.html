@@ -1211,6 +1211,12 @@
             }
 
             static setupEventListeners() {
+              // Обработка нажатия Enter в поле поиска проектов
+              document.getElementById('searchProjectsInput').addEventListener('keypress', (e) => {
+                  if (e.key === 'Enter') {
+                      this.searchProjects();
+                  }
+              });
                 // Создание проекта
                 document.getElementById('createProjectBtn').addEventListener('click', () => {
                     this.showModal('createProjectModal');
@@ -2694,16 +2700,24 @@
             static async searchProjects() {
                 const searchTerm = document.getElementById('searchProjectsInput').value.trim();
 
-                if (!searchTerm) {
-                    await this.loadRecentPublicProjects();
-                    return;
-                }
-
                 try {
-                    // Если поисковый запрос похож на хэш (только буквы и цифры), ищем точное совпадение
-                    if (/^[a-zA-Z0-9]+$/.test(searchTerm)) {
-                        await this.searchProjectByExactHash(searchTerm);
+                    if (!searchTerm) {
+                        await this.loadRecentPublicProjects();
+                        return;
+                    }
+
+                    // Если поисковый запрос похож на хэш (только буквы и цифры, длина 6+ символов), пробуем поиск по хэшу
+                    if (/^[a-zA-Z0-9]{6,}$/.test(searchTerm)) {
+                        try {
+                            await this.searchProjectByExactHash(searchTerm);
+                            return; // Если нашли по хэшу, выходим
+                        } catch (error) {
+                            console.log('Project not found by hash, trying by name...');
+                            // Если не нашли по хэшу, продолжаем поиск по названию
+                            await this.searchProjectsByQuery(searchTerm);
+                        }
                     } else {
+                        // Поиск только по названию
                         await this.searchProjectsByQuery(searchTerm);
                     }
                 } catch (error) {
@@ -2715,8 +2729,14 @@
             static async searchProjectByExactHash(hash) {
                 try {
                     const response = await ApiService.getProjectByHashExact(hash);
-                    const projects = [response.project];
-                    this.renderSearchResults(projects, `Результат поиска по хэшу: ${hash}`, response);
+                    const project = response.project;
+
+                    if (project) {
+                        // Показываем найденный проект
+                        this.renderSearchResults([project], `Найден проект по хэшу: ${hash}`, response);
+                    } else {
+                        throw new Error('Project not found');
+                    }
                 } catch (error) {
                     if (error.message.includes('404')) {
                         document.getElementById('searchResultsList').innerHTML = `
@@ -2725,6 +2745,10 @@
                                 <p style="color: #666; font-size: 14px; margin-top: 10px;">
                                     Проверьте правильность хэша или попробуйте поиск по названию
                                 </p>
+                                <button onclick="App.searchProjectsByQuery('${hash}')"
+                                        style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">
+                                    Искать по названию
+                                </button>
                             </div>
                         `;
                     } else {
@@ -2734,10 +2758,22 @@
             }
 
             static async searchProjectsByQuery(query) {
-                const response = await ApiService.searchPublicProjects(query);
-                const projects = response.projects || [];
-                const title = query ? `Результаты поиска: "${query}"` : 'Публичные проекты';
-                this.renderSearchResults(projects, title);
+                try {
+                    const response = await ApiService.searchPublicProjects(query);
+                    const projects = response.projects || [];
+                    const title = query ? `Результаты поиска по названию: "${query}"` : 'Публичные проекты';
+                    this.renderSearchResults(projects, title);
+                } catch (error) {
+                    console.error('Error searching projects by query:', error);
+                    document.getElementById('searchResultsList').innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <p>Ошибка поиска проектов</p>
+                            <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                                ${error.message}
+                            </p>
+                        </div>
+                    `;
+                }
             }
 
             static renderSearchResults(projects, title, exactMatchData = null) {
@@ -2755,7 +2791,10 @@
                     return;
                 }
 
-                let html = `<h3>${title}</h3>`;
+                let html = `<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                    <h3 style="margin: 0;">${title}</h3>
+                    ${exactMatchData ? '<span class="search-type-badge">По хэшу</span>' : '<span class="search-type-badge">По названию</span>'}
+                </div>`;
 
                 html += projects.map(project => {
                     const stats = project.stats || {};
@@ -2932,11 +2971,27 @@
 
             static async joinProject(projectHash) {
                 try {
-                    await ApiService.joinProject(projectHash);
-                    this.showSuccess('Заявка на вступление отправлена!');
+                    const response = await ApiService.joinProject(projectHash);
+
+                    if (response.status === 'joined') {
+                        this.showSuccess('Вы успешно присоединились к проекту!');
+                        // Открываем проект
+                        await this.openProject(projectHash);
+                    } else if (response.status === 'pending_approval') {
+                        this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
+                        // Закрываем поиск и возвращаемся к дашборду
+                        this.showDashboard();
+                    }
                 } catch (error) {
                     console.error('Error joining project:', error);
-                    this.showError('Ошибка вступления в проект: ' + error.message);
+                    if (error.message.includes('400') && error.message.includes('already a member')) {
+                        this.showError('Вы уже являетесь участником этого проекта');
+                        await this.openProject(projectHash);
+                    } else if (error.message.includes('400') && error.message.includes('already pending')) {
+                        this.showError('Заявка на вступление уже отправлена');
+                    } else {
+                        this.showError('Ошибка вступления в проект: ' + error.message);
+                    }
                 }
             }
 
