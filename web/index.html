@@ -597,5 +597,49 @@
 
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
+    <script>
+    // Убедимся, что DOM полностью загружен
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('DOM fully loaded and parsed');
+        try {
+            console.log('Initializing App...');
+            // Инициализируем приложение, ожидаем завершения
+            await App.init();
+            console.log('App initialized successfully, hiding loader and showing main app container.');
+
+            // Находим элементы заставки и основного контейнера
+            const loadingOverlay = document.getElementById('loading');
+            const appContainer = document.getElementById('app'); // ВАЖНО: ваш контейнер называется "app", а не "appContainer"
+
+            // Скрываем заставку
+            if (loadingOverlay) {
+                // Плавное скрытие заставки (если в CSS задан transition)
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                    // Показываем основной контейнер приложения
+                    if (appContainer) {
+                        appContainer.style.display = 'block'; // Изменен ID с 'appContainer' на 'app'
+                        // Теперь вызываем отображение дашборда или другой начальной вкладки
+                        App.showDashboard(); // Предполагается, что такой метод есть в js/app.js
+                    }
+                }, 500); // Время должно соответствовать transition в CSS, если используется
+            } else {
+                 // Если заставка не найдена, просто покажем контейнер и вызовем дашборд
+                 if (appContainer) {
+                     appContainer.style.display = 'block';
+                     App.showDashboard();
+                 }
+            }
+        } catch (error) {
+            console.error('Critical error during app initialization:', error);
+            // В случае критической ошибки инициализации, можно показать сообщение
+            const loadingOverlay = document.getElementById('loading');
+            if (loadingOverlay) {
+                loadingOverlay.innerHTML = `<div class="loading-content"><h2>Ошибка приложения</h2><p>Произошла ошибка: ${error.message || 'Неизвестная ошибка'}</p></div>`;
+            }
+        }
+    });
+</script>
 </body>
 </html>
