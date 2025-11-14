@@ -21,37 +21,60 @@ class NotificationManager {
 
     // Toast notifications
     createToastContainer() {
-        this.toastContainer = document.getElementById('toastContainer');
-        if (!this.toastContainer) {
-            this.toastContainer = Utils.createElement('div', 'toast-container');
+        try {
+            this.toastContainer = document.getElementById('toastContainer');
+            if (!this.toastContainer) {
+                this.toastContainer = Utils.createElement('div', 'toast-container');
+                document.body.appendChild(this.toastContainer);
+            }
+        } catch (error) {
+            console.error('Error creating toast container:', error);
+            // Fallback - создаем простой контейнер
+            this.toastContainer = document.createElement('div');
+            this.toastContainer.className = 'toast-container';
+            this.toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000;';
             document.body.appendChild(this.toastContainer);
         }
     }
 
     showToast(message, type = 'info', duration = 5000) {
-        const toast = Utils.createElement('div', `toast ${type}`);
+        try {
+            if (!this.toastContainer) {
+                this.createToastContainer();
+            }
 
-        const icon = this.getToastIcon(type);
-        toast.innerHTML = `
-            <div class="toast-icon">${icon}</div>
-            <div class="toast-content">${Utils.escapeHtml(message)}</div>
-            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-        `;
+            const toast = Utils.createElement('div', `toast ${type}`);
 
-        this.toastContainer.appendChild(toast);
+            const icon = this.getToastIcon(type);
+            toast.innerHTML = `
+                <div class="toast-icon">${icon}</div>
+                <div class="toast-content">${Utils.escapeHtml(message)}</div>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
 
-        // Add enter animation
-        setTimeout(() => toast.classList.add('show'), 10);
+            this.toastContainer.appendChild(toast);
 
-        // Auto remove after duration
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
+            // Add enter animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Auto remove after duration
+            if (duration > 0) {
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        if (toast.parentElement === this.toastContainer) {
+                            this.toastContainer.removeChild(toast);
+                        }
+                    }, 300);
+                }, duration);
+            }
+
+            return toast;
+        } catch (error) {
+            console.error('Error showing toast:', error);
+            // Fallback
+            console.log(`${type.toUpperCase()}: ${message}`);
         }
-
-        return toast;
     }
 
     getToastIcon(type) {
@@ -190,8 +213,16 @@ class NotificationManager {
     // Notification display
     showNotificationsModal() {
         const modalManager = window.App?.components?.modals;
-        if (modalManager) {
-            modalManager.showNotificationsModal(this.notifications);
+        if (modalManager && modalManager.showModal) {
+            // Создаем простой модал для уведомлений
+            modalManager.showModal('notifications', {
+                title: 'Уведомления',
+                message: 'Функция уведомлений в разработке',
+                type: 'info'
+            });
+        } else {
+            // Fallback
+            this.showToast('Функция уведомлений в разработке', 'info');
         }
     }
 

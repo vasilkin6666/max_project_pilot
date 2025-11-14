@@ -158,6 +158,8 @@ class ViewManager {
     }
 
     getFormData(container) {
+        if (!container) return {};
+
         const formData = {};
         const inputs = container.querySelectorAll('input, select, textarea');
 
@@ -176,13 +178,15 @@ class ViewManager {
     }
 
     setFormData(container, formData) {
+        if (!container || !formData || typeof formData !== 'object') return;
+
         for (const [key, value] of Object.entries(formData)) {
             const input = container.querySelector(`[name="${key}"], #${key}`);
             if (input) {
                 if (input.type === 'checkbox' || input.type === 'radio') {
-                    input.checked = value;
+                    input.checked = Boolean(value);
                 } else {
-                    input.value = value;
+                    input.value = value || '';
                 }
             }
         }

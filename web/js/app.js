@@ -94,6 +94,8 @@ class ProjectPilotApp {
         }
     }
 
+    // В файле js\app.js исправляем setupEventListeners:
+
     setupEventListeners() {
         console.log('Setting up event listeners...');
 
@@ -119,13 +121,13 @@ class ProjectPilotApp {
             this.hideUserMenu();
         });
 
-        // Header actions
+        // Header actions - исправляем обработчики
         document.getElementById('searchProjectsBtn')?.addEventListener('click', () => {
             this.showSearchProjects();
         });
 
         document.getElementById('notificationsBtn')?.addEventListener('click', () => {
-            this.showNotifications();
+            this.showNotificationsFallback();
         });
 
         document.getElementById('createProjectBtn')?.addEventListener('click', () => {
@@ -145,6 +147,15 @@ class ProjectPilotApp {
                 this.handleUserAction(action);
             }
         });
+    }
+
+    showNotificationsFallback() {
+        const modalManager = this.components.modals;
+        if (modalManager && modalManager.showModal) {
+            modalManager.showModal('notifications');
+        } else {
+            Utils.showToast('Функция уведомлений в разработке', 'info');
+        }
     }
 
     async loadInitialData() {
@@ -167,7 +178,7 @@ class ProjectPilotApp {
             Utils.showToast('Ошибка загрузки данных', 'error');
         }
     }
-    
+
     async authenticateUser() {
         console.log('Authenticating user...');
 
@@ -563,7 +574,7 @@ class ProjectPilotApp {
 
     // Notifications
     showNotifications() {
-        this.modules.notifications.showNotificationsModal();
+        this.showNotificationsFallback();
     }
 
     // Project joining

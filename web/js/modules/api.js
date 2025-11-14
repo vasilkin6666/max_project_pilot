@@ -213,10 +213,18 @@ class ApiService {
         Utils.showToast(userMessage, 'error');
     }
 
+
     handleUnauthorized() {
-        Utils.showToast('Требуется авторизация', 'error');
-        if (this.auth) {
-            this.auth.logout();
+        try {
+            Utils.showToast('Требуется авторизация', 'error');
+            if (this.auth) {
+                this.auth.logout();
+            }
+        } catch (error) {
+            console.error('Error in handleUnauthorized:', error);
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         }
     }
 

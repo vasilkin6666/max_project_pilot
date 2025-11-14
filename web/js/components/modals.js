@@ -17,6 +17,26 @@ class ModalManager {
         this.createModal('confirm', this.createConfirmModal());
         this.createModal('loading', this.createLoadingModal());
         this.createModal('alert', this.createAlertModal());
+        this.createModal('notifications', this.createNotificationsModal());
+    }
+
+    createNotificationsModal() {
+        return `
+            <div class="modal-header">
+                <h3 class="modal-title">Уведомления</h3>
+                <button class="modal-close" onclick="App.components.modals.hideModal('notifications')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔔</div>
+                    <h3 class="empty-state-title">Уведомления</h3>
+                    <p class="empty-state-description">Функция уведомлений находится в разработке</p>
+                    <button class="btn btn-primary" onclick="App.components.modals.hideModal('notifications')">
+                        Понятно
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     setupEventListeners() {
@@ -544,14 +564,18 @@ class ModalManager {
             form.reset();
             Utils.showToast('Проект создан', 'success');
 
-            // Refresh dashboard
-            window.App?.loadData();
+            // Исправляем вызов метода
+            if (window.App?.loadDashboardData) {
+                window.App.loadDashboardData();
+            } else if (window.App?.loadInitialData) {
+                window.App.loadInitialData();
+            }
+
         } catch (error) {
             console.error('Error creating project:', error);
             Utils.showToast('Ошибка создания проекта', 'error');
         }
     }
-
     async handleCreateTask() {
         // Similar implementation for task creation
         // This would handle the create task form submission
