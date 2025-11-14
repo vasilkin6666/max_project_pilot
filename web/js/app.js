@@ -1,20 +1,4 @@
 // js/app.js
-// Глобальные переменные (как в index.txt)
-let currentUser = null;
-let currentProject = null;
-let currentTask = null;
-let userSettings = {};
-let currentMemberToUpdate = null;
-let currentMemberToRemove = null;
-
-// Константы ролей (как в index.txt)
-const ProjectRole = {
-    OWNER: 'owner',
-    ADMIN: 'admin',
-    MEMBER: 'member',
-    GUEST: 'guest'
-};
-
 // Основное приложение
 class App {
   static async init() {
@@ -157,12 +141,10 @@ class App {
             this.handleRemoveMember();
         });
 
-        // ИСПРАВЛЕНО: Добавляем обработчик изменения статуса задачи
         document.getElementById('taskStatusSelect').addEventListener('change', () => {
             this.updateTaskStatus();
         });
 
-        // ИСПРАВЛЕНО: Обработчик Enter в поле поиска проектов
         document.getElementById('searchProjectsInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.searchProjects();
