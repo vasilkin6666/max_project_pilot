@@ -37,8 +37,9 @@ class AuthManager {
         const userData = WebApp.initDataUnsafe.user;
         const maxId = userData.id.toString();
         const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
-        console.log('MAX authentication with:', { maxId, fullName });
-        const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
+        const username = userData.username || '';
+        console.log('MAX authentication with:', { maxId, fullName, username });
+        const tokenData = await ApiService.getAuthToken(maxId, fullName, username);
         if (tokenData?.access_token) {
             localStorage.setItem('access_token', tokenData.access_token);
             console.log('MAX authentication successful');
