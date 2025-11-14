@@ -1,62 +1,13 @@
 // main.js
 console.log('Project Pilot Pro - Initializing...');
 
-// Инициализация MAX Bridge
-try {
-    if (typeof MaxBridge !== 'undefined') {
-        await MaxBridge.init();
-        console.log('MAX integration: successful');
-    } else {
-        console.log('MAX integration: standalone mode');
-    }
-} catch (error) {
-    console.log('MAX integration: standalone mode due to error');
-}
-
-console.log('Starting authentication...');
-
-// Инициализация основного приложения
-try {
-    if (typeof App !== 'undefined') {
-        await App.init();
-        console.log('Main app initialized');
-    } else {
-        console.error('App class not found');
-    }
-} catch (error) {
-    console.error('Main app initialization failed:', error);
-}
-
-// Инициализация мобильных функций
-try {
-    if (typeof MobileApp !== 'undefined') {
-        MobileApp.init();
-        console.log('Mobile features initialized');
-    }
-} catch (error) {
-    console.log('Mobile features not available');
-}
-
-console.log('Animations initialized');
-console.log('Application initialized successfully');
-
-// Информация о среде
-const envInfo = {
-    max: typeof WebApp !== 'undefined',
-    platform: 'web',
-    version: '25.11.2',
-    authMethod: 'max',
-    user: currentUser || null
-};
-console.log('Environment info:', envInfo);
-
-
+// Инициализация приложения
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Project Pilot Pro - Initializing...');
 
     try {
         // Инициализируем MAX интеграцию
-        const maxInitialized = MaxIntegration.init();
+        const maxInitialized = typeof MaxBridge !== 'undefined' ? await MaxBridge.init() : false;
         console.log('MAX integration:', maxInitialized ? 'successful' : 'standalone mode');
 
         // Инициализируем аутентификацию
@@ -75,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Показываем готовность MAX
-        if (maxInitialized) {
+        if (maxInitialized && typeof WebApp !== 'undefined') {
             WebApp.ready();
             console.log('MAX WebApp ready signaled');
         }
@@ -87,11 +38,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Application initialized successfully');
 
         // Показываем информацию о режиме работы
-        this.showEnvironmentInfo(maxInitialized);
+        showEnvironmentInfo(maxInitialized);
 
     } catch (error) {
         console.error('Application initialization failed:', error);
-        this.showInitializationError(error);
+        showInitializationError(error);
     }
 });
 
@@ -99,9 +50,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 function showEnvironmentInfo(maxInitialized) {
     const envInfo = {
         max: maxInitialized,
-        platform: MaxIntegration.getPlatform(),
-        version: MaxIntegration.getMaxVersion(),
-        authMethod: EnhancedAuthManager.getCurrentAuthMethod(),
+        platform: typeof MaxBridge !== 'undefined' ? MaxBridge.getPlatform() : 'web',
+        version: typeof MaxBridge !== 'undefined' ? MaxBridge.getMaxVersion() : 'unknown',
+        authMethod: typeof EnhancedAuthManager !== 'undefined' ? EnhancedAuthManager.getCurrentAuthMethod() : 'unknown',
         user: currentUser
     };
 
@@ -266,6 +217,8 @@ if ('serviceWorker' in navigator) {
         // Не блокируем приложение при ошибке SW
     }
 }
+
+// Fallback обработчик для заставки
 document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading');
     if (loadingOverlay) {
