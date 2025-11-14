@@ -62,23 +62,21 @@ class MaxIntegration {
         }
     }
 
-    static setupSecurity() {
-        // Включаем защиту от скриншотов для приватных данных
-        if (WebApp.ScreenCapture && WebApp.ScreenCapture.enableScreenCapture) {
-            try {
-                WebApp.ScreenCapture.enableScreenCapture();
-            } catch (error) {
-                console.warn('Screen capture protection not available:', error);
-            }
+    // В max-integration.js
+    async setupSecurity() {
+        try {
+            await WebApp.enableScreenCapture();
+            console.log('Screen capture enabled');
+        } catch (error) {
+            console.warn('Screen capture not available:', error);
+            // Продолжаем без этой функции
         }
 
-        // Включаем подтверждение закрытия при несохраненных данных
-        if (WebApp.enableClosingConfirmation) {
-            try {
-                WebApp.enableClosingConfirmation();
-            } catch (error) {
-                console.warn('Closing confirmation not available:', error);
-            }
+        try {
+            await WebApp.setupClosingBehavior({ need_confirmation: true });
+            console.log('Closing behavior set');
+        } catch (error) {
+            console.warn('Closing behavior not available:', error);
         }
     }
 

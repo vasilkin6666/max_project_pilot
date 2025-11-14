@@ -304,28 +304,39 @@ class App {
       this.eventHandlers.clear();
   }
 
-    static async loadData() {
-        try {
-            console.log('Loading data...');
-            // Загружаем дашборд с проектами
-            const dashboardData = await ApiService.getDashboard();
-            const projects = dashboardData.projects || [];
-            const settings = dashboardData.settings || {};
-            const recentTasks = dashboardData.recent_tasks || [];
+  static loadDataInProgress = false;
 
-            // Сохраняем настройки
-            userSettings = settings;
-            this.applyUserSettings(settings);
+  static async loadData() {
+      // Защита от дублирующихся запросов
+      if (this.loadDataInProgress) {
+          console.log('Data loading already in progress, skipping...');
+          return;
+      }
 
-            this.renderProjects(projects);
-            this.updateStats(projects, recentTasks);
-            this.renderRecentTasks(recentTasks);
-            console.log('Data loaded successfully');
-        } catch (error) {
-            console.error('Error loading data:', error);
-            this.showError('Ошибка загрузки данных: ' + error.message);
-        }
-    }
+      try {
+          this.loadDataInProgress = true;
+          console.log('Loading data...');
+
+          const dashboardData = await ApiService.getDashboard();
+          const projects = dashboardData.projects || [];
+          const settings = dashboardData.settings || {};
+          const recentTasks = dashboardData.recent_tasks || [];
+
+          // Сохраняем настройки
+          userSettings = settings;
+          this.applyUserSettings(settings);
+
+          this.renderProjects(projects);
+          this.updateStats(projects, recentTasks);
+          this.renderRecentTasks(recentTasks);
+          console.log('Data loaded successfully');
+      } catch (error) {
+          console.error('Error loading data:', error);
+          this.showError('Ошибка загрузки данных: ' + error.message);
+      } finally {
+          this.loadDataInProgress = false;
+      }
+  }
 
     // Применение настроек пользователя
     static applyUserSettings(settings) {
@@ -708,11 +719,11 @@ class App {
             document.getElementById('taskTitleHeader').textContent = currentTask.title;
             document.getElementById('taskDescriptionText').textContent = currentTask.description || 'Без описания';
             document.getElementById('taskPriorityText').textContent = this.getPriorityText(currentTask.priority);
-            document.getElementById('taskStatusSelect').value = currentTask.status; // Устанавливаем статус
+            document.getElementById('taskStatusSelect').value = currentTask.status;
             document.getElementById('taskCreatedAtText').textContent = new Date(currentTask.created_at).toLocaleString();
             document.getElementById('taskDueDateText').textContent = currentTask.due_date ? new Date(currentTask.due_date).toLocaleDateString() : 'Не установлен';
 
-            // --- Загрузка информации об исполнителе из index.txt ---
+            // Исполнитель
             if (currentTask.assigned_to_id) {
                 if (currentTask.assigned_user) {
                     const displayName = currentTask.assigned_user.full_name || currentTask.assigned_user.username || `Участник #${currentTask.assigned_to_id}`;
@@ -724,10 +735,10 @@ class App {
                 document.getElementById('taskAssignedToText').textContent = 'Не назначена';
             }
 
-            // Show/hide create subtask button based on permissions or task type
+            // Подзадачи - только если есть проект
             const createSubtaskBtn = document.getElementById('createSubtaskBtn');
             const subtasksSection = document.getElementById('subtasksSection');
-            if (currentTask.parent_task_id === null) {
+            if (currentTask.parent_task_id === null && currentProject) {
                 subtasksSection.style.display = 'block';
                 createSubtaskBtn.style.display = 'inline-block';
                 await this.loadSubtasks(taskId);
@@ -736,7 +747,7 @@ class App {
                 createSubtaskBtn.style.display = 'none';
             }
 
-            // Load comments
+            // Комментарии
             await this.loadTaskComments(taskId);
 
             // Switch view
@@ -746,7 +757,7 @@ class App {
             this.showError('Ошибка открытия задачи: ' + error.message);
         }
     }
-
+    
     static async loadTaskAssigneeInfo(assigneeId) {
         try {
             console.log('Loading assignee info for:', assigneeId);
@@ -959,6 +970,14 @@ class App {
 
     static async handleUpdateProject() {
         if (!currentProject) return;
+
+        // Проверяем права доступа
+        if (currentProject.current_user_role !== 'owner' && currentProject.current_user_role !== 'admin') {
+            this.showError('Недостаточно прав для редактирования проекта');
+            this.hideModal('editProjectModal');
+            return;
+        }
+
         const title = document.getElementById('editProjectTitle').value.trim();
         const description = document.getElementById('editProjectDescription').value.trim();
         const isPrivate = document.getElementById('editProjectIsPrivate').checked;
@@ -978,14 +997,17 @@ class App {
             });
 
             this.hideModal('editProjectModal');
-            await this.openProject(currentProject.hash); // Перезагружаем проект
+            await this.openProject(currentProject.hash);
             this.showSuccess('Проект обновлен успешно!');
         } catch (error) {
             console.error('Error updating project:', error);
-            this.showError('Ошибка обновления проекта: ' + error.message);
+            if (error.message.includes('403')) {
+                this.showError('Недостаточно прав для редактирования проекта');
+            } else {
+                this.showError('Ошибка обновления проекта: ' + error.message);
+            }
         }
     }
-
     static showDeleteProjectModal() {
         if (!currentProject) return;
         document.getElementById('deleteProjectName').textContent = currentProject.title;
@@ -1429,8 +1451,12 @@ class App {
     static async loadSubtasks(parentTaskId, level = 0, container = null) {
         try {
             if (!currentProject || !currentProject.hash) {
-                console.error('No current project for loading subtasks');
-                document.getElementById('subtasksList').innerHTML = '<p>Ошибка загрузки подзадач</p>';
+                console.log('No current project for loading subtasks, skipping...');
+                if (container) {
+                    container.innerHTML = '<p>Не удалось загрузить подзадачи</p>';
+                } else {
+                    document.getElementById('subtasksList').innerHTML = '<p>Не удалось загрузить подзадачи</p>';
+                }
                 return;
             }
 
@@ -1439,6 +1465,10 @@ class App {
             const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
 
             const targetContainer = container || document.getElementById('subtasksList');
+            if (!targetContainer) {
+                console.error('Subtasks container not found');
+                return;
+            }
 
             if (subtasks.length === 0 && level === 0) {
                 targetContainer.innerHTML = '<p>Подзадач нет</p>';
@@ -1453,7 +1483,7 @@ class App {
 
                 subtasksHtml += `
                 <div class="subtask-item" style="margin-left: ${paddingLeft}px; display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 5px;">
-                    <span style="width: 16px;"></span> <!-- Spacer for indentation -->
+                    <span style="width: 16px;"></span>
                     <input type="checkbox" ${subtask.status === 'done' ? 'checked' : ''}
                            onchange="App.toggleSubtaskStatus(${subtask.id}, this.checked)"
                            style="cursor: pointer;"
@@ -1478,7 +1508,10 @@ class App {
             targetContainer.innerHTML = subtasksHtml;
         } catch (error) {
             console.error('Error loading subtasks:', error);
-            this.showError('Ошибка загрузки подзадач: ' + error.message);
+            const targetContainer = container || document.getElementById('subtasksList');
+            if (targetContainer) {
+                targetContainer.innerHTML = '<p>Ошибка загрузки подзадач</p>';
+            }
         }
     }
 
