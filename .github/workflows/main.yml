@@ -28,8 +28,14 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'web/package-lock.json'
+        # Убираем кэширование, так как package-lock.json может отсутствовать
+
+    - name: Check project structure
+      run: |
+        echo "Checking project structure..."
+        ls -la
+        echo "Web folder contents:"
+        ls -la web/
 
     - name: Install dependencies
       run: |
