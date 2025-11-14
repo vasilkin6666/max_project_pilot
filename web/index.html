@@ -10,119 +10,16 @@
     <meta name="description" content="Премиум PWA для управления проектами с интеграцией MAX UI">
     <link rel="manifest" href="/manifest.json">
 
-    <!-- MAX UI и React -->
+    <!-- MAX UI -->
     <script src="https://st.max.ru/js/max-web-app.js"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Framer Motion для анимаций -->
-    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
 
     <!-- Подключаем наш CSS с Tailwind -->
     <link rel="stylesheet" href="/src/components/styles/globals.css">
-
-    <style>
-        /* Инлайн стили для быстрой загрузки */
-        .glass-morphism {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .magnetic-hover {
-            transition: transform 0.3s cubic-bezier(0.23, 1, 0.320, 1);
-        }
-
-        .magnetic-hover:hover {
-            transform: scale(1.05) translateY(-2px);
-        }
-
-        .breathing-pulse {
-            animation: breathing 2s ease-in-out infinite;
-        }
-
-        @keyframes breathing {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .confetti-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 10000;
-        }
-    </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+<body class="bg-gray-50 dark:bg-gray-900">
     <div id="root"></div>
 
-    <!-- Service Worker Registration -->
-    <script>
-        // Регистрация Service Worker для PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then((registration) => {
-                        console.log('SW registered: ', registration);
-                    })
-                    .catch((registrationError) => {
-                        console.log('SW registration failed: ', registrationError);
-                    });
-            });
-        }
-
-        // Создание манифеста для PWA
-        const manifest = {
-            "name": "Project Pilot MAX",
-            "short_name": "ProjectPilotMAX",
-            "description": "Премиум PWA для управления проектами с интеграцией MAX UI",
-            "start_url": "/",
-            "display": "standalone",
-            "background_color": "#ffffff",
-            "theme_color": "#2563eb",
-            "icons": [
-                {
-                    "src": "/icons/icon-192x192.png",
-                    "sizes": "192x192",
-                    "type": "image/png"
-                },
-                {
-                    "src": "/icons/icon-512x512.png",
-                    "sizes": "512x512",
-                    "type": "image/png"
-                }
-            ],
-            "categories": ["productivity", "business"],
-            "lang": "ru"
-        };
-
-        // Создание элемента манифеста
-        const manifestElement = document.createElement('link');
-        manifestElement.rel = 'manifest';
-        manifestElement.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
-        document.head.appendChild(manifestElement);
-    </script>
-
-    <!-- Загрузка основных скриптов -->
-    <script type="text/babel" src="./src/services/AuthManager.js"></script>
-    <script type="text/babel" src="./src/services/ApiService.js"></script>
-    <script type="text/babel" src="./src/components/ui/LoadingScreen.jsx"></script>
-    <script type="text/babel" src="./src/components/ui/Navigation.jsx"></script>
-    <script type="text/babel" src="./src/components/ui/ProjectCard.jsx"></script>
-    <script type="text/babel" src="./src/components/ui/AIAssistant.jsx"></script>
-    <script type="text/babel" src="./src/components/modals/CreateProjectModal.jsx"></script>
-    <script type="text/babel" src="./src/components/modals/CreateTaskModal.jsx"></script>
-    <script type="text/babel" src="./src/components/modals/SettingsModal.jsx"></script>
-    <script type="text/babel" src="./src/components/modals/NotificationsModal.jsx"></script>
-    <script type="text/babel" src="./src/components/views/Dashboard.jsx"></script>
-    <script type="text/babel" src="./src/components/views/ProjectView.jsx"></script>
-    <script type="text/babel" src="./src/components/views/TaskView.jsx"></script>
-    <script type="text/babel" src="./src/components/views/MyTasksView.jsx"></script>
-    <script type="text/babel" src="./src/components/App.jsx"></script>
+    <!-- Загрузка приложения -->
+    <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

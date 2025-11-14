@@ -8,11 +8,26 @@
   ],
   "routes": [
     {
-      "handle": "filesystem"
+      "src": "/sw.js",
+      "dest": "/web/sw.js",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/web/manifest.json",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "src": "/src/(.*)",
+      "dest": "/web/src/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "web/index.html"
+      "dest": "/web/index.html"
     }
   ],
   "buildCommand": "cd web && npm run build",
