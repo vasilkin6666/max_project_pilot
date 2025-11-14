@@ -11,6 +11,11 @@
   font-size: var(--text-sm);
 }
 
+/* Темная тема */
+[data-theme="dark"] .form-group label {
+  color: var(--neutral-300);
+}
+
 .form-group input,
 .form-group select,
 .form-group textarea {
@@ -21,6 +26,17 @@
   font-family: var(--font-primary);
   font-size: var(--text-base);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: var(--neutral-50); /* Белый фон */
+  color: var(--neutral-800); /* Темный текст */
+}
+
+/* Темная тема */
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea {
+  background-color: var(--neutral-700);
+  border-color: var(--neutral-600);
+  color: var(--neutral-100);
 }
 
 .form-group input:focus,
@@ -36,6 +52,14 @@
 .form-group textarea:disabled {
   background-color: var(--neutral-100);
   cursor: not-allowed;
+}
+
+/* Темная тема */
+[data-theme="dark"] .form-group input:disabled,
+[data-theme="dark"] .form-group select:disabled,
+[data-theme="dark"] .form-group textarea:disabled {
+  background-color: var(--neutral-600);
+  color: var(--neutral-400);
 }
 
 .form-group input.error,
@@ -80,6 +104,11 @@
   text-align: center;
   padding: var(--space-12) var(--space-6);
   color: var(--neutral-500);
+}
+
+/* Темная тема */
+[data-theme="dark"] .empty-state {
+  color: var(--neutral-400);
 }
 
 .empty-state-icon {

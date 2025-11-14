@@ -7,6 +7,13 @@
   height: 60px;
   z-index: 999;
   border-bottom: 1px solid var(--neutral-200);
+  background: var(--neutral-50); /* Белый фон по умолчанию */
+}
+
+/* Темная тема */
+[data-theme="dark"] .header {
+  background: var(--neutral-800);
+  border-bottom-color: var(--neutral-700);
 }
 
 .header-content {
@@ -14,6 +21,9 @@
   justify-content: space-between;
   align-items: center;
   height: 100%;
+  padding: 0 var(--space-4);
+  max-width: 1200px; /* Или другое значение из container */
+  margin: 0 auto;
 }
 
 .logo {
@@ -45,11 +55,23 @@
   font-weight: var(--font-medium);
   position: relative;
   overflow: hidden;
+  text-decoration: none; /* Убираем подчеркивание для ссылок */
+}
+
+/* Темная тема */
+[data-theme="dark"] .nav-item {
+  color: var(--neutral-300);
 }
 
 .nav-item:hover {
   background: var(--neutral-100);
   color: var(--neutral-800);
+}
+
+/* Темная тема */
+[data-theme="dark"] .nav-item:hover {
+  background: var(--neutral-700);
+  color: var(--neutral-100);
 }
 
 .nav-item.active {

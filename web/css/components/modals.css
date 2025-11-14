@@ -33,6 +33,12 @@
   transition: transform 0.3s ease;
 }
 
+/* Темная тема */
+[data-theme="dark"] .modal-content {
+  background: var(--neutral-800);
+  color: var(--neutral-100);
+}
+
 .modal-overlay.active .modal-content {
   transform: scale(1);
 }
@@ -46,11 +52,21 @@
   border-bottom: 1px solid var(--neutral-200);
 }
 
+/* Темная тема */
+[data-theme="dark"] .modal-header {
+  border-bottom-color: var(--neutral-700);
+}
+
 .modal-header h3 {
   margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   color: var(--neutral-800);
+}
+
+/* Темная тема */
+[data-theme="dark"] .modal-header h3 {
+  color: var(--neutral-100);
 }
 
 .modal-close {
@@ -68,6 +84,15 @@
   color: var(--neutral-600);
 }
 
+/* Темная тема */
+[data-theme="dark"] .modal-close {
+  color: var(--neutral-500);
+}
+
+[data-theme="dark"] .modal-close:hover {
+  color: var(--neutral-300);
+}
+
 /* Modal Body */
 .modal-body {
   padding: var(--space-6);
@@ -80,6 +105,11 @@
   gap: var(--space-4);
   padding: var(--space-6);
   border-top: 1px solid var(--neutral-200);
+}
+
+/* Темная тема */
+[data-theme="dark"] .modal-footer {
+  border-top-color: var(--neutral-700);
 }
 
 /* Responsive Modal */

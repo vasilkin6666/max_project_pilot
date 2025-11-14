@@ -139,8 +139,9 @@ class ApiService {
     }
 
     // Task endpoints
+    // ИСПРАВЛЕНО: Используем правильный маршрут из index.txt
     static async getTasks(projectHash) {
-        return this.get(`/projects/${projectHash}/tasks/`);
+        return this.get(`/tasks/projects/${projectHash}/tasks`); // <-- Вот тут изменение
     }
 
     static async getTask(taskId) {

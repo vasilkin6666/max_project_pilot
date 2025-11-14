@@ -37,9 +37,8 @@ class AuthManager {
         const userData = WebApp.initDataUnsafe.user;
         const maxId = userData.id.toString();
         const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
-        const username = userData.username || '';
-        console.log('MAX authentication with:', { maxId, fullName, username });
-        const tokenData = await ApiService.getAuthToken(maxId, fullName, username);
+        console.log('MAX authentication with:', { maxId, fullName });
+        const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
         if (tokenData?.access_token) {
             localStorage.setItem('access_token', tokenData.access_token);
             console.log('MAX authentication successful');
@@ -245,9 +244,10 @@ class App {
     static renderProjects(projects) {
         const container = document.getElementById('projectsList');
         if (!projects || projects.length === 0) {
-            container.innerHTML = `<div style="text-align: center; padding: 40px; border: 1px solid #ccc; border-radius: 4px;">
+            container.innerHTML = `<div class="empty-state">
+                <div class="empty-state-icon">📋</div>
                 <p>Проектов пока нет</p>
-                <button onclick="App.showModal('createProjectModal')" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">Создать проект</button>
+                <button class="btn btn-primary" onclick="App.showModal('createProjectModal')">Создать проект</button>
             </div>`;
             return;
         }
@@ -437,7 +437,7 @@ class App {
             // Update stats
             document.getElementById('projectMembersCount').textContent = currentProject.members.length; // Используем локальные данные
             // Для задач нужно загрузить их
-            const tasksResponse = await ApiService.getTasks(currentProject.hash);
+            const tasksResponse = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
             const tasks = tasksResponse.tasks || [];
             const totalTasks = tasks.length;
             const doneTasks = tasks.filter(t => t.status === 'done').length;
@@ -461,7 +461,7 @@ class App {
 
     static async loadProjectTasks(projectHash) {
         try {
-            const response = await ApiService.getTasks(projectHash); // Используем метод из index.txt
+            const response = await ApiService.getTasks(projectHash); // ИСПРАВЛЕНО: используем правильный маршрут
             const tasks = response.tasks || [];
             const container = document.getElementById('projectTasksList');
 
@@ -887,7 +887,7 @@ class App {
             });
 
             // Загружаем задачи для выбора родительской задачи
-            const tasksResponse = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const tasksResponse = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
             const tasks = tasksResponse.tasks || [];
 
             const parentTaskSelect = document.getElementById('taskParentId');
@@ -907,7 +907,7 @@ class App {
 
             this.showModal('createTaskModal');
         } catch (error) {
-            console.error('Error loading task creation data:', error);
+            console.error('Error loading task creation ', error);
             this.showError('Ошибка загрузки данных: ' + error.message);
         }
     }
@@ -1185,7 +1185,7 @@ class App {
         if (!currentProject || !taskId) return; // Используем глобальную переменную
 
         try {
-            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
             const tasks = response.tasks || [];
             const currentTask = tasks.find(t => t.id === taskId);
 
@@ -1221,7 +1221,7 @@ class App {
         if (!currentProject || !taskId) return; // Используем глобальную переменную
 
         try {
-            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
             const tasks = response.tasks || [];
             const currentTask = tasks.find(t => t.id === taskId);
 
@@ -1247,7 +1247,7 @@ class App {
         if (!currentProject || !parentTaskId) return; // Используем глобальную переменную
 
         try {
-            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
             const tasks = response.tasks || [];
             const childTasks = tasks.filter(t => t.parent_task_id === parentTaskId);
 
@@ -1291,7 +1291,7 @@ class App {
                 return;
             }
 
-            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
             const tasks = response.tasks || [];
             const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
 
@@ -1436,7 +1436,8 @@ class App {
     static renderSearchResults(projects, title) { // Используем метод из index.txt
         const container = document.getElementById('searchResultsList');
         if (!projects || projects.length === 0) {
-            container.innerHTML = `<div style="text-align: center; padding: 40px; border: 1px solid #ccc; border-radius: 4px;">
+            container.innerHTML = `<div class="empty-state">
+                <div class="empty-state-icon">🔍</div>
                 <p>Проекты не найдены</p>
                 <p>Попробуйте изменить поисковый запрос или создать новый проект</p>
             </div>`;
