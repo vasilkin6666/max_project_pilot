@@ -207,27 +207,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Зависимости -->
-                        <div id="dependenciesSection">
-                            <h3>Зависимости</h3>
-                            <div style="margin-bottom: 15px;">
-                                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                                    <select id="addDependencySelect" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
-                                        <option value="">Выберите задачу для добавления зависимости</option>
-                                    </select>
-                                    <button onclick="App.addTaskDependency()" style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                        Добавить
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="taskDependenciesList" style="margin-bottom: 15px;">
-                                <!-- Dependencies will be loaded here -->
-                            </div>
-                            <div id="taskDependentsList" style="margin-bottom: 15px;">
-                                <!-- Dependents will be loaded here -->
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1507,7 +1486,7 @@
             static async openTask(taskId) {
                 try {
                     console.log('Opening task:', taskId);
-
+                    this.tempParentTaskId = null;
                     const response = await ApiService.getTask(taskId);
                     currentTask = response.task || response;
                     console.log('Current task set to:', currentTask);
@@ -1623,7 +1602,7 @@
                 }
             }
 
-            static async loadSubtasks(parentTaskId, level = 0) {
+            static async loadSubtasks(parentTaskId, level = 0, container = null) {
                 try {
                     if (!currentProject || !currentProject.hash) {
                         console.error('No current project for loading subtasks');
@@ -1631,15 +1610,15 @@
                         return;
                     }
 
-                    // Получаем все задачи проекта и фильтруем подзадачи
+                    // Получаем все задачи проекта
                     const response = await ApiService.getTasks(currentProject.hash);
                     const tasks = response.tasks || [];
 
                     const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
-                    const container = document.getElementById('subtasksList');
+                    const targetContainer = container || document.getElementById('subtasksList');
 
                     if (subtasks.length === 0 && level === 0) {
-                        container.innerHTML = '<p>Подзадач нет</p>';
+                        targetContainer.innerHTML = '<p>Подзадач нет</p>';
                         return;
                     }
 
@@ -1647,47 +1626,159 @@
 
                     subtasks.forEach(subtask => {
                         const paddingLeft = level * 20;
-                        const hasChildren = tasks.some(task => task.parent_task_id === subtask.id);
+                        const childSubtasks = tasks.filter(task => task.parent_task_id === subtask.id);
+                        const hasChildren = childSubtasks.length > 0;
 
                         subtasksHtml += `
-                            <div style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; cursor: pointer; margin-left: ${paddingLeft}px;"
-                                 onclick="App.openTask(${subtask.id})">
-                                <input type="checkbox" ${subtask.status === 'done' ? 'checked' : ''}
-                                       onchange="App.toggleSubtaskStatus(${subtask.id}, this.checked)"
-                                       style="cursor: pointer;"
-                                       onclick="event.stopPropagation()">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: bold;">${this.escapeHtml(subtask.title)}</div>
+                            <div class="subtask-level-${level}" data-task-id="${subtask.id}" data-level="${level}">
+                                <div style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; cursor: pointer; margin-left: ${paddingLeft}px;"
+                                     onclick="App.toggleSubtaskExpand(${subtask.id})">
+                                    ${hasChildren ? `
+                                        <span class="expand-icon" id="expand-icon-${subtask.id}" style="font-size: 12px; width: 16px; text-align: center;">▶</span>
+                                    ` : '<span style="width: 16px;"></span>'}
+                                    <input type="checkbox" ${subtask.status === 'done' ? 'checked' : ''}
+                                           onchange="App.toggleSubtaskStatus(${subtask.id}, this.checked)"
+                                           style="cursor: pointer;"
+                                           onclick="event.stopPropagation()">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold;">${this.escapeHtml(subtask.title)}</div>
+                                    </div>
+                                    <div style="font-size: 12px; color: #666;">
+                                        ${this.getStatusText(subtask.status)}
+                                    </div>
+                                    <button onclick="App.showCreateSubtaskModalForTask(${subtask.id}); event.stopPropagation();"
+                                            style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                        +
+                                    </button>
                                 </div>
-                                <div style="font-size: 12px; color: #666;">
-                                    ${this.getStatusText(subtask.status)}
+                                <div id="subtask-children-${subtask.id}" style="display: none;" class="subtask-children">
+                                    <!-- Дочерние задачи будут загружены здесь -->
                                 </div>
-                                <button onclick="App.showCreateSubtaskModalForTask(${subtask.id}); event.stopPropagation();"
-                                        style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                    +
-                                </button>
                             </div>
                         `;
-
-                        // Рекурсивно загружаем дочерние подзадачи
-                        if (hasChildren) {
-                            const childSubtasks = tasks.filter(task => task.parent_task_id === subtask.id);
-                            childSubtasks.forEach(child => {
-                                subtasksHtml += this.renderSubtaskRecursive(child, tasks, level + 1);
-                            });
-                        }
                     });
 
                     if (level === 0) {
-                        container.innerHTML = subtasksHtml;
+                        targetContainer.innerHTML = subtasksHtml;
+
+                        // Загружаем дочерние задачи для развернутых элементов
+                        subtasks.forEach(subtask => {
+                            if (this.isSubtaskExpanded(subtask.id)) {
+                                this.loadChildSubtasks(subtask.id, level + 1);
+                            }
+                        });
                     } else {
                         return subtasksHtml;
                     }
 
                 } catch (error) {
                     console.error('Error loading subtasks:', error);
-                    document.getElementById('subtasksList').innerHTML = '<p>Ошибка загрузки подзадач</p>';
+                    const targetContainer = container || document.getElementById('subtasksList');
+                    targetContainer.innerHTML = '<p>Ошибка загрузки подзадач</p>';
                 }
+            }
+
+            // Метод для загрузки дочерних подзадач
+            static async loadChildSubtasks(parentTaskId, level) {
+                const container = document.getElementById(`subtask-children-${parentTaskId}`);
+                if (!container) return;
+
+                try {
+                    const response = await ApiService.getTasks(currentProject.hash);
+                    const tasks = response.tasks || [];
+                    const childSubtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
+
+                    if (childSubtasks.length === 0) {
+                        container.innerHTML = '';
+                        return;
+                    }
+
+                    let html = '';
+                    childSubtasks.forEach(subtask => {
+                        const grandChildSubtasks = tasks.filter(task => task.parent_task_id === subtask.id);
+                        const hasGrandChildren = grandChildSubtasks.length > 0;
+
+                        html += `
+                            <div class="subtask-level-${level}" data-task-id="${subtask.id}" data-level="${level}">
+                                <div style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; cursor: pointer;"
+                                     onclick="App.toggleSubtaskExpand(${subtask.id})">
+                                    ${hasGrandChildren ? `
+                                        <span class="expand-icon" id="expand-icon-${subtask.id}" style="font-size: 12px; width: 16px; text-align: center;">▶</span>
+                                    ` : '<span style="width: 16px;"></span>'}
+                                    <input type="checkbox" ${subtask.status === 'done' ? 'checked' : ''}
+                                           onchange="App.toggleSubtaskStatus(${subtask.id}, this.checked)"
+                                           style="cursor: pointer;"
+                                           onclick="event.stopPropagation()">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold;">${this.escapeHtml(subtask.title)}</div>
+                                    </div>
+                                    <div style="font-size: 12px; color: #666;">
+                                        ${this.getStatusText(subtask.status)}
+                                    </div>
+                                    <button onclick="App.showCreateSubtaskModalForTask(${subtask.id}); event.stopPropagation();"
+                                            style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                        +
+                                    </button>
+                                </div>
+                                <div id="subtask-children-${subtask.id}" style="display: none;" class="subtask-children">
+                                    <!-- Внучатые задачи будут загружены здесь -->
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    container.innerHTML = html;
+
+                    // Рекурсивно загружаем следующие уровни для развернутых элементов
+                    childSubtasks.forEach(subtask => {
+                        if (this.isSubtaskExpanded(subtask.id)) {
+                            this.loadChildSubtasks(subtask.id, level + 1);
+                        }
+                    });
+
+                } catch (error) {
+                    console.error('Error loading child subtasks:', error);
+                    container.innerHTML = '<p>Ошибка загрузки подзадач</p>';
+                }
+            }
+
+            // Управление свертыванием/развертыванием
+            static toggleSubtaskExpand(taskId) {
+                const container = document.getElementById(`subtask-children-${taskId}`);
+                const expandIcon = document.getElementById(`expand-icon-${taskId}`);
+
+                if (!container) return;
+
+                if (container.style.display === 'none') {
+                    // Развернуть
+                    container.style.display = 'block';
+                    if (expandIcon) expandIcon.textContent = '▼';
+                    this.setSubtaskExpanded(taskId, true);
+
+                    // Загружаем дочерние задачи если они еще не загружены
+                    const hasChildren = container.querySelector('.subtask-level') === null;
+                    if (hasChildren) {
+                        const level = parseInt(document.querySelector(`[data-task-id="${taskId}"]`).getAttribute('data-level')) || 0;
+                        this.loadChildSubtasks(taskId, level + 1);
+                    }
+                } else {
+                    // Свернуть
+                    container.style.display = 'none';
+                    if (expandIcon) expandIcon.textContent = '▶';
+                    this.setSubtaskExpanded(taskId, false);
+                }
+            }
+
+            // Управление состоянием развернутости в localStorage
+            static setSubtaskExpanded(taskId, isExpanded) {
+                const expanded = JSON.parse(localStorage.getItem('expandedSubtasks') || '{}');
+                expanded[taskId] = isExpanded;
+                localStorage.setItem('expandedSubtasks', JSON.stringify(expanded));
+            }
+
+            static isSubtaskExpanded(taskId) {
+                const expanded = JSON.parse(localStorage.getItem('expandedSubtasks') || '{}');
+                return expanded[taskId] || false;
             }
 
             // Вспомогательный метод для рекурсивного рендеринга подзадач
@@ -1737,11 +1828,107 @@
             static async toggleSubtaskStatus(taskId, isDone) {
                 try {
                     const newStatus = isDone ? 'done' : 'todo';
+
+                    // Обновляем статус текущей задачи
                     await ApiService.updateTaskStatus(taskId, newStatus);
-                    this.showSuccess('Статус подзадачи обновлен!');
+
+                    // Если задача выполняется, выполняем все дочерние задачи
+                    if (isDone) {
+                        await this.completeAllChildTasks(taskId);
+                    } else {
+                        // Если задача возвращается в "к выполнению", сбрасываем статус родительских задач
+                        await this.resetParentTasksStatus(taskId);
+                    }
+
+                    // Проверяем статус родительской задачи
+                    await this.checkParentTaskStatus(taskId);
+
+                    // Перезагружаем отображение подзадач
+                    if (currentTask) {
+                        await this.loadSubtasks(currentTask.id);
+                    }
+
+                    this.showSuccess('Статус задачи обновлен!');
+
                 } catch (error) {
                     console.error('Error updating subtask status:', error);
-                    this.showError('Ошибка обновления статуса подзадачи: ' + error.message);
+                    this.showError('Ошибка обновления статуса задачи: ' + error.message);
+                }
+            }
+
+            // Выполнение всех дочерних задач
+            static async completeAllChildTasks(parentTaskId) {
+                try {
+                    const response = await ApiService.getTasks(currentProject.hash);
+                    const tasks = response.tasks || [];
+                    const childTasks = tasks.filter(task => task.parent_task_id === parentTaskId);
+
+                    for (const childTask of childTasks) {
+                        if (childTask.status !== 'done') {
+                            await ApiService.updateTaskStatus(childTask.id, 'done');
+                            // Рекурсивно выполняем дочерние задачи
+                            await this.completeAllChildTasks(childTask.id);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error completing child tasks:', error);
+                }
+            }
+
+            // Сброс статуса родительских задач при добавлении новой подзадачи
+            static async resetParentTasksStatus(taskId) {
+                try {
+                    let currentTaskId = taskId;
+
+                    while (true) {
+                        const taskResponse = await ApiService.getTask(currentTaskId);
+                        const task = taskResponse.task || taskResponse;
+
+                        if (!task.parent_task_id) break; // Достигли корневой задачи
+
+                        // Если родительская задача выполнена, сбрасываем её статус
+                        if (task.status === 'done') {
+                            await ApiService.updateTaskStatus(task.parent_task_id, 'todo');
+                        }
+
+                        currentTaskId = task.parent_task_id;
+                    }
+                } catch (error) {
+                    console.error('Error resetting parent tasks status:', error);
+                }
+            }
+
+            // Проверка статуса родительской задачи
+            static async checkParentTaskStatus(taskId) {
+                try {
+                    const taskResponse = await ApiService.getTask(taskId);
+                    const task = taskResponse.task || taskResponse;
+
+                    if (!task.parent_task_id) return; // Это корневая задача
+
+                    const parentTaskResponse = await ApiService.getTask(task.parent_task_id);
+                    const parentTask = parentTaskResponse.task || parentTaskResponse;
+
+                    // Получаем все дочерние задачи родителя
+                    const response = await ApiService.getTasks(currentProject.hash);
+                    const tasks = response.tasks || [];
+                    const siblingTasks = tasks.filter(t => t.parent_task_id === parentTask.id);
+
+                    // Проверяем, все ли дочерние задачи выполнены
+                    const allChildrenDone = siblingTasks.every(child => child.status === 'done');
+
+                    if (allChildrenDone && parentTask.status !== 'done') {
+                        // Все дочерние задачи выполнены - выполняем родительскую
+                        await ApiService.updateTaskStatus(parentTask.id, 'done');
+                        // Рекурсивно проверяем родительскую задачу
+                        await this.checkParentTaskStatus(parentTask.id);
+                    } else if (!allChildrenDone && parentTask.status === 'done') {
+                        // Не все дочерние задачи выполнены - сбрасываем родительскую
+                        await ApiService.updateTaskStatus(parentTask.id, 'todo');
+                    }
+
+                } catch (error) {
+                    console.error('Error checking parent task status:', error);
                 }
             }
 
@@ -2289,7 +2476,6 @@
                     assignedToSelect.innerHTML = '<option value="">Не назначена</option>';
 
                     members.forEach(member => {
-                        // ИСПРАВЛЕНО: Правильное получение имени участника
                         const memberData = member.user || member;
                         const displayName = memberData.full_name && memberData.full_name.trim() !== ''
                             ? memberData.full_name
@@ -2309,7 +2495,6 @@
                     parentTaskSelect.innerHTML = '<option value="">Основная задача (без родителя)</option>';
 
                     tasks.forEach(task => {
-                        // Показываем только основные задачи как возможных родителей
                         if (task.parent_task_id === null) {
                             const option = document.createElement('option');
                             option.value = task.id;
@@ -2317,6 +2502,10 @@
                             parentTaskSelect.appendChild(option);
                         }
                     });
+
+                    // Устанавливаем сегодняшнюю дату по умолчанию
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('taskDueDate').value = today;
 
                     this.showModal('createTaskModal');
 
@@ -2330,8 +2519,6 @@
                 if (!currentProject || !currentTask) return;
 
                 try {
-                    // Убираем загрузку участников - исполнитель наследуется от родительской задачи
-                    // Устанавливаем родительскую задачу
                     document.getElementById('subtaskTitle').value = '';
 
                     this.showModal('createSubtaskModal');
@@ -2600,7 +2787,15 @@
 
                     await ApiService.updateTaskStatus(currentTask.id, newStatus);
 
-                    currentTask.status = newStatus;
+                    // Если задача выполняется, выполняем все дочерние задачи
+                    if (newStatus === 'done') {
+                        await this.completeAllChildTasks(currentTask.id);
+                    }
+
+                    // Обновляем текущую задачу
+                    const updatedTask = await ApiService.getTask(currentTask.id);
+                    currentTask = updatedTask.task || updatedTask;
+
                     this.showSuccess('Статус задачи обновлен!');
 
                 } catch (error) {
