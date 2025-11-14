@@ -658,6 +658,33 @@
         </div>
     </div>
 
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <div class="mobile-nav-items">
+            <a href="#" class="mobile-nav-item active" data-view="dashboardView">
+                <span class="nav-icon">📊</span>
+                <span>Дашборд</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="myTasksView">
+                <span class="nav-icon">✅</span>
+                <span>Задачи</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="searchProjectsView">
+                <span class="nav-icon">🔍</span>
+                <span>Поиск</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="notificationsView">
+                <span class="nav-icon">🔔</span>
+                <span>Уведомления</span>
+                <span class="nav-badge">3</span>
+            </a>
+            <a href="#" class="mobile-nav-item" id="mobileSettingsBtn">
+                <span class="nav-icon">⚙️</span>
+                <span>Настройки</span>
+            </a>
+        </div>
+    </nav>
+
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
     <script>
@@ -671,6 +698,11 @@
             await App.init();
             console.log('App initialized successfully');
 
+            // Initialize mobile features
+            if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
+                MobileApp.init();
+            }
+
         } catch (error) {
             console.error('Error during app initialization:', error);
             // В случае ошибки показываем сообщение на заставке
@@ -679,7 +711,7 @@
                 loadingContent.innerHTML = `
                     <h2>Ошибка загрузки</h2>
                     <p>${error.message || 'Неизвестная ошибка'}</p>
-                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: white; border: none; border-radius: 5px; cursor: pointer;">Перезагрузить</button>
+                    <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 20px;">Перезагрузить</button>
                 `;
             }
         }
@@ -700,6 +732,11 @@
                     document.getElementById('app').style.display = 'block';
                     console.log('Splash screen hidden, app is ready');
 
+                    // Initialize mobile features if not already
+                    if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
+                        MobileApp.init();
+                    }
+
                     // Запускаем основное приложение
                     if (typeof App.showDashboard === 'function') {
                         App.showDashboard();
@@ -716,34 +753,15 @@
                     loadingOverlay.click();
                 }
             }
+
+            // Back button simulation with Escape key
+            if (e.code === 'Escape') {
+                if (typeof App.backToPreviousView === 'function') {
+                    App.backToPreviousView();
+                }
+            }
         });
     });
     </script>
-    <!-- Mobile Navigation -->
-    <nav class="mobile-nav">
-      <div class="mobile-nav-items">
-        <a href="#" class="mobile-nav-item active" data-view="dashboardView">
-          <span class="nav-icon">📊</span>
-          <span>Дашборд</span>
-        </a>
-        <a href="#" class="mobile-nav-item" data-view="myTasksView">
-          <span class="nav-icon">✅</span>
-          <span>Задачи</span>
-        </a>
-        <a href="#" class="mobile-nav-item" data-view="searchProjectsView">
-          <span class="nav-icon">🔍</span>
-          <span>Поиск</span>
-        </a>
-        <a href="#" class="mobile-nav-item" data-view="notificationsView">
-          <span class="nav-icon">🔔</span>
-          <span>Уведомления</span>
-          <span class="nav-badge">3</span>
-        </a>
-        <a href="#" class="mobile-nav-item" id="mobileSettingsBtn">
-          <span class="nav-icon">⚙️</span>
-          <span>Настройки</span>
-        </a>
-      </div>
-    </nav>
 </body>
 </html>

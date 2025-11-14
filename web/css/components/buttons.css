@@ -26,8 +26,8 @@
 }
 
 .btn:focus {
-  outline: var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: 2px solid var(--max-primary);
+  outline-offset: 2px;
 }
 
 /* Button Sizes */
@@ -147,11 +147,11 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
-/* Добавить в buttons.css */
-/* Floating action button */
+
+/* Floating Action Button */
 .fab {
   position: fixed;
-  bottom: 80px; /* Above mobile nav */
+  bottom: 90px; /* Above mobile nav */
   right: var(--space-4);
   width: 56px;
   height: 56px;
@@ -165,7 +165,9 @@
   border: none;
   cursor: pointer;
   z-index: 999;
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-bounce);
+  font-size: 1.5rem;
+  font-weight: var(--font-bold);
 }
 
 .fab:hover {
@@ -183,7 +185,8 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(20px);
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-bounce);
+  z-index: 998;
 }
 
 .fab-menu.open {
@@ -205,6 +208,7 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-size: 1.2rem;
 }
 
 [data-theme="dark"] .fab-item {
@@ -214,4 +218,5 @@
 
 .fab-item:hover {
   transform: scale(1.1);
+  box-shadow: var(--shadow-xl);
 }

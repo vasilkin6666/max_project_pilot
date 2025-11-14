@@ -147,108 +147,6 @@ class App {
       this.eventHandlers.clear();
   }
 
-  // Mobile navigation
-  function initMobileNavigation() {
-    const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
-    const fab = document.createElement('button');
-    fab.className = 'fab';
-    fab.innerHTML = '+';
-    fab.id = 'mainFab';
-
-    const fabMenu = document.createElement('div');
-    fabMenu.className = 'fab-menu';
-    fabMenu.innerHTML = `
-      <button class="fab-item" id="fabCreateProject">📁</button>
-      <button class="fab-item" id="fabCreateTask">✅</button>
-      <button class="fab-item" id="fabQuickNote">📝</button>
-    `;
-
-    document.body.appendChild(fab);
-    document.body.appendChild(fabMenu);
-
-    // Mobile nav item clicks
-    mobileNavItems.forEach(item => {
-      item.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        // Remove active class from all items
-        mobileNavItems.forEach(i => i.classList.remove('active'));
-
-        // Add active class to clicked item
-        item.classList.add('active');
-
-        const view = item.dataset.view;
-        if (view) {
-          showView(view);
-        }
-      });
-    });
-
-    // FAB functionality
-    fab.addEventListener('click', () => {
-      fabMenu.classList.toggle('open');
-    });
-
-    // FAB item functionality
-    document.getElementById('fabCreateProject').addEventListener('click', () => {
-      App.showCreateProjectModal();
-      fabMenu.classList.remove('open');
-    });
-
-    document.getElementById('fabCreateTask').addEventListener('click', () => {
-      App.showCreateTaskModal();
-      fabMenu.classList.remove('open');
-    });
-
-    // Close FAB menu when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
-        fabMenu.classList.remove('open');
-      }
-    });
-  }
-
-  // Swipe gestures for cards
-  function initSwipeGestures() {
-    let startX = 0;
-    let currentX = 0;
-    let isSwiping = false;
-
-    document.addEventListener('touchstart', (e) => {
-      const card = e.target.closest('.project-card, .task-card');
-      if (card) {
-        startX = e.touches[0].clientX;
-        isSwiping = true;
-      }
-    });
-
-    document.addEventListener('touchmove', (e) => {
-      if (!isSwiping) return;
-
-      currentX = e.touches[0].clientX;
-      const card = e.target.closest('.project-card, .task-card');
-
-      if (card) {
-        const diff = startX - currentX;
-        if (diff > 50) {
-          card.classList.add('swiped');
-        } else if (diff < -50) {
-          card.classList.remove('swiped');
-        }
-      }
-    });
-
-    document.addEventListener('touchend', () => {
-      isSwiping = false;
-    });
-  }
-
-  // Initialize when DOM is ready
-  document.addEventListener('DOMContentLoaded', () => {
-    initMobileNavigation();
-    initSwipeGestures();
-  });
-
     static async loadData() {
         try {
             console.log('Loading data...');
@@ -312,6 +210,10 @@ class App {
                 <div class="progress-bar">
                     <div class="progress-fill" style="width: ${tasksCount > 0 ? (doneTasks / tasksCount) * 100 : 0}%"></div>
                 </div>
+                <div class="project-card-actions">
+                    <button class="quick-action-btn quick-action-edit" onclick="event.stopPropagation(); App.showEditProjectModal('${projectData.hash}')">✏️</button>
+                    <button class="quick-action-btn quick-action-delete" onclick="event.stopPropagation(); App.showDeleteProjectModal('${projectData.hash}')">🗑️</button>
+                </div>
             </div>`;
         }).join('');
     }
@@ -347,6 +249,10 @@ class App {
                 <p class="task-card-due-date">Срок: ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не указан'}</p>
                 <div class="task-card-footer">
                     <span>Проект: ${this.escapeHtml(projectTitle)}</span>
+                </div>
+                <div class="task-card-actions">
+                    <button class="quick-action-btn quick-action-edit" onclick="event.stopPropagation(); App.showEditTaskModal(${task.id})">✏️</button>
+                    <button class="quick-action-btn quick-action-complete" onclick="event.stopPropagation(); App.completeTask(${task.id})">✓</button>
                 </div>
             </div>`;
         }).join('');
@@ -527,6 +433,10 @@ class App {
                     <p class="task-card-due-date">Срок: ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не указан'}</p>
                     <div class="task-card-footer">
                         <span>Исполнитель: ${task.assigned_to_name || 'Не назначен'}</span>
+                    </div>
+                    <div class="task-card-actions">
+                        <button class="quick-action-btn quick-action-edit" onclick="event.stopPropagation(); App.showEditTaskModal(${task.id})">✏️</button>
+                        <button class="quick-action-btn quick-action-complete" onclick="event.stopPropagation(); App.completeTask(${task.id})">✓</button>
                     </div>
                 </div>`;
             }).join('');
@@ -781,6 +691,10 @@ class App {
                         <div class="task-card-footer">
                             <span>Проект: ${this.escapeHtml(projectTitle)}</span>
                         </div>
+                        <div class="task-card-actions">
+                            <button class="quick-action-btn quick-action-edit" onclick="event.stopPropagation(); App.showEditTaskModal(${task.id})">✏️</button>
+                            <button class="quick-action-btn quick-action-complete" onclick="event.stopPropagation(); App.completeTask(${task.id})">✓</button>
+                        </div>
                     </div>`;
                 }).join('');
             }
@@ -800,6 +714,10 @@ class App {
                         <p class="task-card-due-date">Срок: ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не указан'}</p>
                         <div class="task-card-footer">
                             <span>Исполнитель: ${task.assigned_to_name || 'Не назначен'}</span>
+                        </div>
+                        <div class="task-card-actions">
+                            <button class="quick-action-btn quick-action-edit" onclick="event.stopPropagation(); App.showEditTaskModal(${task.id})">✏️</button>
+                            <button class="quick-action-btn quick-action-complete" onclick="event.stopPropagation(); App.completeTask(${task.id})">✓</button>
                         </div>
                     </div>`;
                 }).join('');
@@ -1939,7 +1857,266 @@ class App {
         // Example using a simple alert, replace with proper UI component
         alert('Ошибка: ' + message);
     }
+
+    // Back button functionality
+    static backToPreviousView() {
+        const currentView = document.querySelector('.view[style*="display: block"]');
+        if (currentView && currentView.id !== 'dashboardView') {
+            currentView.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => {
+                this.showDashboard();
+                document.getElementById('dashboardView').style.animation = 'slideInLeft 0.3s ease-out';
+            }, 150);
+        }
+    }
 }
+
+// Mobile navigation and enhanced features
+class MobileApp {
+  static init() {
+    this.initMobileNavigation();
+    this.initSwipeGestures();
+    this.initFloatingActionButton();
+    this.initPullToRefresh();
+  }
+
+  static initMobileNavigation() {
+    const mobileNavItems = document.querySelectorAll('.mobile-nav-item[data-view]');
+
+    mobileNavItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        // Remove active class from all items
+        mobileNavItems.forEach(i => i.classList.remove('active'));
+
+        // Add active class to clicked item
+        item.classList.add('active');
+
+        const view = item.dataset.view;
+        if (view) {
+          App.showView(view);
+
+          // Load specific data for the view
+          switch(view) {
+            case 'dashboardView':
+              App.loadData();
+              break;
+            case 'myTasksView':
+              App.loadMyTasks();
+              break;
+            case 'notificationsView':
+              App.showNotifications();
+              break;
+            case 'searchProjectsView':
+              App.showSearchProjects();
+              break;
+          }
+        }
+      });
+    });
+
+    // Mobile settings button
+    const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
+    if (mobileSettingsBtn) {
+      mobileSettingsBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        App.showSettings();
+      });
+    }
+  }
+
+  static initFloatingActionButton() {
+    const fab = document.createElement('button');
+    fab.className = 'fab';
+    fab.innerHTML = '+';
+    fab.id = 'mainFab';
+
+    const fabMenu = document.createElement('div');
+    fabMenu.className = 'fab-menu';
+    fabMenu.innerHTML = `
+      <button class="fab-item" id="fabCreateProject" title="Создать проект">📁</button>
+      <button class="fab-item" id="fabCreateTask" title="Создать задачу">✅</button>
+      <button class="fab-item" id="fabQuickNote" title="Быстрая заметка">📝</button>
+    `;
+
+    document.body.appendChild(fab);
+    document.body.appendChild(fabMenu);
+
+    // FAB functionality
+    fab.addEventListener('click', () => {
+      fabMenu.classList.toggle('open');
+    });
+
+    // FAB item functionality
+    document.getElementById('fabCreateProject')?.addEventListener('click', () => {
+      App.showCreateProjectModal();
+      fabMenu.classList.remove('open');
+    });
+
+    document.getElementById('fabCreateTask')?.addEventListener('click', () => {
+      if (currentProject) {
+        App.showCreateTaskModal();
+      } else {
+        App.showError('Сначала откройте проект');
+      }
+      fabMenu.classList.remove('open');
+    });
+
+    // Close FAB menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
+        fabMenu.classList.remove('open');
+      }
+    });
+  }
+
+  static initSwipeGestures() {
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+    let currentCard = null;
+
+    document.addEventListener('touchstart', (e) => {
+      const card = e.target.closest('.project-card, .task-card');
+      if (card) {
+        startX = e.touches[0].clientX;
+        currentX = startX;
+        isSwiping = true;
+        currentCard = card;
+
+        // Reset other swiped cards
+        document.querySelectorAll('.project-card.swiped, .task-card.swiped').forEach(c => {
+          if (c !== card) c.classList.remove('swiped');
+        });
+      }
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isSwiping || !currentCard) return;
+
+      currentX = e.touches[0].clientX;
+      const diff = startX - currentX;
+
+      // Only allow right-to-left swipe
+      if (diff > 0) {
+        e.preventDefault();
+        const translateX = Math.min(diff, 80);
+        currentCard.style.transform = `translateX(-${translateX}px)`;
+      }
+    });
+
+    document.addEventListener('touchend', () => {
+      if (!isSwiping || !currentCard) return;
+
+      const diff = startX - currentX;
+      const threshold = 50;
+
+      if (diff > threshold) {
+        currentCard.classList.add('swiped');
+        currentCard.style.transform = 'translateX(-80px)';
+
+        // Auto-close after 3 seconds
+        setTimeout(() => {
+          currentCard.classList.remove('swiped');
+          currentCard.style.transform = '';
+        }, 3000);
+      } else {
+        currentCard.classList.remove('swiped');
+        currentCard.style.transform = '';
+      }
+
+      isSwiping = false;
+      currentCard = null;
+    });
+  }
+
+  static initPullToRefresh() {
+    let startY = 0;
+    let currentY = 0;
+    let isPulling = false;
+    const pullIndicator = document.createElement('div');
+    pullIndicator.className = 'pull-indicator';
+    pullIndicator.innerHTML = '<div class="spinner"></div> Обновление...';
+
+    document.querySelector('.main-content')?.prepend(pullIndicator);
+
+    document.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isPulling) return;
+
+      currentY = e.touches[0].clientY;
+      const diff = currentY - startY;
+
+      if (diff > 0) {
+        e.preventDefault();
+        pullIndicator.style.display = 'block';
+        pullIndicator.style.opacity = Math.min(diff / 100, 1);
+      }
+    });
+
+    document.addEventListener('touchend', async () => {
+      if (!isPulling) return;
+
+      const diff = currentY - startY;
+
+      if (diff > 80) {
+        pullIndicator.classList.add('refreshing');
+
+        try {
+          await App.loadData();
+          App.showSuccess('Данные обновлены');
+        } catch (error) {
+          App.showError('Ошибка обновления');
+        }
+
+        setTimeout(() => {
+          pullIndicator.classList.remove('refreshing');
+          pullIndicator.style.display = 'none';
+          pullIndicator.style.opacity = '0';
+        }, 1000);
+      } else {
+        pullIndicator.style.display = 'none';
+      }
+
+      isPulling = false;
+    });
+  }
+
+  static updateNotificationBadge(count) {
+    const badge = document.querySelector('.nav-badge');
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count > 9 ? '9+' : count;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+}
+
+// Enhanced view transitions
+const originalShowView = App.showView;
+App.showView = function(viewId) {
+  const currentView = document.querySelector('.view[style*="display: block"]');
+
+  if (currentView) {
+    currentView.style.animation = 'slideOutLeft 0.3s ease-out';
+    setTimeout(() => {
+      originalShowView.call(this, viewId);
+      document.getElementById(viewId).style.animation = 'slideInRight 0.3s ease-out';
+    }, 150);
+  } else {
+    originalShowView.call(this, viewId);
+  }
+};
 
 // ИСПРАВЛЕНО: Добавляем функцию для инициализации искр
 function initSparkAnimation() {

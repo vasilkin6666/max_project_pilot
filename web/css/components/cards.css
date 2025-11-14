@@ -262,14 +262,15 @@
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
-/* Добавить в cards.css */
+
 /* Enhanced cards with swipe actions */
-.project-card {
+.project-card, .task-card {
   position: relative;
   overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.project-card-actions {
+.project-card-actions, .task-card-actions {
   position: absolute;
   right: -80px;
   top: 0;
@@ -280,38 +281,16 @@
   padding: 0 var(--space-3);
   background: var(--neutral-100);
   transition: right 0.3s ease;
+  border-left: 1px solid var(--neutral-200);
 }
 
-[data-theme="dark"] .project-card-actions {
-  background: var(--neutral-700);
-}
-
-.project-card.swiped .project-card-actions {
-  right: 0;
-}
-
-.task-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.task-card-actions {
-  position: absolute;
-  right: -60px;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-3);
-  background: var(--neutral-100);
-  transition: right 0.3s ease;
-}
-
+[data-theme="dark"] .project-card-actions,
 [data-theme="dark"] .task-card-actions {
   background: var(--neutral-700);
+  border-left-color: var(--neutral-600);
 }
 
+.project-card.swiped .project-card-actions,
 .task-card.swiped .task-card-actions {
   right: 0;
 }
@@ -327,6 +306,7 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-size: 0.9rem;
 }
 
 .quick-action-edit {
@@ -342,4 +322,8 @@
 .quick-action-complete {
   background: var(--success);
   color: white;
+}
+
+.quick-action-btn:hover {
+  transform: scale(1.1);
 }
