@@ -16,15 +16,16 @@ class MaxIntegration {
 
             await this.setupSecurity();
             await this.setupBackButton();
+            this.setupHapticFeedback();
+            this.setupEventListeners();
 
             console.log('MAX Bridge initialized successfully');
         } catch (error) {
             console.error('MAX Bridge initialization failed:', error);
-            // Продолжаем работу в standalone режиме
         }
     }
 
-    static addMaxDetectionClass(isMax) {
+    addMaxDetectionClass(isMax) {
         if (isMax) {
             document.body.classList.add('max-enhanced');
             if (WebApp.platform) {
@@ -32,25 +33,6 @@ class MaxIntegration {
             }
         } else {
             document.body.classList.add('max-standalone');
-        }
-    }
-
-    static setupBackButton() {
-        if (WebApp.BackButton) {
-            WebApp.BackButton.show();
-            WebApp.BackButton.onClick(() => {
-                // Тактильная обратная связь при нажатии назад
-                if (window.hapticFeedback) {
-                    window.hapticFeedback.light();
-                }
-
-                // Обработка нажатия кнопки "Назад"
-                if (typeof App.backToPreviousView === 'function') {
-                    App.backToPreviousView();
-                } else {
-                    window.history.back();
-                }
-            });
         }
     }
 
@@ -90,21 +72,7 @@ class MaxIntegration {
         }
     }
 
-    hapticFeedback(style = 'light') {
-        try {
-            if (WebApp.HapticFeedback && WebApp.HapticFeedback.impactOccurred) {
-                WebApp.HapticFeedback.impactOccurred(style);
-            }
-        } catch (error) {
-            console.log('Haptic feedback not available');
-        }
-    }
-}
-
-// Создаем глобальный экземпляр
-const MaxBridge = new MaxIntegration();
-
-    static setupHapticFeedback() {
+    setupHapticFeedback() {
         if (WebApp.HapticFeedback) {
             window.hapticFeedback = {
                 light: () => {
@@ -171,7 +139,7 @@ const MaxBridge = new MaxIntegration();
         }
     }
 
-    static setupEventListeners() {
+    setupEventListeners() {
         // Обработка изменений темы
         if (window.matchMedia) {
             const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -182,14 +150,14 @@ const MaxBridge = new MaxIntegration();
         }
     }
 
-    static handleThemeChange(isDark) {
+    handleThemeChange(isDark) {
         if (isDark && !document.documentElement.hasAttribute('data-theme')) {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
     }
 
     // Получение данных пользователя MAX
-    static getUserData() {
+    getUserData() {
         if (WebApp.initDataUnsafe?.user) {
             return {
                 id: WebApp.initDataUnsafe.user.id,
@@ -205,7 +173,7 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Получение данных чата
-    static getChatData() {
+    getChatData() {
         if (WebApp.initDataUnsafe?.chat) {
             return {
                 id: WebApp.initDataUnsafe.chat.id,
@@ -218,7 +186,7 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Открытие ссылок через MAX
-    static openLink(url, text) {
+    openLink(url, text) {
         if (WebApp.openLink) {
             WebApp.openLink(url);
         } else {
@@ -227,7 +195,7 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Открытие MAX ссылок
-    static openMaxLink(botName, startParam = '') {
+    openMaxLink(botName, startParam = '') {
         if (WebApp.openMaxLink) {
             const url = `https://max.ru/${botName}?startapp=${startParam}`;
             WebApp.openMaxLink(url);
@@ -237,7 +205,7 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Совместное использование контента
-    static shareContent(text, link) {
+    shareContent(text, link) {
         if (WebApp.shareMaxContent) {
             WebApp.shareMaxContent(text, link);
         } else if (WebApp.shareContent) {
@@ -254,7 +222,7 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Копирование в буфер обмена
-    static copyToClipboard(text) {
+    copyToClipboard(text) {
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text).then(() => {
                 console.log('Text copied to clipboard');
@@ -271,7 +239,7 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Сканирование QR-кодов
-    static scanQRCode(allowFileSelect = true) {
+    scanQRCode(allowFileSelect = true) {
         return new Promise((resolve, reject) => {
             if (WebApp.openCodeReader) {
                 WebApp.openCodeReader(allowFileSelect);
@@ -298,7 +266,7 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Скачивание файлов
-    static downloadFile(url, fileName) {
+    downloadFile(url, fileName) {
         if (WebApp.downloadFile) {
             WebApp.downloadFile(url, fileName);
         } else {
@@ -313,36 +281,36 @@ const MaxBridge = new MaxIntegration();
     }
 
     // Получение версии MAX
-    static getMaxVersion() {
+    getMaxVersion() {
         return WebApp.version || 'unknown';
     }
 
     // Получение платформы
-    static getPlatform() {
+    getPlatform() {
         return WebApp.platform || 'web';
     }
 
     // Проверка, запущено ли в MAX
-    static isInMax() {
+    isInMax() {
         return typeof WebApp !== 'undefined' && WebApp.initDataUnsafe !== undefined;
     }
 
     // Показать подтверждение закрытия
-    static enableClosingConfirmation() {
+    enableClosingConfirmation() {
         if (WebApp.enableClosingConfirmation) {
             WebApp.enableClosingConfirmation();
         }
     }
 
     // Скрыть подтверждение закрытия
-    static disableClosingConfirmation() {
+    disableClosingConfirmation() {
         if (WebApp.disableClosingConfirmation) {
             WebApp.disableClosingConfirmation();
         }
     }
 
     // Запрос контакта пользователя
-    static requestContact() {
+    requestContact() {
         return new Promise((resolve, reject) => {
             if (WebApp.requestContact) {
                 WebApp.requestContact();
@@ -365,7 +333,17 @@ const MaxBridge = new MaxIntegration();
             }
         });
     }
+
+    hapticFeedback(style = 'light') {
+        try {
+            if (WebApp.HapticFeedback && WebApp.HapticFeedback.impactOccurred) {
+                WebApp.HapticFeedback.impactOccurred(style);
+            }
+        } catch (error) {
+            console.log('Haptic feedback not available');
+        }
+    }
 }
 
-// Глобальная доступность
-window.MaxIntegration = MaxIntegration;
+// Создаем глобальный экземпляр
+const MaxBridge = new MaxIntegration();
