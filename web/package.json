@@ -1,31 +1,30 @@
 {
-    "name": "project-pilot-max",
-    "version": "1.0.0",
-    "description": "Премиум PWA для управления проектами с интеграцией MAX UI",
-    "type": "module",
-    "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "preview": "vite preview",
-        "deploy": "npm run build && gh-pages -d dist",
-        "predeploy": "npm run build"
-    },
-    "dependencies": {
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0"
-    },
-    "devDependencies": {
-        "vite": "^4.4.5",
-        "gh-pages": "^5.0.0"
-    },
-    "homepage": "https://vasilkin6666.github.io/max_project_pilot",
-    "keywords": [
-        "pwa",
-        "project-management",
-        "react",
-        "max-ui",
-        "productivity"
-    ],
-    "author": "Project Pilot Team",
-    "license": "MIT"
+  "name": "project-pilot-max",
+  "version": "1.0.0",
+  "description": "Премиум PWA для управления проектами с интеграцией MAX UI",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist",
+    "predeploy": "npm run build"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "vite": "^4.4.5",
+    "@vitejs/plugin-react": "^4.0.0"
+  },
+  "keywords": [
+    "pwa",
+    "project-management",
+    "react",
+    "max-ui",
+    "productivity"
+  ],
+  "author": "Project Pilot Team",
+  "license": "MIT"
 }
