@@ -1,34 +1,97 @@
-// app.js
-class App {
-    static currentUser = null;
-    static currentProject = null;
-    static currentTask = null;
-    static userSettings = {};
-    static tempParentTaskId = null; // For creating subtasks
+// js/app.js
+// Глобальные переменные (как в index.txt)
+let currentUser = null;
+let currentProject = null;
+let currentTask = null;
+let userSettings = {};
+let currentMemberToUpdate = null;
+let currentMemberToRemove = null;
 
-    static async init() {
-        console.log('Initializing Project Pilot Pro...');
+// Константы ролей (как в index.txt)
+const ProjectRole = {
+    OWNER: 'owner',
+    ADMIN: 'admin',
+    MEMBER: 'member',
+    GUEST: 'guest'
+};
+
+// Менеджер аутентификации (как в index.txt)
+class AuthManager {
+    static async initialize() {
         try {
-            // Load current user
-            this.currentUser = await ApiService.getCurrentUser();
-            console.log('Current user:', this.currentUser);
+            console.log('Initializing authentication...');
+            // Проверяем MAX окружение
+            if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user) {
+                return await this.authenticateWithMax();
+            } else {
+                // Для разработки - тестовый пользователь
+                return await this.authenticateWithTestUser();
+            }
+        } catch (error) {
+            console.error('Authentication failed:', error);
+            throw error;
+        }
+    }
 
-            // Setup event listeners
-            this.setupEventListeners();
+    static async authenticateWithMax() {
+        const userData = WebApp.initDataUnsafe.user;
+        const maxId = userData.id.toString();
+        const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
+        console.log('MAX authentication with:', { maxId, fullName });
+        const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
+        if (tokenData?.access_token) {
+            localStorage.setItem('access_token', tokenData.access_token);
+            console.log('MAX authentication successful');
+            return tokenData.user;
+        }
+        throw new Error('MAX authentication failed');
+    }
 
-            // Load initial data
+    static async authenticateWithTestUser() {
+        const testId = 'dev_user_' + Math.random().toString(36).substr(2, 9);
+        const fullName = 'Тестовый пользователь';
+        console.log('Test authentication with:', { testId, fullName });
+        const tokenData = await ApiService.getAuthToken(testId, fullName, '');
+        if (tokenData?.access_token) {
+            localStorage.setItem('access_token', tokenData.access_token);
+            console.log('Test authentication successful');
+            return tokenData.user;
+        }
+        throw new Error('Test authentication failed');
+    }
+
+    static getToken() {
+        return localStorage.getItem('access_token');
+    }
+
+    static isAuthenticated() {
+        return !!this.getToken();
+    }
+}
+
+// Основное приложение
+class App {
+    static async init() {
+        try {
+            console.log('Initializing app...');
+
+            // Инициализируем аутентификацию
+            currentUser = await AuthManager.initialize();
+
+            // Показываем основное приложение
+            document.getElementById('app').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+
+            // Загружаем данные
             await this.loadData();
 
-            // Hide loading, show app
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
+            // Настраиваем обработчики событий
+            this.setupEventListeners();
 
-            console.log('Application initialized successfully');
+            console.log('App initialized successfully');
         } catch (error) {
-            console.error('Initialization failed:', error);
+            console.error('App initialization failed:', error);
             this.showError('Ошибка инициализации приложения: ' + error.message);
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('app').style.display = 'block'; // Show app anyway to allow user interaction
         }
     }
 
@@ -86,10 +149,10 @@ class App {
 
         // My Tasks Filters
         document.getElementById('tasksFilterStatus').addEventListener('change', () => {
-            this.showMyTasks();
+            this.loadMyTasks();
         });
         document.getElementById('tasksFilterProject').addEventListener('change', () => {
-            this.showMyTasks();
+            this.loadMyTasks();
         });
 
         // Search Projects
@@ -100,40 +163,55 @@ class App {
         // Form submissions
         document.getElementById('submitCreateProjectBtn').addEventListener('click', (e) => {
             e.preventDefault();
-            this.createProject();
+            this.handleCreateProject();
         });
         document.getElementById('submitEditProjectBtn').addEventListener('click', (e) => {
             e.preventDefault();
-            this.updateProject();
+            this.handleUpdateProject();
         });
         document.getElementById('confirmDeleteProjectBtn').addEventListener('click', () => {
-            this.deleteProject();
+            this.handleDeleteProject();
         });
         document.getElementById('submitCreateTaskBtn').addEventListener('click', (e) => {
             e.preventDefault();
-            this.createTask();
+            this.handleCreateTask();
         });
         document.getElementById('submitEditTaskBtn').addEventListener('click', (e) => {
             e.preventDefault();
-            this.updateTask();
+            this.handleUpdateTask();
         });
         document.getElementById('confirmDeleteTaskBtn').addEventListener('click', () => {
-            this.deleteTask();
+            this.handleDeleteTask();
         });
         document.getElementById('joinProjectFromPreviewBtn').addEventListener('click', () => {
             this.joinProjectFromPreview();
+        });
+
+        // --- Добавлены обработчики для новых форм ---
+        document.getElementById('submitCreateSubtaskBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleCreateSubtask();
+        });
+        document.getElementById('submitUpdateMemberRoleBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleUpdateMemberRole();
+        });
+        document.getElementById('confirmRemoveMemberBtn').addEventListener('click', () => {
+            this.handleRemoveMember();
         });
     }
 
     static async loadData() {
         try {
+            console.log('Loading data...');
+            // Загружаем дашборд с проектами
             const dashboardData = await ApiService.getDashboard();
             const projects = dashboardData.projects || [];
             const settings = dashboardData.settings || {};
             const recentTasks = dashboardData.recent_tasks || [];
 
-            // Save settings
-            this.userSettings = settings;
+            // Сохраняем настройки
+            userSettings = settings;
             this.applyUserSettings(settings);
 
             this.renderProjects(projects);
@@ -156,10 +234,9 @@ class App {
     static renderProjects(projects) {
         const container = document.getElementById('projectsList');
         if (!projects || projects.length === 0) {
-            container.innerHTML = `<div class="empty-state">
-                <div class="empty-state-icon">📋</div>
+            container.innerHTML = `<div style="text-align: center; padding: 40px; border: 1px solid #ccc; border-radius: 4px;">
                 <p>Проектов пока нет</p>
-                <button class="btn btn-primary" onclick="App.showModal('createProjectModal')">Создать первый проект</button>
+                <button onclick="App.showModal('createProjectModal')" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">Создать проект</button>
             </div>`;
             return;
         }
@@ -191,7 +268,15 @@ class App {
     }
 
     static updateStats(projects, recentTasks) {
-        // Update dashboard stats if needed
+        // ИСПРАВЛЕНО: Правильный подсчет статистики
+        document.getElementById('projectsCount').textContent = projects.length;
+        const totalTasks = projects.reduce((sum, project) => {
+            const projectData = project.project || project;
+            const stats = project.stats || projectData.stats || {};
+            return sum + (stats.tasks_count || stats.tasksCount || 0);
+        }, 0);
+        document.getElementById('tasksCount').textContent = totalTasks;
+        document.getElementById('recentTasksCount').textContent = recentTasks ? recentTasks.length : 0;
     }
 
     static renderRecentTasks(tasks) {
@@ -202,8 +287,9 @@ class App {
         }
 
         container.innerHTML = tasks.map(task => {
+            const projectTitle = task.project_title || (task.project && task.project.title) || 'N/A';
             return `
-            <div class="task-card">
+            <div class="task-card" onclick="App.openTask(${task.id})">
                 <div class="task-card-header">
                     <h4 class="task-card-title">${this.escapeHtml(task.title)}</h4>
                     <span class="task-card-status ${task.status}">${this.getStatusText(task.status)}</span>
@@ -211,7 +297,7 @@ class App {
                 <p class="task-card-priority">Приоритет: ${this.getPriorityText(task.priority)}</p>
                 <p class="task-card-due-date">Срок: ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не указан'}</p>
                 <div class="task-card-footer">
-                    <span>Проект: ${this.escapeHtml(task.project_title || 'N/A')}</span>
+                    <span>Проект: ${this.escapeHtml(projectTitle)}</span>
                 </div>
             </div>`;
         }).join('');
@@ -231,9 +317,19 @@ class App {
             'low': 'Низкий',
             'medium': 'Средний',
             'high': 'Высокий',
-            'critical': 'Критический'
+            'urgent': 'Срочный' // --- Добавлено из index.txt ---
         };
         return priorityMap[priority] || priority;
+    }
+
+    static getRoleText(role) {
+        const roleMap = {
+            'owner': 'Владелец',
+            'admin': 'Администратор',
+            'member': 'Участник',
+            'guest': 'Гость'
+        };
+        return roleMap[role] || role;
     }
 
     static escapeHtml(text) {
@@ -244,62 +340,108 @@ class App {
     }
 
     // Navigation methods
+    static showView(viewId) {
+        // Скрываем все вью
+        document.querySelectorAll('.view').forEach(view => {
+            view.style.display = 'none';
+        });
+        // Показываем нужную вью
+        document.getElementById(viewId).style.display = 'block';
+    }
+
     static showDashboard() {
-        document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-        document.getElementById('dashboardView').style.display = 'block';
-        this.loadData(); // Reload data for dashboard
+        this.showView('dashboardView');
+        this.loadData();
     }
 
-    static showSearchProjects() {
-        document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-        document.getElementById('searchProjectsView').style.display = 'block';
+    static async showSearchProjects() {
+        this.showView('searchProjectsView');
+        // Сбрасываем поле поиска
         document.getElementById('searchProjectsInput').value = '';
-        document.getElementById('searchResultsList').innerHTML = '';
+        // Показываем недавние публичные проекты при открытии
+        await this.loadRecentPublicProjects();
     }
 
-    static showNotifications() {
-        alert('Функция уведомлений будет реализована позже.');
+    static async loadRecentPublicProjects() {
+        try {
+            const response = await ApiService.searchPublicProjects(); // Используем метод из index.txt
+            const projects = response.projects || [];
+            const title = 'Недавние публичные проекты';
+            this.renderSearchResults(projects, title);
+        } catch (error) {
+            console.error('Error loading recent public projects:', error);
+            // Не показываем ошибку для этой опциональной функции
+        }
     }
 
-    static showMyTasks() {
-        document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-        document.getElementById('myTasksView').style.display = 'block';
-        this.loadMyTasks();
+    static async showNotifications() {
+        try {
+            const response = await ApiService.getNotifications(); // Используем метод из index.txt
+            const notifications = response.notifications || [];
+            const container = document.getElementById('notificationsList');
+
+            if (!notifications || notifications.length === 0) {
+                container.innerHTML = '<p>Уведомлений нет</p>';
+                return;
+            }
+
+            container.innerHTML = notifications.map(notification => {
+                return `
+                <div class="notification-item">
+                    <div class="notification-content">${this.escapeHtml(notification.content)}</div>
+                    <div class="notification-date">${new Date(notification.created_at).toLocaleString()}</div>
+                </div>`;
+            }).join('');
+
+            this.showView('notificationsView');
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            this.showError('Ошибка загрузки уведомлений: ' + error.message);
+        }
     }
 
     static showSettings() {
-        alert('Функция настроек будет реализована позже.');
+        // Используем модальное окно для настроек
+        this.showModal('settingsModal');
     }
 
     // Project methods
     static async openProject(projectHash) {
         try {
-            this.currentProject = await ApiService.getProject(projectHash);
-            console.log('Opened project:', this.currentProject);
+            console.log('Opening project:', projectHash);
+            const projectData = await ApiService.getProject(projectHash); // Используем метод из index.txt
 
-            // Load project summary for stats
-            const projectSummary = await ApiService.getProjectSummary(projectHash);
-            console.log('Project summary:', projectSummary);
+            // ИСПРАВЛЕНО: Правильное получение данных проекта
+            currentProject = projectData.project || projectData;
+            currentProject.members = projectData.members || [];
+
+            console.log('Opened project:', currentProject);
 
             // Update project view
-            document.getElementById('projectTitleHeader').textContent = this.currentProject.title;
-            document.getElementById('projectDescriptionText').textContent = this.currentProject.description || 'Без описания';
-            document.getElementById('projectHashValue').textContent = this.currentProject.hash;
+            document.getElementById('projectTitleHeader').textContent = currentProject.title;
+            document.getElementById('projectDescriptionText').textContent = currentProject.description || 'Без описания';
+            document.getElementById('projectHashValue').textContent = currentProject.hash;
             document.getElementById('projectHashInfo').style.display = 'block';
 
             // Update stats
-            document.getElementById('projectMembersCount').textContent = projectSummary.members_count || 0;
-            document.getElementById('projectTotalTasks').textContent = projectSummary.tasks_count || 0;
-            document.getElementById('projectDoneTasks').textContent = projectSummary.tasks_done || 0;
-            document.getElementById('projectInProgressTasks').textContent = (projectSummary.tasks_count || 0) - (projectSummary.tasks_done || 0);
+            document.getElementById('projectMembersCount').textContent = currentProject.members.length; // Используем локальные данные
+            // Для задач нужно загрузить их
+            const tasksResponse = await ApiService.getTasks(currentProject.hash);
+            const tasks = tasksResponse.tasks || [];
+            const totalTasks = tasks.length;
+            const doneTasks = tasks.filter(t => t.status === 'done').length;
+            const inProgressTasks = tasks.filter(t => t.status === 'in_progress').length;
+
+            document.getElementById('projectTotalTasks').textContent = totalTasks;
+            document.getElementById('projectDoneTasks').textContent = doneTasks;
+            document.getElementById('projectInProgressTasks').textContent = inProgressTasks;
 
             // Load tasks and members
-            await this.loadProjectTasks(projectHash);
-            await this.loadProjectMembers(projectHash);
+            await this.loadProjectTasks(currentProject.hash);
+            await this.loadProjectMembers(currentProject.hash);
 
             // Switch view
-            document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-            document.getElementById('projectView').style.display = 'block';
+            this.showView('projectView');
         } catch (error) {
             console.error('Error opening project:', error);
             this.showError('Ошибка открытия проекта: ' + error.message);
@@ -308,7 +450,7 @@ class App {
 
     static async loadProjectTasks(projectHash) {
         try {
-            const response = await ApiService.getTasks(projectHash);
+            const response = await ApiService.getTasks(projectHash); // Используем метод из index.txt
             const tasks = response.tasks || [];
             const container = document.getElementById('projectTasksList');
 
@@ -343,7 +485,7 @@ class App {
 
     static async loadProjectMembers(projectHash) {
         try {
-            const response = await ApiService.getProjectMembers(projectHash);
+            const response = await ApiService.getProjectMembers(projectHash); // Используем метод из index.txt
             const members = response.members || [];
             const container = document.getElementById('projectMembersList');
 
@@ -353,10 +495,37 @@ class App {
             }
 
             container.innerHTML = members.map(member => {
+                const memberData = member.user || member;
+                const displayName = (memberData.full_name && memberData.full_name.trim() !== '')
+                    ? memberData.full_name
+                    : (member.full_name && member.full_name.trim() !== '')
+                        ? member.full_name
+                        : `Участник #${member.user_id || memberData.id}`;
+                const isCurrentUser = (member.user_id || memberData.id) === currentUser.id;
+                const isOwnerMember = member.role === ProjectRole.OWNER;
+                const isAdminMember = member.role === ProjectRole.ADMIN;
+
+                // Определяем доступные действия
+                let canChangeRole = false;
+                let canRemoveMember = false;
+
+                if (currentUser.id === currentProject.owner_id) { // Current user is owner
+                    canChangeRole = !isCurrentUser && !isOwnerMember;
+                    canRemoveMember = !isCurrentUser && !isOwnerMember;
+                } else if (currentUser.role === ProjectRole.ADMIN) { // Current user is admin
+                    canChangeRole = !isCurrentUser && !isOwnerMember && !isAdminMember;
+                    canRemoveMember = !isCurrentUser && !isOwnerMember && !isAdminMember;
+                }
+
                 return `
                 <div class="member-item">
-                    <span class="member-name">${this.escapeHtml(member.name)}</span>
-                    <span class="member-role">${this.escapeHtml(member.role)}</span>
+                    <span class="member-name">${this.escapeHtml(displayName)}</span>
+                    <span class="member-role">${this.getRoleText(member.role)}</span>
+                    ${canChangeRole ? `<select class="role-select" onchange="App.updateMemberRole(${member.user_id || memberData.id}, this.value)">
+                        <option value="member" ${member.role === 'member' ? 'selected' : ''}>Участник</option>
+                        <option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Администратор</option>
+                    </select>` : ''}
+                    ${canRemoveMember ? `<button class="btn btn-danger btn-sm" onclick="App.removeMember(${member.user_id || memberData.id})">Удалить</button>` : ''}
                 </div>`;
             }).join('');
 
@@ -367,59 +536,110 @@ class App {
     }
 
     static backToProject() {
-        if (this.currentProject) {
-            this.openProject(this.currentProject.hash);
+        console.log('Back to project, currentProject:', currentProject);
+        if (currentProject && currentProject.hash) {
+            this.openProject(currentProject.hash);
         } else {
+            console.log('No current project, showing dashboard');
             this.showDashboard();
         }
-    }
-
-    static backToDashboard() {
-        this.showDashboard();
     }
 
     // Task methods
     static async openTask(taskId) {
         try {
-            const response = await ApiService.getTask(taskId);
-            this.currentTask = response.task || response;
+            const response = await ApiService.getTask(taskId); // Используем метод из index.txt
+            currentTask = response.task || response;
+
+            console.log('Current task set to:', currentTask);
+            if (!currentTask) {
+                this.showError('Задача не найдена');
+                return;
+            }
 
             // Update task view
-            document.getElementById('taskTitleView').textContent = this.currentTask.title;
-            document.getElementById('taskDescriptionView').textContent = this.currentTask.description || 'Без описания';
-            document.getElementById('taskStatusView').textContent = this.getStatusText(this.currentTask.status);
-            document.getElementById('taskPriorityView').textContent = this.getPriorityText(this.currentTask.priority);
-            document.getElementById('taskDueDateView').textContent = this.currentTask.due_date ? new Date(this.currentTask.due_date).toLocaleDateString() : '-';
-            document.getElementById('taskAssignedToText').textContent = this.currentTask.assigned_to_name || '-';
+            document.getElementById('taskTitleHeader').textContent = currentTask.title;
+            document.getElementById('taskDescriptionText').textContent = currentTask.description || 'Без описания';
+            document.getElementById('taskPriorityText').textContent = this.getPriorityText(currentTask.priority);
+            document.getElementById('taskStatusSelect').value = currentTask.status; // Устанавливаем статус
+            document.getElementById('taskCreatedAtText').textContent = new Date(currentTask.created_at).toLocaleString();
+            document.getElementById('taskDueDateText').textContent = currentTask.due_date ? new Date(currentTask.due_date).toLocaleDateString() : 'Не установлен';
+
+            // --- Загрузка информации об исполнителе из index.txt ---
+            if (currentTask.assigned_to_id) {
+                if (currentTask.assigned_user) {
+                    const displayName = currentTask.assigned_user.full_name || currentTask.assigned_user.username || `Участник #${currentTask.assigned_to_id}`;
+                    document.getElementById('taskAssignedToText').textContent = displayName;
+                } else {
+                    await this.loadTaskAssigneeInfo(currentTask.assigned_to_id);
+                }
+            } else {
+                document.getElementById('taskAssignedToText').textContent = 'Не назначена';
+            }
 
             // Show/hide create subtask button based on permissions or task type
             const createSubtaskBtn = document.getElementById('createSubtaskBtn');
-            if (this.currentTask.parent_task_id === null) { // Only main tasks can have subtasks created directly from this view?
+            const subtasksSection = document.getElementById('subtasksSection');
+            if (currentTask.parent_task_id === null) {
+                subtasksSection.style.display = 'block';
                 createSubtaskBtn.style.display = 'inline-block';
+                await this.loadSubtasks(taskId);
             } else {
+                subtasksSection.style.display = 'none';
                 createSubtaskBtn.style.display = 'none';
             }
 
             // Load comments
             await this.loadTaskComments(taskId);
 
-            // Load subtasks
-            await this.loadSubtasks(taskId);
-
             // Switch view
-            document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-            document.getElementById('taskView').style.display = 'block';
+            this.showView('taskView');
         } catch (error) {
             console.error('Error opening task:', error);
             this.showError('Ошибка открытия задачи: ' + error.message);
         }
     }
 
+    static async loadTaskAssigneeInfo(assigneeId) {
+        try {
+            console.log('Loading assignee info for:', assigneeId);
+            // Если у нас есть данные о проекте и участниках, ищем исполнителя среди участников
+            if (currentProject && currentProject.members) {
+                console.log('Searching in project members:', currentProject.members);
+                const assignee = currentProject.members.find(member => {
+                    const memberId = member.user_id || (member.user && member.user.id);
+                    console.log('Checking member:', memberId, 'against assignee:', assigneeId);
+                    return memberId === assigneeId;
+                });
+                if (assignee) {
+                    console.log('Found assignee in members:', assignee);
+                    const displayName = (assignee.user && assignee.user.full_name) || assignee.full_name || `Участник #${assigneeId}`;
+                    document.getElementById('taskAssignedToText').textContent = displayName;
+                    return;
+                }
+            }
+            // Если не нашли в участниках, попробуем загрузить участников проекта
+            const response = await ApiService.getProjectMembers(currentProject.hash);
+            const members = response.members || [];
+            const assignee = members.find(member => (member.user_id || (member.user && member.user.id)) === assigneeId);
+            if (assignee) {
+                const displayName = (assignee.user && assignee.user.full_name) || assignee.full_name || `Участник #${assigneeId}`;
+                document.getElementById('taskAssignedToText').textContent = displayName;
+                return;
+            }
+            // Если не нашли, оставляем ID
+            document.getElementById('taskAssignedToText').textContent = `Участник #${assigneeId}`;
+        } catch (error) {
+            console.error('Error loading assignee info:', error);
+            document.getElementById('taskAssignedToText').textContent = `Участник #${assigneeId}`;
+        }
+    }
+
     static async loadTaskComments(taskId) {
         try {
-            const response = await ApiService.getComments(taskId);
+            const response = await ApiService.getTaskComments(taskId); // Используем метод из index.txt
             const comments = response.comments || [];
-            const container = document.getElementById('commentsList');
+            const container = document.getElementById('taskCommentsList'); // Используем ID из index.txt
 
             if (!comments || comments.length === 0) {
                 container.innerHTML = '<p>Комментариев нет</p>';
@@ -443,75 +663,26 @@ class App {
     }
 
     static async addComment() {
-        const input = document.getElementById('newCommentText');
-        const content = input.value.trim();
-        if (!content) return;
+        if (!currentTask || !currentTask.id) {
+            console.error('No current task for comment:', currentTask);
+            this.showError('Ошибка: задача не выбрана');
+            return;
+        }
 
-        if (!this.currentTask || !this.currentTask.id) {
-            this.showError('Задача не выбрана');
+        const content = document.getElementById('newCommentText').value.trim(); // Используем ID из index.txt
+        if (!content) {
+            this.showError('Введите текст комментария');
             return;
         }
 
         try {
-            await ApiService.addComment(this.currentTask.id, content);
-            input.value = '';
-            await this.loadTaskComments(this.currentTask.id); // Reload comments
+            await ApiService.createTaskComment(currentTask.id, content); // Используем метод из index.txt
+            document.getElementById('newCommentText').value = ''; // Используем ID из index.txt
+            await this.loadTaskComments(currentTask.id); // Используем ID из index.txt
+            this.showSuccess('Комментарий добавлен!');
         } catch (error) {
             console.error('Error adding comment:', error);
             this.showError('Ошибка добавления комментария: ' + error.message);
-        }
-    }
-
-    static async loadSubtasks(parentTaskId, level = 0, container = null) {
-        try {
-            if (!this.currentProject || !this.currentProject.hash) {
-                console.error('No current project for loading subtasks');
-                document.getElementById('subtasksList').innerHTML = '<p>Ошибка загрузки подзадач: проект не выбран</p>';
-                return;
-            }
-
-            const response = await ApiService.getTasks(this.currentProject.hash);
-            const tasks = response.tasks || [];
-            const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
-
-            const targetContainer = container || document.getElementById('subtasksList');
-
-            if (subtasks.length === 0 && level === 0) {
-                targetContainer.innerHTML = '<p>Подзадач нет</p>';
-                return;
-            }
-
-            let subtasksHtml = '';
-            subtasks.forEach(subtask => {
-                const paddingLeft = level * 20;
-                const childSubtasks = tasks.filter(task => task.parent_task_id === subtask.id);
-                const hasChildren = childSubtasks.length > 0;
-
-                subtasksHtml += `
-                <div class="subtask-item" style="margin-left: ${paddingLeft}px;">
-                    <div class="task-card" onclick="App.openTask(${subtask.id})">
-                        <div class="task-card-header">
-                            <h4 class="task-card-title">${this.escapeHtml(subtask.title)}</h4>
-                            <span class="task-card-status ${subtask.status}">${this.getStatusText(subtask.status)}</span>
-                        </div>
-                        <p class="task-card-priority">Приоритет: ${this.getPriorityText(subtask.priority)}</p>
-                        <p class="task-card-due-date">Срок: ${subtask.due_date ? new Date(subtask.due_date).toLocaleDateString() : 'Не указан'}</p>
-                    </div>
-                </div>`;
-
-                // Recursively add child subtasks
-                if (hasChildren) {
-                    const childContainer = document.createElement('div');
-                    childContainer.className = 'subtask-children';
-                    this.loadSubtasks(subtask.id, level + 1, childContainer);
-                    subtasksHtml += childContainer.outerHTML;
-                }
-            });
-
-            targetContainer.innerHTML = subtasksHtml;
-        } catch (error) {
-            console.error('Error loading subtasks:', error);
-            this.showError('Ошибка загрузки подзадач: ' + error.message);
         }
     }
 
@@ -524,7 +695,7 @@ class App {
             if (statusFilter) filters.status = statusFilter;
             if (projectFilter) filters.project_hash = projectFilter;
 
-            const response = await ApiService.getUserTasks(filters);
+            const response = await ApiService.getUserTasks(filters); // Используем метод из index.txt
             const tasks = response.tasks || [];
             const container = document.getElementById('myTasksList');
 
@@ -533,15 +704,16 @@ class App {
                 return;
             }
 
-            // Separate assigned and created tasks (example logic, adjust as needed)
-            const assignedTasks = tasks.filter(task => task.assigned_to_id === this.currentUser.id);
-            const createdTasks = tasks.filter(task => task.created_by_id === this.currentUser.id && task.assigned_to_id !== this.currentUser.id);
+            // Разделяем задачи на назначенные и созданные
+            const assignedTasks = tasks.filter(task => task.assigned_to_id === currentUser.id); // Используем глобальную переменную
+            const createdTasks = tasks.filter(task => task.created_by_id === currentUser.id && task.assigned_to_id !== currentUser.id); // Используем глобальную переменную
 
             let html = '';
 
             if (assignedTasks.length > 0) {
                 html += '<h4>Назначенные мне</h4>';
                 html += assignedTasks.map(task => {
+                    const projectTitle = task.project_title || (task.project && task.project.title) || 'N/A';
                     return `
                     <div class="task-card" onclick="App.openTask(${task.id})">
                         <div class="task-card-header">
@@ -551,7 +723,7 @@ class App {
                         <p class="task-card-priority">Приоритет: ${this.getPriorityText(task.priority)}</p>
                         <p class="task-card-due-date">Срок: ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не указан'}</p>
                         <div class="task-card-footer">
-                            <span>Проект: ${this.escapeHtml(task.project_title || 'N/A')}</span>
+                            <span>Проект: ${this.escapeHtml(projectTitle)}</span>
                         </div>
                     </div>`;
                 }).join('');
@@ -590,7 +762,7 @@ class App {
         this.showModal('createProjectModal');
     }
 
-    static async createProject() {
+    static async handleCreateProject() {
         const title = document.getElementById('projectTitle').value.trim();
         const description = document.getElementById('projectDescription').value.trim();
         const isPrivate = document.getElementById('projectIsPrivate').checked;
@@ -603,7 +775,7 @@ class App {
 
         try {
             console.log('Creating project:', { title, description, isPrivate, requiresApproval });
-            await ApiService.createProject({
+            await ApiService.createProject({ // Используем метод из index.txt
                 title,
                 description,
                 is_private: isPrivate,
@@ -621,27 +793,21 @@ class App {
     }
 
     static showEditProjectModal() {
-        if (!this.currentProject) {
-            this.showError('Проект не выбран');
-            return;
-        }
-
-        document.getElementById('editProjectTitle').value = this.currentProject.title;
-        document.getElementById('editProjectDescription').value = this.currentProject.description || '';
-        document.getElementById('editProjectIsPrivate').checked = this.currentProject.is_private;
+        if (!currentProject) return; // Используем глобальную переменную
+        document.getElementById('editProjectTitle').value = currentProject.title; // Используем глобальную переменную
+        document.getElementById('editProjectDescription').value = currentProject.description || ''; // Используем глобальную переменную
+        document.getElementById('editProjectIsPrivate').checked = currentProject.is_private; // Используем глобальную переменную
+        document.getElementById('editProjectRequiresApproval').checked = currentProject.requires_approval; // Используем глобальную переменную
 
         this.showModal('editProjectModal');
     }
 
-    static async updateProject() {
-        if (!this.currentProject) {
-            this.showError('Проект не выбран');
-            return;
-        }
-
+    static async handleUpdateProject() {
+        if (!currentProject) return; // Используем глобальную переменную
         const title = document.getElementById('editProjectTitle').value.trim();
         const description = document.getElementById('editProjectDescription').value.trim();
         const isPrivate = document.getElementById('editProjectIsPrivate').checked;
+        const requiresApproval = document.getElementById('editProjectRequiresApproval').checked;
 
         if (!title) {
             this.showError('Введите название проекта');
@@ -649,14 +815,15 @@ class App {
         }
 
         try {
-            await ApiService.updateProject(this.currentProject.hash, {
+            await ApiService.updateProject(currentProject.hash, { // Используем метод из index.txt
                 title,
                 description,
-                is_private: isPrivate
+                is_private: isPrivate,
+                requires_approval: requiresApproval
             });
 
             this.hideModal('editProjectModal');
-            await this.openProject(this.currentProject.hash); // Reload project view
+            await this.openProject(currentProject.hash); // Перезагружаем проект
             this.showSuccess('Проект обновлен успешно!');
         } catch (error) {
             console.error('Error updating project:', error);
@@ -665,27 +832,18 @@ class App {
     }
 
     static showDeleteProjectModal() {
-        if (!this.currentProject) {
-            this.showError('Проект не выбран');
-            return;
-        }
-
-        document.getElementById('deleteProjectName').textContent = this.currentProject.title;
+        if (!currentProject) return; // Используем глобальную переменную
+        document.getElementById('deleteProjectName').textContent = currentProject.title; // Используем глобальную переменную
         this.showModal('deleteProjectModal');
     }
 
-    static async deleteProject() {
-        if (!this.currentProject) {
-            this.showError('Проект не выбран');
-            return;
-        }
-
+    static async handleDeleteProject() {
+        if (!currentProject) return; // Используем глобальную переменную
         try {
-            await ApiService.deleteProject(this.currentProject.hash);
+            await ApiService.deleteProject(currentProject.hash); // Используем метод из index.txt
 
             this.hideModal('deleteProjectModal');
-            this.currentProject = null;
-            this.showDashboard(); // Go back to dashboard
+            this.showDashboard();
             this.showSuccess('Проект удален успешно!');
         } catch (error) {
             console.error('Error deleting project:', error);
@@ -695,24 +853,30 @@ class App {
 
     // Task management methods
     static async showCreateTaskModal() {
-        if (!this.currentProject) return;
+        if (!currentProject) return; // Используем глобальную переменную
 
         try {
-            // Load project members for assignee dropdown
-            const membersResponse = await ApiService.getProjectMembers(this.currentProject.hash);
-            const members = membersResponse.members || [];
+            // Загружаем участников проекта
+            const response = await ApiService.getProjectMembers(currentProject.hash); // Используем метод из index.txt
+            const members = response.members || [];
 
             const assignedToSelect = document.getElementById('taskAssignedTo');
             assignedToSelect.innerHTML = '<option value="">Не назначена</option>';
             members.forEach(member => {
+                const memberData = member.user || member;
+                const displayName = memberData.full_name && memberData.full_name.trim() !== ''
+                    ? memberData.full_name
+                    : member.full_name && member.full_name.trim() !== ''
+                        ? member.full_name
+                        : `Участник #${member.user_id || memberData.id}`;
                 const option = document.createElement('option');
-                option.value = member.id;
-                option.textContent = member.name;
+                option.value = member.user_id || memberData.id;
+                option.textContent = displayName;
                 assignedToSelect.appendChild(option);
             });
 
-            // Load main tasks for parent task dropdown
-            const tasksResponse = await ApiService.getTasks(this.currentProject.hash);
+            // Загружаем задачи для выбора родительской задачи
+            const tasksResponse = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
             const tasks = tasksResponse.tasks || [];
 
             const parentTaskSelect = document.getElementById('taskParentId');
@@ -726,7 +890,7 @@ class App {
                 }
             });
 
-            // Set default due date to today
+            // Устанавливаем сегодняшнюю дату по умолчанию
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('taskDueDate').value = today;
 
@@ -738,24 +902,18 @@ class App {
     }
 
     static showCreateSubtaskModal() {
-        if (!this.currentProject || !this.currentTask) return;
-
-        // Use the current task as the parent
-        this.tempParentTaskId = this.currentTask.id;
-
-        // Pre-fill the parent task in the modal if possible, or hide the parent selection
-        // For simplicity in this case, we'll assume subtasks are always created under the current task
-        // and hide the parent selection in the createTaskModal or use a separate subtask modal logic
-        // Here we reuse the createTaskModal but set the parent task ID internally
-        document.getElementById('createTaskForm').reset();
-        document.getElementById('taskTitle').focus();
-
-        // We need to modify the createTask logic slightly to use tempParentTaskId if set
-        // For now, just show the modal, the createTask function will handle the parent ID
-        this.showModal('createTaskModal');
+        if (!currentProject || !currentTask) return; // Используем глобальные переменные
+        this.showCreateSubtaskModalForTask(currentTask.id); // Используем глобальную переменную
     }
 
-    static async createTask() {
+    static showCreateSubtaskModalForTask(parentTaskId) {
+        // Устанавливаем родительскую задачу для создания подзадачи
+        this.tempParentTaskId = parentTaskId;
+        this.showCreateTaskModal(); // Reuse the main create modal
+    }
+
+    static async handleCreateTask() {
+        if (!currentProject) return; // Используем глобальную переменную
         const title = document.getElementById('taskTitle').value.trim();
         const description = document.getElementById('taskDescription').value.trim();
         const priority = document.getElementById('taskPriority').value;
@@ -773,30 +931,33 @@ class App {
                 title,
                 description,
                 priority,
-                project_hash: this.currentProject.hash // Ensure project hash is included
+                project_hash: currentProject.hash // Используем глобальную переменную
             };
 
             if (dueDate) taskData.due_date = dueDate;
             if (parentTaskId) taskData.parent_task_id = parseInt(parentTaskId);
-            if (assignedTo) taskData.assigned_to_id = parseInt(assignedTo);
+            if (assignedTo) taskData.assigned_to_id = parseInt(assignedTo); // ИСПРАВЛЕНО: используем assigned_to_id
 
             console.log('Creating task with data:', taskData);
-            await ApiService.createTask(taskData);
+            await ApiService.createTask(taskData); // Используем метод из index.txt
 
             this.hideModal('createTaskModal');
-            // Reset form
-            const form = document.getElementById('createTaskForm');
-            if (form) form.reset();
+            // ИСПРАВЛЕНО: Проверяем существование формы перед reset
+            const createTaskForm = document.getElementById('createTaskForm');
+            if (createTaskForm) {
+                createTaskForm.reset();
+            }
             // Clear temp parent ID
             this.tempParentTaskId = null;
 
             // Reload tasks for the current view (project or task)
-            if (this.currentProject && !this.currentTask) {
-                await this.loadProjectTasks(this.currentProject.hash);
-            } else if (this.currentTask) {
-                // Reload the current task view to reflect changes, or just subtasks if applicable
-                await this.loadSubtasks(this.currentTask.id); // If we are viewing the parent task
-                // Or reload the specific task details view if needed
+            if (currentProject && !currentTask) { // Используем глобальные переменные
+                await this.loadProjectTasks(currentProject.hash); // Используем глобальную переменную
+            } else if (currentTask) { // Используем глобальную переменную
+                // Reload subtasks if current task is parent
+                if (currentTask.id === parentTaskId || currentTask.id === this.tempParentTaskId) { // Используем глобальную переменную
+                     await this.loadSubtasks(currentTask.id); // Используем глобальную переменную
+                }
             }
 
             this.showSuccess('Задача создана успешно!');
@@ -806,26 +967,91 @@ class App {
         }
     }
 
+    // --- Новое из index.txt ---
+    static async handleCreateSubtask() {
+        if (!currentTask || !currentTask.id) return; // Используем глобальную переменную
+        const title = document.getElementById('subtaskTitle').value.trim();
+        const description = ""; // Подзадачи без описания в index.txt
+        if (!title) {
+            this.showError('Введите название подзадачи');
+            return;
+        }
+
+        try {
+            // Получаем данные родительской задачи для наследования
+            const parentTaskResponse = await ApiService.getTask(currentTask.id); // Используем метод из index.txt
+            const parentTask = parentTaskResponse.task || parentTaskResponse;
+
+            const taskData = {
+                title,
+                description,
+                project_hash: currentProject.hash, // Используем глобальную переменную
+                priority: parentTask.priority || 'medium',
+                status: 'todo',
+                parent_task_id: currentTask.id // Используем глобальную переменную
+            };
+
+            // Наследуем исполнителя от родительской задачи
+            if (parentTask.assigned_to_id) {
+                taskData.assigned_to_id = parentTask.assigned_to_id;
+            }
+
+            console.log('Creating subtask with data:', taskData);
+            await ApiService.createTask(taskData); // Используем метод из index.txt
+
+            this.hideModal('createSubtaskModal');
+            // Reset form
+            const createSubtaskForm = document.getElementById('createSubtaskForm');
+            if (createSubtaskForm) {
+                createSubtaskForm.reset();
+            }
+
+            // Reload subtasks for the current task
+            if (currentTask) { // Используем глобальную переменную
+                await this.loadSubtasks(currentTask.id); // Используем глобальную переменную
+            }
+
+            this.showSuccess('Подзадача создана успешно!');
+        } catch (error) {
+            console.error('Error creating subtask:', error);
+            this.showError('Ошибка создания подзадачи: ' + error.message);
+        }
+    }
+
+
     static showEditTaskModal() {
-        if (!this.currentTask || !this.currentTask.id) {
-            console.error('No current task for editing:', this.currentTask);
+        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+            console.error('No current task for editing:', currentTask);
             this.showError('Ошибка: задача не выбрана');
             return;
         }
 
-        // Populate form fields
-        document.getElementById('editTaskTitle').value = this.currentTask.title || '';
-        document.getElementById('editTaskDescription').value = this.currentTask.description || '';
-        document.getElementById('editTaskPriority').value = this.currentTask.priority || 'medium';
-        document.getElementById('editTaskDueDate').value = this.currentTask.due_date ? this.currentTask.due_date.split('T')[0] : '';
-        document.getElementById('editTaskStatus').value = this.currentTask.status || 'todo';
+        // ИСПРАВЛЕНО: Проверяем существование элементов перед установкой значений
+        const editTaskTitle = document.getElementById('editTaskTitle');
+        const editTaskDescription = document.getElementById('editTaskDescription');
+        const editTaskPriority = document.getElementById('editTaskPriority');
+        const editTaskDueDate = document.getElementById('editTaskDueDate');
+        const taskStatusSelect = document.getElementById('taskStatusSelect'); // Добавлено для установки статуса
 
+        if (editTaskTitle) editTaskTitle.value = currentTask.title; // Используем глобальную переменную
+        if (editTaskDescription) editTaskDescription.value = currentTask.description || ''; // Используем глобальную переменную
+        if (editTaskPriority) editTaskPriority.value = currentTask.priority; // Используем глобальную переменную
+        if (editTaskDueDate) {
+            if (currentTask.due_date) {
+                const dueDate = new Date(currentTask.due_date); // Используем глобальную переменную
+                editTaskDueDate.value = dueDate.toISOString().split('T')[0];
+            } else {
+                editTaskDueDate.value = '';
+            }
+        }
+        if (taskStatusSelect) taskStatusSelect.value = currentTask.status; // Используем глобальную переменную
         this.showModal('editTaskModal');
     }
 
-    static async updateTask() {
-        if (!this.currentTask || !this.currentTask.id) {
-            this.showError('Задача не выбрана');
+    static async handleUpdateTask() {
+        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+            console.error('No current task for update:', currentTask);
+            this.showError('Ошибка: задача не выбрана');
             return;
         }
 
@@ -833,7 +1059,6 @@ class App {
         const description = document.getElementById('editTaskDescription').value.trim();
         const priority = document.getElementById('editTaskPriority').value;
         const dueDate = document.getElementById('editTaskDueDate').value;
-        const status = document.getElementById('editTaskStatus').value;
 
         if (!title) {
             this.showError('Введите название задачи');
@@ -844,8 +1069,7 @@ class App {
             const taskData = {
                 title,
                 description,
-                priority,
-                status // Include status in update
+                priority
             };
 
             if (dueDate) {
@@ -854,11 +1078,11 @@ class App {
                 taskData.due_date = null; // Explicitly set to null if cleared
             }
 
-            console.log('Updating task:', this.currentTask.id, taskData);
-            await ApiService.updateTask(this.currentTask.id, taskData);
+            console.log('Updating task:', currentTask.id, taskData); // Используем глобальную переменную
+            await ApiService.updateTask(currentTask.id, taskData); // Используем метод из index.txt
 
             this.hideModal('editTaskModal');
-            await this.openTask(this.currentTask.id); // Reload task view
+            await this.openTask(currentTask.id); // Перезагружаем задачу, используем глобальную переменную
             this.showSuccess('Задача обновлена успешно!');
         } catch (error) {
             console.error('Error updating task:', error);
@@ -867,28 +1091,33 @@ class App {
     }
 
     static showDeleteTaskModal() {
-        if (!this.currentTask || !this.currentTask.id) {
-            this.showError('Задача не выбрана');
+        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+            console.error('No current task for deletion:', currentTask);
+            this.showError('Ошибка: задача не выбрана');
             return;
         }
 
-        document.getElementById('deleteTaskName').textContent = this.currentTask.title;
+        // ИСПРАВЛЕНО: Проверяем существование элемента
+        const deleteTaskName = document.getElementById('deleteTaskName');
+        if (deleteTaskName) {
+            deleteTaskName.textContent = currentTask.title; // Используем глобальную переменную
+        }
         this.showModal('deleteTaskModal');
     }
 
-    static async deleteTask() {
-        if (!this.currentTask || !this.currentTask.id) {
+    static async handleDeleteTask() {
+        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
             this.showError('Задача не выбрана');
             return;
         }
 
         try {
-            await ApiService.deleteTask(this.currentTask.id);
+            await ApiService.deleteTask(currentTask.id); // Используем метод из index.txt
 
             this.hideModal('deleteTaskModal');
             // Go back to project view or wherever appropriate
-            if (this.currentProject) {
-                this.openProject(this.currentProject.hash);
+            if (currentProject) { // Используем глобальную переменную
+                this.openProject(currentProject.hash); // Используем глобальную переменную
             } else {
                 this.showDashboard();
             }
@@ -899,148 +1128,424 @@ class App {
         }
     }
 
-    // Search projects
-    static async searchProjects() {
-        const query = document.getElementById('searchProjectsInput').value.trim();
-        if (!query) {
-            document.getElementById('searchResultsList').innerHTML = '<p>Введите поисковый запрос</p>';
+    // --- Новые методы из index.txt ---
+
+    // Изменение статуса задачи
+    static async updateTaskStatus() { // Используем taskStatusSelect.value
+        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+            console.error('No current task for status update:', currentTask);
+            this.showError('Ошибка: задача не выбрана');
+            return;
+        }
+
+        const newStatus = document.getElementById('taskStatusSelect').value; // Получаем значение из селекта
+        if (!newStatus) {
+            this.showError('Выберите статус задачи');
             return;
         }
 
         try {
-            const response = await ApiService.searchProjects(query);
-            const results = response.results || [];
-            const exactMatchData = response.exact_match_data; // This might contain user-specific info like is_member, can_join
-            const title = response.title || query; // Use returned title if available (e.g., for hash search)
+            console.log('Updating task status:', currentTask.id, newStatus); // Используем глобальную переменную
+            const updatedTask = await ApiService.updateTaskStatus(currentTask.id, newStatus); // Используем метод из index.txt
 
-            if (!results || results.length === 0) {
-                document.getElementById('searchResultsList').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🔍</div>
-                        <p>Проекты не найдены</p>
-                        <p>Попробуйте изменить поисковый запрос</p>
-                    </div>`;
+            // Если задача выполнена, проверяем родительскую
+            if (newStatus === 'done') {
+                await this.completeAllChildTasks(currentTask.id); // Выполняем дочерние, если родительская выполнена
+            } else if (newStatus === 'todo') {
+                 await this.resetParentTasksStatus(currentTask.id); // Сбрасываем родительские, если дочерняя возвращена
+            }
+            await this.checkParentTaskStatus(currentTask.id);
+
+            // Обновляем currentTask
+            currentTask = updatedTask.task || updatedTask;
+            this.showSuccess('Статус задачи обновлен!');
+        } catch (error) {
+            console.error('Error updating task status:', error);
+            this.showError('Ошибка обновления статуса: ' + error.message);
+            // Восстанавливаем предыдущее значение если возможно
+            if (currentTask) { // Используем глобальную переменную
+                document.getElementById('taskStatusSelect').value = currentTask.status; // Используем глобальную переменную
+            }
+        }
+    }
+
+    // Проверка статуса родительской задачи
+    static async checkParentTaskStatus(taskId) {
+        if (!currentProject || !taskId) return; // Используем глобальную переменную
+
+        try {
+            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const tasks = response.tasks || [];
+            const currentTask = tasks.find(t => t.id === taskId);
+
+            if (currentTask && currentTask.parent_task_id) {
+                const parentTask = tasks.find(t => t.id === currentTask.parent_task_id);
+                if (!parentTask) return; // Родительская задача не найдена
+
+                // Получаем всех "братьев" текущей задачи (другие дочерние задачи того же родителя)
+                const responseSiblings = await ApiService.getTasks(currentProject.hash); // Нужно для обновленного списка
+                const tasksSiblings = responseSiblings.tasks || [];
+                const siblingTasks = tasksSiblings.filter(t => t.parent_task_id === parentTask.id);
+
+                // Проверяем, все ли дочерние задачи выполнены
+                const allChildrenDone = siblingTasks.every(child => child.status === 'done');
+
+                if (allChildrenDone && parentTask.status !== 'done') {
+                    // Все дочерние задачи выполнены - выполняем родительскую
+                    await ApiService.updateTaskStatus(parentTask.id, 'done'); // Используем метод из index.txt
+                    // Рекурсивно проверяем родительскую задачу
+                    await this.checkParentTaskStatus(parentTask.id);
+                } else if (!allChildrenDone && parentTask.status === 'done') {
+                    // Не все дочерние выполнены, но родительская стоит как done - возвращаем в todo
+                    await ApiService.updateTaskStatus(parentTask.id, 'todo'); // Используем метод из index.txt
+                }
+            }
+        } catch (error) {
+            console.error('Error checking parent task status:', error);
+        }
+    }
+
+    // Сброс статуса родительских задач
+    static async resetParentTasksStatus(taskId) {
+        if (!currentProject || !taskId) return; // Используем глобальную переменную
+
+        try {
+            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const tasks = response.tasks || [];
+            const currentTask = tasks.find(t => t.id === taskId);
+
+            if (currentTask && currentTask.parent_task_id) {
+                const parentTask = tasks.find(t => t.id === currentTask.parent_task_id);
+                if (!parentTask) return;
+
+                // Обновляем статус родительской задачи на 'todo'
+                if (parentTask.status !== 'todo') {
+                    await ApiService.updateTaskStatus(parentTask.id, 'todo'); // Используем метод из index.txt
+                }
+
+                // Рекурсивно сбрасываем статусы выше
+                await this.resetParentTasksStatus(parentTask.id);
+            }
+        } catch (error) {
+            console.error('Error resetting parent task status:', error);
+        }
+    }
+
+    // Выполнение всех дочерних задач
+    static async completeAllChildTasks(parentTaskId) {
+        if (!currentProject || !parentTaskId) return; // Используем глобальную переменную
+
+        try {
+            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const tasks = response.tasks || [];
+            const childTasks = tasks.filter(t => t.parent_task_id === parentTaskId);
+
+            for (const childTask of childTasks) {
+                if (childTask.status !== 'done') {
+                    await ApiService.updateTaskStatus(childTask.id, 'done'); // Используем метод из index.txt
+                    // Рекурсивно выполнить дочерние подзадачи
+                    await this.completeAllChildTasks(childTask.id);
+                }
+            }
+        } catch (error) {
+            console.error('Error completing child tasks:', error);
+        }
+    }
+
+    // Назначение задачи пользователю
+    static async assignTaskToUser(userId) { // Принимает userId
+        if (!currentTask || !currentTask.id || !userId) { // Используем глобальную переменную
+            this.showError('ID задачи и ID пользователя обязательны');
+            return;
+        }
+        try {
+            await ApiService.updateTask(currentTask.id, { assigned_to_id: userId }); // Используем метод из index.txt
+            this.showSuccess('Исполнитель задачи обновлен!');
+            // Перезагружаем задачу
+            if (currentTask && currentTask.id === currentTask.id) { // Используем глобальную переменную
+                await this.openTask(currentTask.id); // Используем глобальную переменную
+            }
+        } catch (error) {
+            console.error('Error assigning task:', error);
+            this.showError('Ошибка назначения исполнителя: ' + error.message);
+        }
+    }
+
+    // Загрузка подзадач
+    static async loadSubtasks(parentTaskId, level = 0, container = null) {
+        try {
+            if (!currentProject || !currentProject.hash) { // Используем глобальную переменную
+                console.error('No current project for loading subtasks');
+                document.getElementById('subtasksList').innerHTML = '<p>Ошибка загрузки подзадач</p>';
                 return;
             }
 
-            let html = `<div class="search-results-header"><h3>${this.escapeHtml(title)}</h3>${exactMatchData ? '<span class="search-type-badge">По хэшу</span>' : '<span class="search-type-badge">По названию</span>'}</div>`;
-            html += results.map(project => {
-                const stats = project.stats || {};
-                const requiresApproval = project.requires_approval;
-                const isPrivate = project.is_private;
+            const response = await ApiService.getTasks(currentProject.hash); // Используем метод из index.txt
+            const tasks = response.tasks || [];
+            const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
 
-                // Determine button text and action
-                let buttonText = 'Присоединиться';
-                let buttonAction = `App.handleJoinProject('${project.hash}')`;
-                let buttonClass = 'btn-primary';
+            const targetContainer = container || document.getElementById('subtasksList');
 
-                // FIRST: Check exactMatchData for user status
-                if (exactMatchData) {
-                    if (exactMatchData.is_member) {
-                        buttonText = 'Открыть проект';
-                        buttonAction = `App.openProject('${project.hash}')`;
-                        buttonClass = 'btn-success';
-                    } else if (!exactMatchData.can_join) {
-                        buttonText = 'Доступ закрыт';
-                        buttonAction = '';
-                        buttonClass = 'btn-secondary disabled';
-                    }
-                } else {
-                    // SECOND: If no exactMatchData, check project settings
-                    if (isPrivate && !requiresApproval) {
-                        // Private without approval - check if user can join (might require invitation, logic depends on backend)
-                        // For now, assume can't join without exact match data indicating otherwise
-                        buttonText = 'Доступ закрыт';
-                        buttonAction = '';
-                        buttonClass = 'btn-secondary disabled';
-                    } else if (isPrivate && requiresApproval) {
-                        buttonText = 'Отправить заявку';
-                        // buttonAction remains joinProject
-                    }
-                    // Public projects remain 'Присоединиться'
-                }
+            if (subtasks.length === 0 && level === 0) {
+                targetContainer.innerHTML = '<p>Подзадач нет</p>';
+                return;
+            }
 
-                return `
-                <div class="search-result-item">
-                    <div class="project-card">
-                        <div class="project-card-header">
-                            <h3 class="project-title">${this.escapeHtml(project.title)}</h3>
-                            <span class="project-type-badge">${isPrivate ? '🔒' : '🌐'}</span>
-                        </div>
-                        <p class="project-description">${this.escapeHtml(project.description || 'Без описания')}</p>
-                        <div class="project-stats">
-                            <span>Участников: ${stats.members_count || 0}</span>
-                            <span>Задач: ${stats.tasks_count || 0}</span>
-                            <span>Выполнено: ${stats.tasks_done || 0}</span>
-                            <span>Тип: ${isPrivate ? 'Приватный' : 'Публичный'}</span>
-                            ${isPrivate ? `<span>Одобрение: ${requiresApproval ? 'Требуется' : 'Не требуется'}</span>` : ''}
-                        </div>
-                        <div class="project-actions">
-                            <button class="btn ${buttonClass}" ${buttonAction ? `onclick="${buttonAction}"` : 'disabled'}>${buttonText}</button>
-                        </div>
+            let subtasksHtml = '';
+            subtasks.forEach(subtask => {
+                const paddingLeft = level * 20;
+                const childSubtasks = tasks.filter(task => task.parent_task_id === subtask.id);
+                const hasChildren = childSubtasks.length > 0;
+
+                subtasksHtml += `
+                <div class="subtask-item" style="margin-left: ${paddingLeft}px; display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 5px;">
+                    <span style="width: 16px;"></span> <!-- Spacer for indentation -->
+                    <input type="checkbox" ${subtask.status === 'done' ? 'checked' : ''}
+                           onchange="App.toggleSubtaskStatus(${subtask.id}, this.checked)"
+                           style="cursor: pointer;"
+                           onclick="event.stopPropagation()">
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold;" onclick="App.openTask(${subtask.id})">${this.escapeHtml(subtask.title)}</div>
                     </div>
+                    <div style="font-size: 12px; color: #666;">${this.getStatusText(subtask.status)}</div>
+                    <button onclick="App.showCreateSubtaskModalForTask(${subtask.id}); event.stopPropagation();"
+                            style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">+</button>
                 </div>`;
-            }).join('');
 
-            document.getElementById('searchResultsList').innerHTML = html;
+                // Recursively add child subtasks
+                if (hasChildren) {
+                    const childContainer = document.createElement('div');
+                    childContainer.className = 'subtask-children';
+                    this.loadSubtasks(subtask.id, level + 1, childContainer);
+                    subtasksHtml += childContainer.outerHTML;
+                }
+            });
+
+            targetContainer.innerHTML = subtasksHtml;
+        } catch (error) {
+            console.error('Error loading subtasks:', error);
+            this.showError('Ошибка загрузки подзадач: ' + error.message);
+        }
+    }
+
+    // Переключение статуса подзадачи
+    static async toggleSubtaskStatus(taskId, isDone) {
+        try {
+            const newStatus = isDone ? 'done' : 'todo';
+            // Обновляем статус текущей задачи
+            await ApiService.updateTaskStatus(taskId, newStatus); // Используем метод из index.txt
+
+            // Если задача выполняется, выполняем все дочерние задачи
+            if (isDone) {
+                await this.completeAllChildTasks(taskId);
+            } else {
+                // Если задача возвращается в "к выполнению", сбрасываем статус родительских задач
+                await this.resetParentTasksStatus(taskId);
+            }
+
+            // Проверяем статус родительской задачи
+            await this.checkParentTaskStatus(taskId);
+
+            // Перезагружаем отображение подзадач
+            if (currentTask) { // Используем глобальную переменную
+                await this.loadSubtasks(currentTask.id); // Используем глобальную переменную
+            }
+            this.showSuccess('Статус задачи обновлен!');
+        } catch (error) {
+            console.error('Error toggling subtask status:', error);
+            this.showError('Ошибка обновления статуса задачи: ' + error.message);
+        }
+    }
+
+
+    // Search projects
+    static async searchProjects() {
+        const searchTerm = document.getElementById('searchProjectsInput').value.trim();
+        try {
+             if (!searchTerm) {
+                await this.loadRecentPublicProjects(); // --- Вызываем, если поле пустое ---
+                return;
+            }
+
+            // Если поисковый запрос похож на хэш (только буквы и цифры, длина 6+ символов), пробуем поиск по хэшу
+            if (/^[a-zA-Z0-9]{6,}$/.test(searchTerm)) {
+                console.log('Searching by exact hash:', searchTerm);
+                try {
+                    await this.searchProjectByExactHash(searchTerm);
+                    return; // Если нашли по хэшу, выходим
+                } catch (error) {
+                    console.log('Project not found by hash, trying by name...'); // Выводим в консоль, как в index.txt
+                    // Если не нашли по хэшу, продолжаем поиск по названию
+                    await this.searchProjectsByQuery(searchTerm);
+                    return;
+                }
+            } else {
+                // Поиск только по названию
+                await this.searchProjectsByQuery(searchTerm);
+                return;
+            }
         } catch (error) {
             console.error('Error searching projects:', error);
             this.showError('Ошибка поиска проектов: ' + error.message);
         }
     }
 
-    static async handleJoinProject(projectHash) {
+    static async searchProjectByExactHash(hash) {
         try {
-            await ApiService.joinProject(projectHash);
-            this.showSuccess('Заявка на вступление отправлена успешно!');
-            // Optionally, reload the search results or update the button state
+            const response = await ApiService.getProjectByHashExact(hash); // Используем метод из index.txt
+            const project = response.project;
+
+            if (project) {
+                // Показываем найденный проект
+                const title = `Проект по хэшу: "${hash}"`;
+                this.renderSearchResults([project], title); // Используем метод из index.txt
+            } else {
+                // Если проект по хэшу не найден, выбрасываем ошибку для перехода к поиску по названию
+                throw new Error('Project not found by hash');
+            }
+        } catch (error) {
+            console.error('Error searching project by exact hash:', error);
+            // Не показываем ошибку, так как это может быть просто неправильный хэш, и мы переходим к поиску по названию
+            throw error; // Перебрасываем ошибку для вызова обычного поиска
+        }
+    }
+
+    static async searchProjectsByQuery(query) {
+        try {
+            const response = await ApiService.searchPublicProjects(query); // Используем метод из index.txt
+            const projects = response.projects || [];
+            const title = query ? `Результаты поиска по названию: "${query}"` : 'Публичные проекты';
+            this.renderSearchResults(projects, title); // Используем метод из index.txt
+        } catch (error) {
+            console.error('Error searching projects by query:', error);
+            // Не показываем ошибку здесь, так как она обрабатывается в searchProjects
+        }
+    }
+
+    static renderSearchResults(projects, title) { // Используем метод из index.txt
+        const container = document.getElementById('searchResultsList');
+        if (!projects || projects.length === 0) {
+            container.innerHTML = `<div style="text-align: center; padding: 40px; border: 1px solid #ccc; border-radius: 4px;">
+                <p>Проекты не найдены</p>
+                <p>Попробуйте изменить поисковый запрос или создать новый проект</p>
+            </div>`;
+            return;
+        }
+
+        let html = `<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;"><h3 style="margin: 0;">${title}</h3>${title.includes('хэшу') ? '<span class="search-type-badge">По хэшу</span>' : '<span class="search-type-badge">По названию</span>'}</div>`;
+        html += projects.map(project => {
+            const stats = project.stats || {};
+            const requiresApproval = project.requires_approval;
+            const isPrivate = project.is_private;
+
+            // Определяем текст и действие для кнопки
+            let buttonText = 'Присоединиться';
+            let buttonAction = `App.handleJoinProject('${project.hash}')`; // ИЗМЕНЕНО: используем handleJoinProject вместо joinProject
+            let buttonClass = 'btn-primary';
+
+            // ПЕРВОЕ: Проверяем exactMatchData для определения статуса пользователя (если бы оно было в ответе)
+            // В упрощенной версии предполагаем, что можно присоединиться, если публичный или требует одобрения
+            if (isPrivate && !requiresApproval) {
+                // Приватный без одобрения - доступ закрыт для посторонних
+                buttonText = 'Доступ закрыт';
+                buttonAction = '';
+                buttonClass = 'btn-secondary';
+            } else if (isPrivate && requiresApproval) {
+                buttonText = 'Отправить заявку';
+                buttonClass = 'btn-warning';
+            } else if (isPrivate) {
+                buttonText = 'Запросить доступ';
+                buttonClass = 'btn-info';
+            }
+
+            // Формируем атрибут disabled
+            const disabledAttr = (buttonClass.includes('btn-secondary') || !buttonAction) ? 'disabled' : '';
+
+            return `
+            <div class="search-result-item">
+                <div class="project-card">
+                    <div class="project-card-header">
+                        <h3 class="project-title">${this.escapeHtml(project.title)}</h3>
+                        <span class="project-type-badge">${isPrivate ? '🔒' : '🌐'}</span>
+                    </div>
+                    <p class="project-description">${this.escapeHtml(project.description || 'Без описания')}</p>
+                    <div class="project-stats">
+                        <span>Участников: ${stats.members_count || 0}</span>
+                        <span>Задач: ${stats.tasks_count || 0}</span>
+                        <span>Выполнено: ${stats.tasks_done || 0}</span>
+                        <span>Тип: ${isPrivate ? 'Приватный' : 'Публичный'}</span>
+                        ${isPrivate ? `<span>Одобрение: ${requiresApproval ? 'Требуется' : 'Не требуется'}</span>` : ''}
+                    </div>
+                    <div style="font-size: 12px; color: #999;">Хэш: <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">${project.hash}</code> • Создан: ${new Date(project.created_at).toLocaleDateString()}${project.owner ? ` • Владелец: ${this.escapeHtml(project.owner.full_name)}` : ''}</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; min-width: 150px;">
+                        <button onclick="${buttonAction}"
+                                style="padding: 8px 16px; background: ${this.getButtonColor(buttonClass)}; color: white; border: none; border-radius: 4px; cursor: pointer;" ${disabledAttr}>${buttonText}</button>
+                        <button onclick="App.openProjectPreview('${project.hash}')"
+                                style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Подробнее</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        container.innerHTML = html;
+    }
+
+    static getButtonColor(buttonClass) { // Используем метод из index.txt
+        const colorMap = {
+            'btn-primary': '#007bff',
+            'btn-warning': '#ffc107',
+            'btn-info': '#17a2b8',
+            'btn-success': '#28a745',
+            'btn-secondary': '#6c757d'
+        };
+        return colorMap[buttonClass] || '#007bff';
+    }
+
+    static async handleJoinProject(projectHash) { // Используем метод из index.txt
+        try {
+            console.log('Joining project:', projectHash);
+            const response = await ApiService.joinProject(projectHash); // Используем метод из index.txt
+
+            if (response.status === 'joined') {
+                this.showSuccess('Вы успешно присоединились к проекту!');
+                await this.openProject(projectHash);
+            } else if (response.status === 'pending_approval') {
+                this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
+                this.showDashboard(); // Закрываем поиск и возвращаемся к дашборду
+            } else {
+                this.showError('Неизвестный статус ответа: ' + response.status);
+            }
         } catch (error) {
             console.error('Error joining project:', error);
-            if (error.message.includes('409') && error.message.includes('already member')) {
+            if (error.message.includes('400') && error.message.includes('already a member')) {
                 this.showError('Вы уже являетесь участником этого проекта');
+                await this.openProject(projectHash);
             } else if (error.message.includes('400') && error.message.includes('already pending')) {
                 this.showError('Заявка на вступление уже отправлена');
+            } else if (error.message.includes('403')) {
+                this.showError('Доступ к проекту запрещен');
+            } else if (error.message.includes('404')) {
+                this.showError('Проект не найден');
             } else {
                 this.showError('Ошибка вступления в проект: ' + error.message);
             }
         }
     }
 
-    static showProjectPreviewModal(project, projectData) {
-        const stats = project.stats || {};
-        const modalBody = document.getElementById('projectPreviewBody');
-        const joinBtn = document.getElementById('joinProjectFromPreviewBtn');
-
-        modalBody.innerHTML = `
-            <div class="project-preview-info">
-                <h3 class="project-title">${this.escapeHtml(project.title)}</h3>
-                <p class="project-description">${this.escapeHtml(project.description || 'Без описания')}</p>
-                <div class="project-stats">
-                    <span>Участников: ${stats.members_count || 0}</span>
-                    <span>Задач: ${stats.tasks_count || 0}</span>
-                    <span>Выполнено: ${stats.tasks_done || 0}</span>
-                    <span>Тип: ${project.is_private ? 'Приватный' : 'Публичный'}</span>
-                    ${project.is_private ? `<span>Одобрение: ${project.requires_approval ? 'Требуется' : 'Не требуется'}</span>` : ''}
-                </div>
-                <div class="project-hash-info">
-                    Хэш проекта: <span>${project.hash}</span>
-                </div>
-            </div>`;
-
-        // Show/hide join button based on project data
-        if (projectData && projectData.can_join && !projectData.is_member) {
-            joinBtn.style.display = 'inline-block';
-            joinBtn.onclick = () => this.joinProjectFromPreview(project.hash);
-        } else {
-            joinBtn.style.display = 'none';
-        }
-
-        this.showModal('projectPreviewModal');
+    static showProjectPreviewModal(project, projectData) { // Используем метод из index.txt
+        // Используем renderSearchResults для отображения одного проекта
+        this.renderSearchResults([project], `Предварительный просмотр: ${project.title}`);
+        // Добавляем кнопку "Присоединиться" если можно
+        const container = document.getElementById('searchResultsList');
+        const joinBtnHtml = projectData && projectData.can_join && !projectData.is_member
+            ? `<button onclick="App.joinProjectFromPreview('${project.hash}')" style="margin-top: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Присоединиться</button>`
+            : '';
+        container.innerHTML += joinBtnHtml;
     }
 
-    static async openProjectPreview(projectHash) {
+    static async openProjectPreview(projectHash) { // Используем метод из index.txt
         try {
-            const response = await ApiService.getProjectByHashExact(projectHash);
+            const response = await ApiService.getProjectByHashExact(projectHash); // Используем метод из index.txt
             const project = response.project;
 
             // Show modal with project info
@@ -1051,17 +1556,30 @@ class App {
         }
     }
 
-    static async joinProjectFromPreview(projectHash) {
+    static async joinProjectFromPreview(projectHash) { // Используем метод из index.txt
         try {
-            await ApiService.joinProject(projectHash);
-            this.hideModal('projectPreviewModal');
-            this.showSuccess('Заявка на вступление отправлена успешно!');
+            const response = await ApiService.joinProject(projectHash); // Используем метод из index.txt
+
+            if (response.status === 'joined') {
+                this.showSuccess('Вы успешно присоединились к проекту!');
+                await this.openProject(projectHash);
+            } else if (response.status === 'pending_approval') {
+                this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
+                this.showDashboard();
+            } else {
+                this.showError('Неизвестный статус ответа: ' + response.status);
+            }
         } catch (error) {
             console.error('Error joining project from preview:', error);
-            if (error.message.includes('409') && error.message.includes('already member')) {
+             if (error.message.includes('400') && error.message.includes('already a member')) {
                 this.showError('Вы уже являетесь участником этого проекта');
+                await this.openProject(projectHash);
             } else if (error.message.includes('400') && error.message.includes('already pending')) {
                 this.showError('Заявка на вступление уже отправлена');
+            } else if (error.message.includes('403')) {
+                this.showError('Доступ к проекту запрещен');
+            } else if (error.message.includes('404')) {
+                this.showError('Проект не найден');
             } else {
                 this.showError('Ошибка вступления в проект: ' + error.message);
             }
@@ -1070,16 +1588,15 @@ class App {
 
     // Project members management
     static showProjectMembersManagement() {
-        document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-        document.getElementById('projectMembersView').style.display = 'block';
+        this.showView('projectMembersView');
         this.loadProjectMembersManagement();
     }
 
     static async loadProjectMembersManagement() {
-        if (!this.currentProject) return;
+        if (!currentProject) return; // Используем глобальную переменную
 
         try {
-            const response = await ApiService.getProjectMembers(this.currentProject.hash);
+            const response = await ApiService.getProjectMembers(currentProject.hash); // Используем метод из index.txt
             const members = response.members || [];
             const container = document.getElementById('projectMembersManagementList');
 
@@ -1089,19 +1606,38 @@ class App {
             }
 
             container.innerHTML = members.map(member => {
+                const memberData = member.user || member;
+                const displayName = (memberData.full_name && memberData.full_name.trim() !== '') ? memberData.full_name : (member.full_name && member.full_name.trim() !== '') ? member.full_name : `Участник #${member.user_id || memberData.id}`;
+                const isCurrentUser = (member.user_id || memberData.id) === currentUser.id; // Используем глобальную переменную
+                const isOwnerMember = member.role === ProjectRole.OWNER;
+                const isAdminMember = member.role === ProjectRole.ADMIN;
+
+                // Определяем доступные действия
+                let canChangeRole = false;
+                let canRemoveMember = false;
+
+                if (currentUser.id === currentProject.owner_id) { // Current user is owner, используем глобальные переменные
+                    canChangeRole = !isCurrentUser && !isOwnerMember;
+                    canRemoveMember = !isCurrentUser && !isOwnerMember;
+                } else if (currentUser.role === ProjectRole.ADMIN) { // Current user is admin, используем глобальные переменные
+                    canChangeRole = !isCurrentUser && !isOwnerMember && !isAdminMember;
+                    canRemoveMember = !isCurrentUser && !isOwnerMember && !isAdminMember;
+                }
+
                 return `
                 <div class="member-management-item">
                     <div class="member-info">
-                        <span class="member-name">${this.escapeHtml(member.name)}</span>
-                        <span class="member-role">${this.escapeHtml(member.role)}</span>
-                        <span class="member-email">${this.escapeHtml(member.email)}</span>
+                        <span class="member-name">${this.escapeHtml(displayName)}</span>
+                        <span class="member-role">${this.getRoleText(member.role)}</span>
+                        <span class="member-email">${this.escapeHtml(memberData.email || 'N/A')}</span>
                     </div>
                     <div class="member-actions">
-                        <select class="role-select" onchange="App.updateMemberRole('${this.currentProject.hash}', ${member.id}, this.value)">
+                        ${canChangeRole ? `<select class="role-select" onchange="App.updateMemberRole(${member.user_id || memberData.id}, this.value)">
                             <option value="member" ${member.role === 'member' ? 'selected' : ''}>Участник</option>
                             <option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Администратор</option>
                         </select>
-                        <button class="btn btn-danger btn-sm" onclick="App.removeMember('${this.currentProject.hash}', ${member.id})">Удалить</button>
+                        <button onclick="App.prepareUpdateMemberRole(${member.user_id || memberData.id})" class="btn btn-primary btn-sm">Обновить</button>` : ''}
+                        ${canRemoveMember ? `<button onclick="App.prepareRemoveMember(${member.user_id || memberData.id})" class="btn btn-danger btn-sm">Удалить</button>` : ''}
                     </div>
                 </div>`;
             }).join('');
@@ -1112,63 +1648,92 @@ class App {
         }
     }
 
-    static async updateMemberRole(projectHash, memberId, newRole) {
+    static prepareUpdateMemberRole(memberId) {
+        currentMemberToUpdate = memberId;
+        this.showModal('updateMemberRoleModal');
+    }
+
+    static prepareRemoveMember(memberId) {
+        currentMemberToRemove = memberId;
+        this.showModal('removeMemberModal');
+    }
+
+    static async updateMemberRole(memberId, newRole) {
         try {
-            await ApiService.manageProjectMember(projectHash, memberId, 'update_role', newRole);
+            await ApiService.updateProjectMemberRole(currentProject.hash, memberId, newRole); // Используем метод из index.txt
             this.showSuccess('Роль участника обновлена');
             // Reload the management list
-            this.loadProjectMembersManagement();
+            await this.loadProjectMembersManagement();
         } catch (error) {
             console.error('Error updating member role:', error);
             this.showError('Ошибка обновления роли: ' + error.message);
         }
     }
 
-    static async removeMember(projectHash, memberId) {
-        if (!confirm('Вы уверены, что хотите удалить этого участника?')) return;
+    static async handleUpdateMemberRole() {
+        if (!currentMemberToUpdate) return;
+        const newRole = document.getElementById('updateMemberRoleSelect').value;
+        await this.updateMemberRole(currentMemberToUpdate, newRole);
+        this.hideModal('updateMemberRoleModal');
+    }
 
+    static async removeMember(memberId) {
         try {
-            await ApiService.manageProjectMember(projectHash, memberId, 'remove');
+            await ApiService.removeProjectMember(currentProject.hash, memberId); // Используем метод из index.txt
             this.showSuccess('Участник удален');
             // Reload the management list
-            this.loadProjectMembersManagement();
+            await this.loadProjectMembersManagement();
         } catch (error) {
             console.error('Error removing member:', error);
             this.showError('Ошибка удаления участника: ' + error.message);
         }
     }
 
+    static async handleRemoveMember() {
+        if (!currentMemberToRemove) return;
+        await this.removeMember(currentMemberToRemove);
+        this.hideModal('removeMemberModal');
+    }
+
     // Join requests
     static showJoinRequests() {
-        document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-        document.getElementById('joinRequestsView').style.display = 'block';
+        this.showView('joinRequestsView');
         this.loadJoinRequests();
     }
 
     static async loadJoinRequests() {
-        if (!this.currentProject) return;
+        if (!currentProject) return; // Используем глобальную переменную
 
         try {
-            const response = await ApiService.getJoinRequests(this.currentProject.hash);
-            const requests = response.requests || [];
+            const response = await ApiService.getProjectJoinRequests(currentProject.hash); // Используем метод из index.txt
+            const joinRequests = response.requests || [];
             const container = document.getElementById('joinRequestsList');
 
-            if (!requests || requests.length === 0) {
+            if (!joinRequests || joinRequests.length === 0) {
                 container.innerHTML = '<p>Заявок нет</p>';
                 return;
             }
 
-            container.innerHTML = requests.map(request => {
+            container.innerHTML = joinRequests.map(request => {
+                const requestDate = request.created_at;
+                const formattedDate = requestDate ? new Date(requestDate).toLocaleString() : 'Дата не указана';
+                // Определяем статус и доступные действия
+                const statusText = this.getJoinRequestStatusText(request.status); // --- Предполагаемая функция ---
+                const statusColor = this.getJoinRequestStatusColor(request.status); // --- Предполагаемая функция ---
+                const canApprove = request.status === 'pending';
+                const canReject = request.status === 'pending';
+
                 return `
                 <div class="join-request-item">
-                    <div class="request-info">
-                        <span class="requester-name">${this.escapeHtml(request.user_name)}</span>
-                        <span class="requester-email">${this.escapeHtml(request.user_email)}</span>
-                        <span class="request-date">${new Date(request.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div class="request-actions">
-                        <button class="btn btn-success btn-sm" onclick="App.handleJoinRequest('${this.currentProject.hash}', ${request.id}, 'approve')">Одобрить</button>
-                        <button class="btn btn-danger btn-sm" onclick="App.handleJoinRequest('${this.currentProject.hash}', ${request.id}, 'reject')">Отклонить</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <strong>${this.escapeHtml(request.user_name)}</strong> (${this.escapeHtml(request.user_email)}) - ${formattedDate}
+                            <span style="color: ${statusColor};">${statusText}</span>
+                        </div>
+                        <div class="request-actions">
+                            ${canApprove ? `<button class="btn btn-success btn-sm" onclick="App.handleApproveRequest(${request.id})">Одобрить</button>` : ''}
+                            ${canReject ? `<button class="btn btn-danger btn-sm" onclick="App.handleRejectRequest(${request.id})">Отклонить</button>` : ''}
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -1179,15 +1744,111 @@ class App {
         }
     }
 
-    static async handleJoinRequest(projectHash, requestId, action) {
+    static getJoinRequestStatusText(status) {
+        const map = { 'pending': 'Ожидает', 'approved': 'Одобрена', 'rejected': 'Отклонена' };
+        return map[status] || status;
+    }
+
+    static getJoinRequestStatusColor(status) {
+        const map = { 'pending': '#ffc107', 'approved': '#28a745', 'rejected': '#dc3545' };
+        return map[status] || '#6c757d';
+    }
+
+    static async handleApproveRequest(requestId) { // Используем метод из index.txt
+        if (!currentProject) return; // Используем глобальную переменную
         try {
-            await ApiService.handleJoinRequest(projectHash, requestId, action);
-            this.showSuccess(action === 'approve' ? 'Заявка одобрена' : 'Заявка отклонена');
-            // Reload the requests list
-            this.loadJoinRequests();
+            console.log('Approving join request:', requestId, 'for project:', currentProject.hash); // Используем глобальную переменную
+            await ApiService.approveJoinRequest(currentProject.hash, requestId); // Используем метод из index.txt
+            this.showSuccess('Заявка одобрена!');
+            await this.showJoinRequests(); // Перезагружаем список
         } catch (error) {
-            console.error('Error handling join request:', error);
-            this.showError(`Ошибка ${action === 'approve' ? 'одобрения' : 'отклонения'} заявки: ` + error.message);
+            console.error('Error approving join request:', error);
+            if (error.message.includes('404')) {
+                this.showError('Заявка не найдена. Возможно, она уже была обработана.');
+            } else {
+                this.showError('Ошибка одобрения заявки: ' + error.message);
+            }
+        }
+    }
+
+    static async handleRejectRequest(requestId) { // Используем метод из index.txt
+        if (!currentProject) return; // Используем глобальную переменную
+        try {
+            console.log('Rejecting join request:', requestId, 'for project:', currentProject.hash); // Используем глобальную переменную
+            await ApiService.rejectJoinRequest(currentProject.hash, requestId); // Используем метод из index.txt
+            this.showSuccess('Заявка отклонена!');
+            await this.showJoinRequests(); // Перезагружаем список
+        } catch (error) {
+            console.error('Error rejecting join request:', error);
+            if (error.message.includes('404')) {
+                this.showError('Заявка не найдена. Возможно, она уже была обработана.');
+            } else {
+                this.showError('Ошибка отклонения заявки: ' + error.message);
+            }
+        }
+    }
+
+    // Settings
+    static async loadSettings() { // Используем метод из index.txt
+        try {
+            const userData = await ApiService.getCurrentUser(); // Используем метод из index.txt
+            document.getElementById('userFullName').value = userData.full_name || '';
+            document.getElementById('userUsername').value = userData.username || '';
+
+            // Загружаем предпочтения пользователя
+            // Предположим, что они входят в состав userSettings или загружаются отдельно
+            // const userPrefs = await ApiService.getUserPreferences(); // Если есть такой метод
+            // document.getElementById('userTheme').value = userPrefs.theme || 'light';
+            // document.getElementById('userNotificationsEnabled').checked = userPrefs.notifications_enabled || false;
+            // document.getElementById('userCompactView').checked = userPrefs.compact_view || false;
+
+            // Или используем уже загруженные userSettings
+            document.getElementById('userTheme').value = userSettings.theme || 'light';
+            document.getElementById('userNotificationsEnabled').checked = userSettings.notifications_enabled || false;
+            document.getElementById('userCompactView').checked = userSettings.compact_view || false;
+
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            this.showError('Ошибка загрузки настроек: ' + error.message);
+        }
+    }
+
+    static async handleSaveSettings() { // Используем метод из index.txt
+        try {
+            const fullName = document.getElementById('userFullName').value.trim();
+            const username = document.getElementById('userUsername').value.trim();
+
+            // Обновляем данные пользователя
+            if (fullName || username) {
+                await ApiService.updateCurrentUser({ // Используем метод из index.txt
+                    full_name: fullName,
+                    username: username
+                });
+            }
+
+            // Обновляем настройки
+            await ApiService.updateUserPreferences({ // Используем метод из index.txt
+                theme: document.getElementById('userTheme').value,
+                notifications_enabled: document.getElementById('userNotificationsEnabled').checked,
+                compact_view: document.getElementById('userCompactView').checked
+            });
+
+            this.hideModal('settingsModal');
+            this.showSuccess('Настройки сохранены успешно!');
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            this.showError('Ошибка сохранения настроек: ' + error.message);
+        }
+    }
+
+    static async resetUserPreferences() { // Используем метод из index.txt
+        try {
+            await ApiService.resetUserPreferences(); // Используем метод из index.txt
+            this.hideModal('settingsModal');
+            this.showSuccess('Настройки сброшены к значениям по умолчанию!');
+        } catch (error) {
+            console.error('Error resetting preferences:', error);
+            this.showError('Ошибка сброса настроек: ' + error.message);
         }
     }
 
@@ -1197,6 +1858,8 @@ class App {
         if (modal) {
             modal.classList.add('active');
             // Trap focus? Add event listener for Escape key?
+        } else {
+             console.error(`Modal with id '${modalId}' not found`); // --- Добавлено из index.txt ---
         }
     }
 
