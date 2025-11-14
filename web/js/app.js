@@ -71,39 +71,40 @@ class AuthManager {
 
 // Основное приложение
 class App {
-    static async init() {
-        try {
-            console.log('Initializing app...');
+  static async init() {
+      try {
+          console.log('Initializing app...');
 
-            // Инициализируем аутентификацию
-            currentUser = await AuthManager.initialize();
+          // Инициализируем аутентификацию
+          currentUser = await AuthManager.initialize();
 
-            // Показываем основное приложение
-            document.getElementById('app').style.display = 'block';
-            // Плавно скрываем заставку
-            const loadingOverlay = document.getElementById('loading');
-            if (loadingOverlay) {
-                // Вызываем событие завершения загрузки
-                window.dispatchEvent(new Event('appLoaded'));
-                // Скрываем через небольшую задержку для анимации
-                setTimeout(() => {
-                    loadingOverlay.style.display = 'none';
-                }, 500); // Соответствует transition
-            }
+          // Загружаем данные
+          await this.loadData();
 
+          // Настраиваем обработчики событий
+          this.setupEventListeners();
 
-            // Загружаем данные
-            await this.loadData();
+          // ИСПРАВЛЕНО: Показываем кнопку "Начать" вместо автоматического скрытия заставки
+          showStartButton();
+          // ИСПРАВЛЕНО: Добавляем обработчик клика на кнопку "Начать"
+          attachStartButtonListener();
 
-            // Настраиваем обработчики событий
-            this.setupEventListeners();
+          // ИСПРАВЛЕНО: Обновляем прогресс-бар до 100% и меняем цвет
+          const progressBar = document.getElementById('loadingBarProgress');
+          if (progressBar) {
+              progressBar.style.width = '100%';
+              // Дополнительная анимация завершения, если нужно
+              setTimeout(() => {
+                  progressBar.style.background = 'var(--success)'; // Зеленый цвет при завершении
+              }, 100);
+          }
 
-            console.log('App initialized successfully');
-        } catch (error) {
-            console.error('App initialization failed:', error);
-            this.showError('Ошибка инициализации приложения: ' + error.message);
-        }
-    }
+          console.log('App initialized successfully');
+      } catch (error) {
+          console.error('App initialization failed:', error);
+          this.showError('Ошибка инициализации приложения: ' + error.message);
+      }
+  }
 
     static setupEventListeners() {
         // Navigation
@@ -1936,26 +1937,33 @@ function initSparkAnimation() {
 function initLoadingProgress() {
     const progressBar = document.getElementById('loadingBarProgress');
     if (!progressBar) return;
+}
 
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += Math.random() * 10; // Случайный прирост
-        if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
-        }
-        progressBar.style.width = `${progress}%`;
-    }, 200); // Обновляем каждые 200мс
-
-    // Останавливаем прогресс при полной загрузке
-    window.addEventListener('appLoaded', () => {
-        clearInterval(interval);
-        progressBar.style.width = '100%';
-        // Дополнительная анимация завершения, если нужно
+function showStartButton() {
+    const startButton = document.getElementById('startButton');
+    if (startButton) {
+        // Плавно появляем кнопку
         setTimeout(() => {
-            progressBar.style.background = 'var(--success)'; // Зеленый цвет при завершении
-        }, 100);
-    });
+             startButton.style.display = 'inline-block';
+        }, 300); // Небольшая задержка для завершения анимации прогресса
+    }
+}
+
+function attachStartButtonListener() {
+    const startButton = document.getElementById('startButton');
+    if (startButton) {
+        startButton.addEventListener('click', () => {
+            const loadingOverlay = document.getElementById('loading');
+            if (loadingOverlay) {
+                // Вызываем событие завершения загрузки
+                window.dispatchEvent(new Event('appLoaded'));
+                // Скрываем заставку через небольшую задержку для анимации
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                }, 300); // Соответствует transition
+            }
+        });
+    }
 }
 
 // Инициализация приложения после загрузки DOM
