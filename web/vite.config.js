@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import { resolve } from 'path'
 
 export default defineConfig({
     plugins: [],
@@ -8,10 +9,14 @@ export default defineConfig({
         sourcemap: false,
         rollupOptions: {
             input: {
-                main: './index.html'
+                main: resolve(__dirname, 'index.html')
             }
-        }
+        },
+        // Добавьте эту настройку для копирования статических файлов
+        assetsDir: 'assets',
+        copyPublicDir: true
     },
+    publicDir: 'public',
     server: {
         port: 3000,
         open: true
