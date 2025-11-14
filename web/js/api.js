@@ -66,12 +66,8 @@ class ApiService {
     }
 
     // Auth endpoints
-    static async getAuthToken(maxId, fullName, username) {
-        return this.post('/auth/token', {
-            max_id: maxId,
-            full_name: fullName,
-            username: username
-        });
+    static async getAuthToken(testId, fullName, email) {
+        return this.post('/auth/token', { test_id: testId, full_name: fullName, email });
     }
 
     static async getCurrentUser() {

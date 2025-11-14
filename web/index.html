@@ -11,9 +11,20 @@
     <script src="https://st.max.ru/js/max-web-app.js"></script>
 </head>
 <body class="safe-area">
+    <!-- ИСПРАВЛЕНО: Новая структура загрузочной заставки -->
     <div id="loading" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <p class="loading-text">Загрузка приложения...</p>
+        <div class="loading-content">
+            <div class="icon-container"> <!-- Контейнер для иконки и орбиты -->
+                <div class="loading-icon"></div>
+                <div class="icon-orbit"></div>
+            </div>
+            <h2 class="loading-text">Project Pilot Pro</h2>
+            <p class="loading-subtitle">Запуск системы управления...</p>
+            <div class="loading-bar-container">
+                <div class="loading-bar-progress" id="loadingBarProgress"></div>
+            </div>
+        </div>
+        <div class="spark-container" id="sparkContainer"></div> <!-- Контейнер для искр -->
     </div>
 
     <div id="app" style="display: none;">
@@ -51,6 +62,12 @@
                     <div class="dashboard-header">
                         <h2 class="dashboard-title">Дашборд</h2>
                         <button class="btn btn-primary" id="createProjectBtn">Создать проект</button>
+                    </div>
+                    <!-- Добавлены элементы для статистики -->
+                    <div class="dashboard-stats">
+                        <div class="stat-item">Проектов: <span id="projectsCount">0</span></div>
+                        <div class="stat-item">Задач: <span id="tasksCount">0</span></div>
+                        <div class="stat-item">Недавних задач: <span id="recentTasksCount">0</span></div>
                     </div>
                     <div id="projectsList" class="projects-grid">
                         <!-- Project cards will be loaded here -->
@@ -576,7 +593,6 @@
         </div>
     </div>
 
-    <!-- ИСПРАВЛЕНО: Удалены строки подключения несуществующих JS файлов компонентов -->
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
 </body>

@@ -217,39 +217,176 @@ body {
   margin-top: var(--space-2);
 }
 
-/* Loading Overlay */
+/* Loading Overlay (новый стиль, вдохновленный кодом друга, но под тематику проекта) */
 .loading-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: white;
+  /* ИСПРАВЛЕНО: градиент из ТЗ */
+  background: linear-gradient(135deg, var(--neutral-800) 0%, var(--neutral-900) 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 10000;
+  transition: opacity 0.5s ease, visibility 0.5s ease; /* Плавное исчезновение */
+  color: white; /* Белый цвет по умолчанию */
 }
 
-.loading-spinner {
+/* Скрытый стиль */
+.loading-overlay[style*="display: none"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loading-content {
+  text-align: center;
+  position: relative;
+}
+
+/* Иконка "ракеты" или "штурвала" вместо простого спиннера */
+.loading-icon {
+  width: 60px; /* Увеличил размер */
+  height: 60px; /* Увеличил размер */
+  margin: 0 auto 20px; /* Центрирование и отступ */
+  position: relative; /* Для орбиты */
+  z-index: 2; /* Поверх орбиты */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: pulse 2s infinite; /* Легкая пульсация */
+}
+
+/* Пример стилизации иконки как "штурвала" проекта */
+.loading-icon::before,
+.loading-icon::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--max-primary); /* Цвет из ТЗ */
+  box-shadow: 0 0 10px var(--max-primary); /* Свечение */
+}
+
+.loading-icon::before {
   width: 40px;
   height: 40px;
-  border: 4px solid var(--neutral-200);
-  border-top: 4px solid var(--max-primary);
+  animation: spin 1s linear infinite; /* Вращение */
+}
+
+.loading-icon::after {
+  width: 60px;
+  height: 60px;
+  border-color: rgba(37, 99, 235, 0.2); /* Более прозрачный внешний круг */
+}
+
+/* Орбита для иконки */
+.icon-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px; /* Немного больше иконки */
+  height: 80px; /* Немного больше иконки */
+  border: 1px solid rgba(255, 255, 255, 0.05); /* Тонкая орбита */
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: var(--space-4);
+  animation: rotate 10s linear infinite; /* Медленное вращение орбиты */
+  z-index: 1; /* Под иконкой */
+}
+
+@keyframes rotate {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 .loading-text {
-  font-size: var(--text-lg);
-  color: var(--neutral-600);
+  font-size: var(--text-xl); /* Размер из ТЗ */
+  color: white; /* Белый цвет для контраста */
+  margin-bottom: var(--space-2); /* Отступ из ТЗ */
+  font-weight: var(--font-semibold); /* Жирный текст */
+  text-shadow: 0 0 10px rgba(37, 99, 235, 0.5); /* Легкое свечение */
+}
+
+.loading-subtitle {
+  font-size: var(--text-base); /* Размер из ТЗ */
+  color: var(--neutral-300); /* Светло-нейтральный цвет */
+  margin-bottom: var(--space-6); /* Отступ из ТЗ */
+}
+
+/* Индикатор загрузки (вдохновлено кодом друга) */
+.loading-bar-container {
+  width: 200px; /* Ширина из кода друга */
+  height: 2px; /* Высота из кода друга */
+  background: rgba(255, 255, 255, 0.1); /* Фон из кода друга */
+  border-radius: 1px; /* Скругление */
+  position: relative; /* Для прогресса */
+  overflow: hidden; /* Обрезаем за пределами */
+  margin: 0 auto 20px; /* Центрируем */
+}
+
+.loading-bar-progress {
+  height: 100%;
+  background: var(--max-primary); /* Цвет из ТЗ */
+  width: 0%; /* Начинаем с 0% */
+  transition: width 0.4s ease; /* Плавное заполнение */
+  position: relative; /* Для анимации */
+}
+
+/* Анимация прогресса */
+.loading-bar-progress::after {
+  content: '';
+  position: absolute;
+  top: -1px; /* Немного выше для эффекта */
+  right: 0; /* Следует за прогрессом */
+  width: 4px; /* Ширина "лидера" */
+  height: 4px; /* Высота "лидера" */
+  background: white; /* Цвет "лидера" */
+  border-radius: 50%; /* Круглый */
+  box-shadow: 0 0 8px white; /* Свечение */
+}
+
+/* Искры (вдохновлено кодом друга) */
+.spark-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Искры не мешают кликам */
+  overflow: hidden;
+}
+
+.spark {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--max-primary); /* Цвет из ТЗ */
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--max-primary); /* Свечение */
+  animation: sparkMove 3s linear infinite;
+}
+
+@keyframes sparkMove {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--end-x, 100vw), var(--end-y, 100vh)); /* Используем CSS переменные */
+    opacity: 0;
+  }
 }
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 /* Glass Morphism utility */
@@ -294,4 +431,22 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Stats */
+.stat-item {
+  display: inline-block;
+  margin-right: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+}
+
+.dashboard-stats {
+  margin-bottom: var(--space-6);
+  padding: var(--space-4);
+  background-color: var(--neutral-100);
+  border-radius: var(--radius-lg);
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
 }

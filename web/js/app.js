@@ -35,12 +35,10 @@ class AuthManager {
 
     static async authenticateWithMax() {
         const userData = WebApp.initDataUnsafe.user;
-        const maxId = userData.id.toString(); // Используем id как maxId
+        const maxId = userData.id.toString();
         const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
-        const username = userData.username || ''; // Используем username из WebApp
-        console.log('MAX authentication with:', { maxId, fullName, username });
-        // ИСПРАВЛЕНО: передаем maxId, fullName, username как ожидалось в index.txt
-        const tokenData = await ApiService.getAuthToken(maxId, fullName, username);
+        console.log('MAX authentication with:', { maxId, fullName });
+        const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
         if (tokenData?.access_token) {
             localStorage.setItem('access_token', tokenData.access_token);
             console.log('MAX authentication successful');
@@ -82,7 +80,17 @@ class App {
 
             // Показываем основное приложение
             document.getElementById('app').style.display = 'block';
-            document.getElementById('loading').style.display = 'none';
+            // Плавно скрываем заставку
+            const loadingOverlay = document.getElementById('loading');
+            if (loadingOverlay) {
+                // Вызываем событие завершения загрузки
+                window.dispatchEvent(new Event('appLoaded'));
+                // Скрываем через небольшую задержку для анимации
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                }, 500); // Соответствует transition
+            }
+
 
             // Загружаем данные
             await this.loadData();
@@ -1888,7 +1896,72 @@ class App {
     }
 }
 
-// Initialize the app when the DOM is loaded
+// ИСПРАВЛЕНО: Добавляем функцию для инициализации искр
+function initSparkAnimation() {
+    const sparkContainer = document.getElementById('sparkContainer');
+    if (!sparkContainer) return;
+
+    const createSpark = () => {
+        const spark = document.createElement('div');
+        spark.classList.add('spark');
+
+        // Случайная стартовая позиция
+        const startX = Math.random() * 100;
+        const startY = Math.random() * 100;
+
+        // Случайная конечная позиция (используем CSS переменные)
+        const endX = (Math.random() - 0.5) * 200; // От -100 до 100vw
+        const endY = (Math.random() - 0.5) * 200; // От -100 до 100vh
+
+        spark.style.setProperty('--end-x', `${endX}vw`);
+        spark.style.setProperty('--end-y', `${endY}vh`);
+        spark.style.left = `${startX}%`;
+        spark.style.top = `${startY}%`;
+
+        sparkContainer.appendChild(spark);
+
+        // Удаляем искру после анимации
+        setTimeout(() => {
+            spark.remove();
+        }, 3000);
+    };
+
+    // Создаем искры каждые 200-500мс
+    setInterval(createSpark, Math.random() * 300 + 200);
+}
+
+// ИСПРАВЛЕНО: Добавляем функцию для анимации прогресса
+function initLoadingProgress() {
+    const progressBar = document.getElementById('loadingBarProgress');
+    if (!progressBar) return;
+
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 10; // Случайный прирост
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+        }
+        progressBar.style.width = `${progress}%`;
+    }, 200); // Обновляем каждые 200мс
+
+    // Останавливаем прогресс при полной загрузке
+    window.addEventListener('appLoaded', () => {
+        clearInterval(interval);
+        progressBar.style.width = '100%';
+        // Дополнительная анимация завершения, если нужно
+        setTimeout(() => {
+            progressBar.style.background = 'var(--success)'; // Зеленый цвет при завершении
+        }, 100);
+    });
+}
+
+// Инициализация приложения после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
+    // Инициализируем искры
+    initSparkAnimation();
+    // Инициализируем анимацию прогресса
+    initLoadingProgress();
+    // Инициализируем приложение
     App.init();
 });
