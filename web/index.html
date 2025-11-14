@@ -2781,10 +2781,23 @@
 
                     // Определяем текст и действие для кнопки
                     let buttonText = 'Присоединиться';
-                    let buttonAction = `App.joinProject('${project.hash}')`;
+                    let buttonAction = `App.handleJoinProject('${project.hash}')`; // ИЗМЕНЕНО: используем handleJoinProject вместо joinProject
                     let buttonClass = 'btn-primary';
 
-                    if (isPrivate && requiresApproval) {
+                    // ПЕРВОЕ: Проверяем exactMatchData для определения статуса пользователя
+                    if (exactMatchData) {
+                        if (exactMatchData.is_member) {
+                            buttonText = 'Открыть проект';
+                            buttonAction = `App.openProject('${project.hash}')`;
+                            buttonClass = 'btn-success';
+                        } else if (!exactMatchData.can_join) {
+                            buttonText = 'Доступ закрыт';
+                            buttonAction = '';
+                            buttonClass = 'btn-secondary';
+                        }
+                    }
+                    // ВТОРОЕ: Если нет exactMatchData, проверяем настройки приватности проекта
+                    else if (isPrivate && requiresApproval) {
                         buttonText = 'Отправить заявку';
                         buttonClass = 'btn-warning';
                     } else if (isPrivate) {
@@ -2792,19 +2805,8 @@
                         buttonClass = 'btn-info';
                     }
 
-                    // Если это точное совпадение по хэшу, проверяем возможность присоединения
-                    if (exactMatchData && !exactMatchData.can_join) {
-                        if (exactMatchData.is_member) {
-                            buttonText = 'Вы уже в проекте';
-                            buttonAction = `App.openProject('${project.hash}')`;
-                            buttonClass = 'btn-success';
-                        } else {
-                            buttonText = 'Доступ закрыт';
-                            buttonAction = '';
-                            buttonClass = 'btn-secondary';
-                            buttonClass += '" disabled';
-                        }
-                    }
+                    // Формируем атрибут disabled
+                    const disabledAttr = (buttonClass.includes('btn-secondary') || !buttonAction) ? 'disabled' : '';
 
                     return `
                         <div style="padding: 20px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 15px;">
@@ -2824,14 +2826,15 @@
                                         ${isPrivate ? `<span>Одобрение: ${requiresApproval ? 'Требуется' : 'Не требуется'}</span>` : ''}
                                     </div>
                                     <div style="font-size: 12px; color: #999;">
-                                        Создан: ${new Date(project.created_at).toLocaleDateString()}
+                                        Хэш: <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">${project.hash}</code>
+                                        • Создан: ${new Date(project.created_at).toLocaleDateString()}
                                         ${project.owner ? ` • Владелец: ${this.escapeHtml(project.owner.full_name)}` : ''}
                                     </div>
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 10px; min-width: 150px;">
                                     <button onclick="${buttonAction}"
                                             style="padding: 8px 16px; background: ${this.getButtonColor(buttonClass)}; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                                            ${buttonClass.includes('disabled') ? 'disabled' : ''}>
+                                            ${disabledAttr}>
                                         ${buttonText}
                                     </button>
                                     <button onclick="App.openProjectPreview('${project.hash}')"
@@ -2845,6 +2848,31 @@
                 }).join('');
 
                 container.innerHTML = html;
+            }
+
+            static async handleJoinProject(projectHash) {
+                try {
+                    console.log('Joining project:', projectHash);
+                    const response = await ApiService.joinProject(projectHash);
+
+                    if (response.status === 'joined') {
+                        this.showSuccess('Вы успешно присоединились к проекту!');
+                        await this.openProject(projectHash);
+                    } else if (response.status === 'pending_approval') {
+                        this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
+                        this.showDashboard();
+                    }
+                } catch (error) {
+                    console.error('Error joining project:', error);
+                    if (error.message.includes('400') && error.message.includes('already a member')) {
+                        this.showError('Вы уже являетесь участником этого проекта');
+                        await this.openProject(projectHash);
+                    } else if (error.message.includes('400') && error.message.includes('already pending')) {
+                        this.showError('Заявка на вступление уже отправлена');
+                    } else {
+                        this.showError('Ошибка вступления в проект: ' + error.message);
+                    }
+                }
             }
 
             static getButtonColor(buttonClass) {
