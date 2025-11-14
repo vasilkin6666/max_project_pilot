@@ -48,8 +48,6 @@ class TaskManager {
             const api = window.App?.modules?.api;
             if (!api) return;
 
-            this.showLoading();
-
             const taskData = await api.getTask(taskId);
             this.currentTask = taskData.task || taskData;
 
@@ -59,8 +57,6 @@ class TaskManager {
         } catch (error) {
             console.error('Error opening task:', error);
             Utils.showToast('Ошибка загрузки задачи', 'error');
-        } finally {
-            this.hideLoading();
         }
     }
 

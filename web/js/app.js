@@ -390,16 +390,20 @@ class ProjectPilotApp {
 
             this.showView('projectView');
 
-            // Load project tasks and members
-            await this.loadProjectTasks(projectHash);
-            await this.loadProjectMembers(projectHash);
-
         } catch (error) {
             console.error('Error opening project:', error);
             Utils.showToast('Ошибка открытия проекта', 'error');
         }
     }
 
+    // Добавляем метод backToProject:
+    backToProject() {
+        if (this.currentProject) {
+            this.openProject(this.currentProject.hash);
+        } else {
+            this.showDashboard();
+        }
+    }
     async loadProjectTasks(projectHash) {
         try {
             const api = this.modules.api;

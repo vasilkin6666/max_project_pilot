@@ -106,6 +106,7 @@ class ViewManager {
     }
 
     async displayView(viewName) {
+        // Исправляем: используем правильный ID (без двойного View)
         const viewElement = document.getElementById(`${viewName}View`);
         if (!viewElement) {
             console.error(`View element not found: ${viewName}View`);
@@ -437,7 +438,10 @@ class ViewManager {
     // Project view
     renderProjectView(projectData) {
         const container = document.getElementById('projectView');
-        if (!container) return;
+        if (!container) {
+            console.error('Project view container not found');
+            return;
+        }
 
         const project = projectData.project || projectData;
         const summary = projectData.summary || {};
@@ -521,6 +525,10 @@ class ViewManager {
 
         // Setup event listeners
         this.setupProjectViewEvents(project);
+
+        // Load project tasks and members
+        this.loadProjectTasks(project.hash);
+        this.loadProjectMembers(project.hash);
     }
 
     shouldShowHash(project) {
@@ -573,11 +581,13 @@ class ViewManager {
         });
 
         document.getElementById('manageMembersBtn')?.addEventListener('click', () => {
-            window.App?.showProjectMembersManagement(project.hash);
+            // Временная заглушка
+            Utils.showToast('Управление участниками в разработке', 'info');
         });
 
         document.getElementById('joinRequestsBtn')?.addEventListener('click', () => {
-            window.App?.showJoinRequests(project.hash);
+            // Временная заглушка
+            Utils.showToast('Заявки на вступление в разработке', 'info');
         });
 
         document.getElementById('editProjectBtn')?.addEventListener('click', () => {
@@ -589,6 +599,123 @@ class ViewManager {
         });
     }
 
+    async loadProjectTasks(projectHash) {
+        try {
+            const api = window.App?.modules?.api;
+            if (!api) return;
+
+            const response = await api.getTasks(projectHash);
+            const tasks = response.tasks || [];
+            this.renderProjectTasks(tasks);
+
+        } catch (error) {
+            console.error('Error loading project tasks:', error);
+        }
+    }
+
+    async loadProjectMembers(projectHash) {
+        try {
+            const api = window.App?.modules?.api;
+            if (!api) return;
+
+            const response = await api.getProjectMembers(projectHash);
+            const members = response.members || [];
+            this.renderProjectMembers(members);
+
+        } catch (error) {
+            console.error('Error loading project members:', error);
+        }
+    }
+
+    renderProjectTasks(tasks) {
+        const container = document.getElementById('projectTasksList');
+        if (!container) return;
+
+        if (!tasks || tasks.length === 0) {
+            container.innerHTML = this.createEmptyState(
+                'Задач нет',
+                'Создайте первую задачу в проекте',
+                '✅',
+                `<button class="btn btn-primary" onclick="App.components.modals.showCreateTaskModal('${this.currentProject?.hash}')">
+                    Создать задачу
+                </button>`
+            );
+            return;
+        }
+
+        // Show only main tasks (no parent)
+        const mainTasks = tasks.filter(task => !task.parent_task_id);
+
+        container.innerHTML = mainTasks.map(task => `
+            <div class="task-card" data-task-id="${task.id}">
+                <div class="task-card-header">
+                    <h4 class="task-title">${Utils.escapeHtml(task.title)}</h4>
+                    <span class="task-priority priority-${task.priority}">
+                        ${this.getPriorityText(task.priority)}
+                    </span>
+                </div>
+                <p class="task-description">${Utils.escapeHtml(task.description || '')}</p>
+                <div class="task-meta">
+                    <span class="task-status status-${task.status}">
+                        ${this.getStatusText(task.status)}
+                    </span>
+                    ${task.due_date ? `
+                    <span class="task-date ${Utils.isOverdue(task.due_date) ? 'overdue' : ''}">
+                        ${Utils.formatDate(task.due_date)}
+                    </span>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+
+        // Add click handlers
+        container.querySelectorAll('.task-card').forEach(card => {
+            card.addEventListener('click', () => {
+                window.App?.openTask(card.dataset.taskId);
+            });
+        });
+    }
+
+    renderProjectMembers(members) {
+        const container = document.getElementById('projectMembersList');
+        if (!container) return;
+
+        if (!members || members.length === 0) {
+            container.innerHTML = '<p>Участников нет</p>';
+            return;
+        }
+
+        container.innerHTML = members.map(member => {
+            const memberData = member.user || member;
+            const displayName = memberData.full_name || `Участник #${member.user_id || memberData.id}`;
+            const isCurrentUser = (member.user_id || memberData.id) === window.App?.currentUser?.id;
+
+            return `
+                <div class="member-item">
+                    <div class="member-avatar">
+                        ${Utils.getInitials(displayName)}
+                    </div>
+                    <div class="member-info">
+                        <div class="member-name">${Utils.escapeHtml(displayName)}</div>
+                        <div class="member-role">
+                            ${this.getRoleText(member.role)}
+                            ${isCurrentUser ? ' (Вы)' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    getRoleText(role) {
+        const roleMap = {
+            'owner': 'Владелец',
+            'admin': 'Администратор',
+            'member': 'Участник',
+            'guest': 'Гость'
+        };
+        return roleMap[role] || role;
+    }
     // Utility methods
     createEmptyState(title, description, icon, action = '') {
         return `
