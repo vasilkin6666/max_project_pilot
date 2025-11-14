@@ -1,0 +1,59 @@
+/* Dark Theme */
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --text-muted: #666666;
+
+    --border-color: #404040;
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.3);
+}
+
+/* Dark theme specific adjustments */
+[data-theme="dark"] .card {
+    background: #2d2d2d;
+}
+
+[data-theme="dark"] .modal {
+    background: #2d2d2d;
+}
+
+[data-theme="dark"] .form-control {
+    background: #2d2d2d;
+    color: #ffffff;
+    border-color: #404040;
+}
+
+[data-theme="dark"] .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+[data-theme="dark"] .btn-secondary {
+    background: #3d3d3d;
+    color: #ffffff;
+}
+
+[data-theme="dark"] .btn-secondary:hover:not(:disabled) {
+    background: #4d4d4d;
+}
+
+[data-theme="dark"] .stat-icon.projects { background: #1e3a5f; color: #64b5f6; }
+[data-theme="dark"] .stat-icon.tasks { background: #4a235a; color: #ba68c8; }
+[data-theme="dark"] .stat-icon.recent { background: #1b5e20; color: #81c784; }
+[data-theme="dark"] .stat-icon.completed { background: #e65100; color: #ffb74d; }
+
+[data-theme="dark"] .priority-urgent { background: #4a1c1c; color: #ef9a9a; }
+[data-theme="dark"] .priority-high { background: #4a2c1c; color: #ffcc80; }
+[data-theme="dark"] .priority-medium { background: #1b3a1b; color: #a5d6a7; }
+[data-theme="dark"] .priority-low { background: #3c1f3c; color: #ce93d8; }
+
+[data-theme="dark"] .status-todo { background: #3d3d3d; color: #b0b0b0; }
+[data-theme="dark"] .status-in_progress { background: #1e3a5f; color: #64b5f6; }
+[data-theme="dark"] .status-done { background: #1b5e20; color: #81c784; }
