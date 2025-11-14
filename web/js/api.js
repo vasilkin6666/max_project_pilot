@@ -1,4 +1,3 @@
-// api.js
 // Конфигурация
 const CONFIG = {
     API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
@@ -7,7 +6,7 @@ const CONFIG = {
 // API сервис
 class ApiService {
     static async request(endpoint, options = {}) {
-        const token = AuthManager.getToken();
+        const token = localStorage.getItem('access_token');
         const url = `${CONFIG.API_BASE_URL}${endpoint}`;
 
         const headers = {
@@ -28,26 +27,13 @@ class ApiService {
             });
 
             if (!response.ok) {
-                let errorText;
-                try {
-                    errorText = await response.text();
-                } catch {
-                    errorText = response.statusText;
-                }
+                const errorText = await response.text();
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
-            // Проверяем, есть ли контент для парсинга
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                const data = await response.json();
-                console.log(`API Response:`, data);
-                return data;
-            } else {
-                // Если ответ не JSON, возвращаем пустой объект
-                console.log(`API Response: Non-JSON response`);
-                return {};
-            }
+            const data = await response.json();
+            console.log(`API Response:`, data);
+            return data;
         } catch (error) {
             console.error('API request failed:', error);
             throw error;
@@ -92,68 +78,72 @@ class ApiService {
         });
     }
 
-    static async getCurrentUser() {
-        return this.get('/auth/me');
-    }
-
     // Project endpoints
     static async getProjects() {
         return this.get('/projects/');
     }
 
-    static async getProject(hash) {
-        return this.get(`/projects/${hash}`);
+    static async createProject(projectData) {
+        return this.post('/projects/', projectData);
     }
 
-    static async createProject(data) {
-        return this.post('/projects/', data);
+    static async getProject(projectHash) {
+        return this.get(`/projects/${projectHash}`);
     }
 
-    static async updateProject(hash, data) {
-        return this.put(`/projects/${hash}/`, data);
+    static async updateProject(projectHash, projectData) {
+        return this.put(`/projects/${projectHash}`, projectData);
     }
 
-    static async deleteProject(hash) {
-        return this.delete(`/projects/${hash}/`);
+    static async deleteProject(projectHash) {
+        return this.delete(`/projects/${projectHash}`);
     }
 
-    static async searchProjects(query) {
-        const params = new URLSearchParams({ query });
-        return this.get(`/projects/search?${params}`);
+    static async getProjectMembers(projectHash) {
+        return this.get(`/projects/${projectHash}/members`);
     }
 
-    static async getProjectByHashExact(hash) {
-        return this.get(`/projects/hash/${hash}`);
+    static async updateMemberRole(projectHash, userId, role) {
+        return this.put(`/projects/${projectHash}/members/${userId}`, { role });
     }
 
-    // Project members endpoints
-    static async getProjectMembers(hash) {
-        return this.get(`/projects/${hash}/members/`);
+    static async removeProjectMember(projectHash, userId) {
+        return this.delete(`/projects/${projectHash}/members/${userId}`);
     }
 
-    static async updateProjectMemberRole(hash, memberId, role) {
-        return this.patch(`/projects/${hash}/members/${memberId}/role`, { role });
+    static async approveJoinRequest(projectHash, requestId) {
+        return this.post(`/projects/${projectHash}/join-requests/${requestId}/approve`);
     }
 
-    static async removeProjectMember(hash, memberId) {
-        return this.delete(`/projects/${hash}/members/${memberId}/`);
+    static async rejectJoinRequest(projectHash, requestId) {
+        return this.post(`/projects/${projectHash}/join-requests/${requestId}/reject`);
     }
 
-    // Join requests endpoints
-    static async getProjectJoinRequests(hash) {
-        return this.get(`/projects/${hash}/join-requests/`);
+    static async getProjectJoinRequests(projectHash) {
+        return this.get(`/projects/${projectHash}/join-requests`);
     }
 
-    static async approveJoinRequest(hash, requestId) {
-        return this.post(`/projects/${hash}/join-requests/${requestId}/approve`);
+    static async joinProject(projectHash) {
+        return this.post(`/projects/${projectHash}/join`);
     }
 
-    static async rejectJoinRequest(hash, requestId) {
-        return this.post(`/projects/${hash}/join-requests/${requestId}/reject`);
+    static async regenerateInvite(projectHash) {
+        return this.post(`/projects/${projectHash}/regenerate-invite`);
     }
 
-    static async joinProject(hash) {
-        return this.post(`/projects/${hash}/join`);
+    static async getProjectSummary(projectHash) {
+        return this.get(`/projects/${projectHash}/summary`);
+    }
+
+    // Поиск публичных проектов
+    static async searchPublicProjects(query = '') {
+        const params = query ? `?query=${encodeURIComponent(query)}` : '';
+        return this.get(`/projects/search/public${params}`);
+    }
+
+    // Получить проект по точному хэшу
+    static async getProjectByHashExact(projectHash) {
+        return this.get(`/projects/by-hash/${projectHash}`);
     }
 
     // Task endpoints
@@ -161,58 +151,110 @@ class ApiService {
         return this.get(`/tasks/projects/${projectHash}/tasks`);
     }
 
+    static async getUserTasks(filters = {}) {
+        const params = new URLSearchParams();
+        if (filters.status) params.append('status', filters.status);
+        if (filters.project_hash) params.append('project_hash', filters.project_hash);
+
+        const query = params.toString();
+        return this.get(`/tasks/${query ? `?${query}` : ''}`);
+    }
+
+    static async createTask(taskData) {
+        // Преобразуем assigned_to_ids в assigned_to_id если нужно
+        if (taskData.assigned_to_ids && taskData.assigned_to_ids.length > 0) {
+            taskData.assigned_to_id = taskData.assigned_to_ids[0];
+            delete taskData.assigned_to_ids;
+        }
+        return this.post('/tasks/', taskData);
+    }
+
     static async getTask(taskId) {
-        return this.get(`/tasks/${taskId}/`);
+        return this.get(`/tasks/${taskId}`);
     }
 
-    static async createTask(data) {
-        return this.post('/tasks/', data);
-    }
-
-    static async updateTask(taskId, data) {
-        return this.put(`/tasks/${taskId}/`, data);
-    }
-
-    static async updateTaskStatus(taskId, status) {
-        return this.put(`/tasks/${taskId}/status`, { status });
+    static async updateTask(taskId, taskData) {
+        // Преобразуем assigned_to_ids в assigned_to_id если нужно
+        if (taskData.assigned_to_ids && taskData.assigned_to_ids.length > 0) {
+            taskData.assigned_to_id = taskData.assigned_to_ids[0];
+            delete taskData.assigned_to_ids;
+        } else if (taskData.assigned_to_ids && taskData.assigned_to_ids.length === 0) {
+            taskData.assigned_to_id = null;
+            delete taskData.assigned_to_ids;
+        }
+        return this.put(`/tasks/${taskId}`, taskData);
     }
 
     static async deleteTask(taskId) {
-        return this.delete(`/tasks/${taskId}/`);
+        return this.delete(`/tasks/${taskId}`);
     }
 
-    // Comment endpoints
+    static async updateTaskStatus(taskId, status) {
+        return this.put(`/tasks/${taskId}/status?status=${status}`);
+    }
+
+    // Управление зависимостями задач
+    static async getTaskDependencies(taskId) {
+        return this.get(`/tasks/${taskId}/dependencies`);
+    }
+
+    static async addTaskDependency(taskId, dependsOnId) {
+        return this.post(`/tasks/${taskId}/dependencies?depends_on_id=${dependsOnId}`);
+    }
+
+    static async removeTaskDependency(taskId, dependsOnId) {
+        return this.delete(`/tasks/${taskId}/dependencies?depends_on_id=${dependsOnId}`);
+    }
+
     static async getTaskComments(taskId) {
-        return this.get(`/tasks/${taskId}/comments/`);
+        return this.get(`/tasks/${taskId}/comments`);
     }
 
     static async createTaskComment(taskId, content) {
-        return this.post(`/tasks/${taskId}/comments/`, { content });
-    }
-
-    // User tasks endpoints
-    static async getUserTasks(filters = {}) {
-        const params = new URLSearchParams(filters);
-        return this.get(`/tasks/user/?${params}`);
+        return this.post(`/tasks/${taskId}/comments?content=${encodeURIComponent(content)}`);
     }
 
     // User endpoints
-    static async updateCurrentUser(data) {
-        return this.put('/auth/me/', data);
+    static async getCurrentUser() {
+        return this.get('/users/me');
     }
 
-    static async updateUserPreferences(data) {
-        return this.put('/auth/preferences', data);
+    // ИСПРАВЛЕНО: Правильное обновление пользователя
+    static async updateCurrentUser(userData) {
+        const params = new URLSearchParams();
+        if (userData.full_name) params.append('full_name', userData.full_name);
+        if (userData.username) params.append('username', userData.username);
+
+        return this.request(`/users/me?${params}`, { method: 'PUT' });
+    }
+
+    static async getUserPreferences() {
+        return this.get('/users/me/preferences');
+    }
+
+    static async updateUserPreferences(preferences) {
+        return this.put('/users/me/preferences', preferences);
+    }
+
+    static async patchUserPreferences(preferences) {
+        return this.patch('/users/me/preferences', preferences);
     }
 
     static async resetUserPreferences() {
-        return this.delete('/auth/preferences');
+        return this.put('/users/me/preferences/reset');
     }
 
-    // Search endpoints
-    static async searchPublicProjects(query = '') {
-        const params = query ? new URLSearchParams({ query }) : '';
-        return this.get(`/projects/public/search?${params}`);
+    static async getUser(userId) {
+        return this.get(`/users/${userId}`);
+    }
+
+    // Получение проектов пользователя
+    static async getUserProjects(userId) {
+        return this.get(`/users/${userId}/projects`);
+    }
+
+    static async deleteJoinRequest(projectHash, requestId) {
+        return this.delete(`/projects/${projectHash}/join-requests/${requestId}`);
     }
 
     // Notifications endpoints
@@ -238,3 +280,82 @@ class ApiService {
         return this.get('/api/health');
     }
 }
+
+// Менеджер аутентификации
+class AuthManager {
+    static async initialize() {
+        try {
+            console.log('Initializing authentication...');
+
+            // Проверяем MAX окружение
+            if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user) {
+                return await this.authenticateWithMax();
+            } else {
+                // Для разработки - тестовый пользователь
+                return await this.authenticateWithTestUser();
+            }
+        } catch (error) {
+            console.error('Authentication failed:', error);
+            throw error;
+        }
+    }
+
+    static async authenticateWithMax() {
+        const userData = WebApp.initDataUnsafe.user;
+        const maxId = userData.id.toString();
+        const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
+
+        console.log('MAX authentication with:', { maxId, fullName });
+
+        const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
+
+        if (tokenData?.access_token) {
+            localStorage.setItem('access_token', tokenData.access_token);
+            console.log('MAX authentication successful');
+            return tokenData.user;
+        }
+
+        throw new Error('MAX authentication failed');
+    }
+
+    static async authenticateWithTestUser() {
+        const testId = 'dev_user_' + Math.random().toString(36).substr(2, 9);
+        const fullName = 'Тестовый пользователь';
+
+        console.log('Test authentication with:', { testId, fullName });
+
+        const tokenData = await ApiService.getAuthToken(testId, fullName, '');
+
+        if (tokenData?.access_token) {
+            localStorage.setItem('access_token', tokenData.access_token);
+            console.log('Test authentication successful');
+            return tokenData.user;
+        }
+
+        throw new Error('Test authentication failed');
+    }
+
+    static getToken() {
+        return localStorage.getItem('access_token');
+    }
+
+    static isAuthenticated() {
+        return !!this.getToken();
+    }
+}
+
+// Глобальные переменные
+let currentProject = null;
+let currentTask = null;
+let currentUser = null;
+let currentMemberToUpdate = null;
+let currentMemberToRemove = null;
+let userSettings = {};
+
+// Константы ролей проекта
+const ProjectRole = {
+    OWNER: 'owner',
+    ADMIN: 'admin',
+    MEMBER: 'member',
+    GUEST: 'guest'
+};

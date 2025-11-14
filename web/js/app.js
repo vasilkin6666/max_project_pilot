@@ -15,60 +15,6 @@ const ProjectRole = {
     GUEST: 'guest'
 };
 
-// Менеджер аутентификации (как в index.txt)
-class AuthManager {
-    static async initialize() {
-        try {
-            console.log('Initializing authentication...');
-            // Проверяем MAX окружение
-            if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user) {
-                return await this.authenticateWithMax();
-            } else {
-                // Для разработки - тестовый пользователь
-                return await this.authenticateWithTestUser();
-            }
-        } catch (error) {
-            console.error('Authentication failed:', error);
-            throw error;
-        }
-    }
-
-    static async authenticateWithMax() {
-        const userData = WebApp.initDataUnsafe.user;
-        const maxId = userData.id.toString();
-        const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
-        console.log('MAX authentication with:', { maxId, fullName });
-        const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
-        if (tokenData?.access_token) {
-            localStorage.setItem('access_token', tokenData.access_token);
-            console.log('MAX authentication successful');
-            return tokenData.user;
-        }
-        throw new Error('MAX authentication failed');
-    }
-
-    static async authenticateWithTestUser() {
-        const testId = 'dev_user_' + Math.random().toString(36).substr(2, 9);
-        const fullName = 'Тестовый пользователь';
-        console.log('Test authentication with:', { testId, fullName });
-        const tokenData = await ApiService.getAuthToken(testId, fullName, '');
-        if (tokenData?.access_token) {
-            localStorage.setItem('access_token', tokenData.access_token);
-            console.log('Test authentication successful');
-            return tokenData.user;
-        }
-        throw new Error('Test authentication failed');
-    }
-
-    static getToken() {
-        return localStorage.getItem('access_token');
-    }
-
-    static isAuthenticated() {
-        return !!this.getToken();
-    }
-}
-
 // Основное приложение
 class App {
   static async init() {
@@ -210,6 +156,18 @@ class App {
         document.getElementById('confirmRemoveMemberBtn').addEventListener('click', () => {
             this.handleRemoveMember();
         });
+
+        // ИСПРАВЛЕНО: Добавляем обработчик изменения статуса задачи
+        document.getElementById('taskStatusSelect').addEventListener('change', () => {
+            this.updateTaskStatus();
+        });
+
+        // ИСПРАВЛЕНО: Обработчик Enter в поле поиска проектов
+        document.getElementById('searchProjectsInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.searchProjects();
+            }
+        });
     }
 
     static async loadData() {
@@ -329,7 +287,7 @@ class App {
             'low': 'Низкий',
             'medium': 'Средний',
             'high': 'Высокий',
-            'urgent': 'Срочный' // --- Добавлено из index.txt ---
+            'urgent': 'Срочный'
         };
         return priorityMap[priority] || priority;
     }
@@ -376,7 +334,7 @@ class App {
 
     static async loadRecentPublicProjects() {
         try {
-            const response = await ApiService.searchPublicProjects(); // Используем метод из index.txt
+            const response = await ApiService.searchPublicProjects();
             const projects = response.projects || [];
             const title = 'Недавние публичные проекты';
             this.renderSearchResults(projects, title);
@@ -388,7 +346,7 @@ class App {
 
     static async showNotifications() {
         try {
-            const response = await ApiService.getNotifications(); // Используем метод из index.txt
+            const response = await ApiService.getNotifications();
             const notifications = response.notifications || [];
             const container = document.getElementById('notificationsList');
 
@@ -464,10 +422,10 @@ class App {
             this.showError('Ошибка открытия проекта: ' + error.message);
         }
     }
-    
+
     static async loadProjectTasks(projectHash) {
         try {
-            const response = await ApiService.getTasks(projectHash); // ИСПРАВЛЕНО: используем правильный маршрут
+            const response = await ApiService.getTasks(projectHash);
             const tasks = response.tasks || [];
             const container = document.getElementById('projectTasksList');
 
@@ -567,7 +525,7 @@ class App {
     // Task methods
     static async openTask(taskId) {
         try {
-            const response = await ApiService.getTask(taskId); // Используем метод из index.txt
+            const response = await ApiService.getTask(taskId);
             currentTask = response.task || response;
 
             console.log('Current task set to:', currentTask);
@@ -656,9 +614,9 @@ class App {
 
     static async loadTaskComments(taskId) {
         try {
-            const response = await ApiService.getTaskComments(taskId); // Используем метод из index.txt
+            const response = await ApiService.getTaskComments(taskId);
             const comments = response.comments || [];
-            const container = document.getElementById('taskCommentsList'); // Используем ID из index.txt
+            const container = document.getElementById('taskCommentsList');
 
             if (!comments || comments.length === 0) {
                 container.innerHTML = '<p>Комментариев нет</p>';
@@ -688,16 +646,16 @@ class App {
             return;
         }
 
-        const content = document.getElementById('newCommentText').value.trim(); // Используем ID из index.txt
+        const content = document.getElementById('newCommentText').value.trim();
         if (!content) {
             this.showError('Введите текст комментария');
             return;
         }
 
         try {
-            await ApiService.createTaskComment(currentTask.id, content); // Используем метод из index.txt
-            document.getElementById('newCommentText').value = ''; // Используем ID из index.txt
-            await this.loadTaskComments(currentTask.id); // Используем ID из index.txt
+            await ApiService.createTaskComment(currentTask.id, content);
+            document.getElementById('newCommentText').value = '';
+            await this.loadTaskComments(currentTask.id);
             this.showSuccess('Комментарий добавлен!');
         } catch (error) {
             console.error('Error adding comment:', error);
@@ -714,7 +672,7 @@ class App {
             if (statusFilter) filters.status = statusFilter;
             if (projectFilter) filters.project_hash = projectFilter;
 
-            const response = await ApiService.getUserTasks(filters); // Используем метод из index.txt
+            const response = await ApiService.getUserTasks(filters);
             const tasks = response.tasks || [];
             const container = document.getElementById('myTasksList');
 
@@ -724,8 +682,8 @@ class App {
             }
 
             // Разделяем задачи на назначенные и созданные
-            const assignedTasks = tasks.filter(task => task.assigned_to_id === currentUser.id); // Используем глобальную переменную
-            const createdTasks = tasks.filter(task => task.created_by_id === currentUser.id && task.assigned_to_id !== currentUser.id); // Используем глобальную переменную
+            const assignedTasks = tasks.filter(task => task.assigned_to_id === currentUser.id);
+            const createdTasks = tasks.filter(task => task.created_by_id === currentUser.id && task.assigned_to_id !== currentUser.id);
 
             let html = '';
 
@@ -794,7 +752,7 @@ class App {
 
         try {
             console.log('Creating project:', { title, description, isPrivate, requiresApproval });
-            await ApiService.createProject({ // Используем метод из index.txt
+            await ApiService.createProject({
                 title,
                 description,
                 is_private: isPrivate,
@@ -812,17 +770,17 @@ class App {
     }
 
     static showEditProjectModal() {
-        if (!currentProject) return; // Используем глобальную переменную
-        document.getElementById('editProjectTitle').value = currentProject.title; // Используем глобальную переменную
-        document.getElementById('editProjectDescription').value = currentProject.description || ''; // Используем глобальную переменную
-        document.getElementById('editProjectIsPrivate').checked = currentProject.is_private; // Используем глобальную переменную
-        document.getElementById('editProjectRequiresApproval').checked = currentProject.requires_approval; // Используем глобальную переменную
+        if (!currentProject) return;
+        document.getElementById('editProjectTitle').value = currentProject.title;
+        document.getElementById('editProjectDescription').value = currentProject.description || '';
+        document.getElementById('editProjectIsPrivate').checked = currentProject.is_private;
+        document.getElementById('editProjectRequiresApproval').checked = currentProject.requires_approval;
 
         this.showModal('editProjectModal');
     }
 
     static async handleUpdateProject() {
-        if (!currentProject) return; // Используем глобальную переменную
+        if (!currentProject) return;
         const title = document.getElementById('editProjectTitle').value.trim();
         const description = document.getElementById('editProjectDescription').value.trim();
         const isPrivate = document.getElementById('editProjectIsPrivate').checked;
@@ -834,7 +792,7 @@ class App {
         }
 
         try {
-            await ApiService.updateProject(currentProject.hash, { // Используем метод из index.txt
+            await ApiService.updateProject(currentProject.hash, {
                 title,
                 description,
                 is_private: isPrivate,
@@ -851,15 +809,15 @@ class App {
     }
 
     static showDeleteProjectModal() {
-        if (!currentProject) return; // Используем глобальную переменную
-        document.getElementById('deleteProjectName').textContent = currentProject.title; // Используем глобальную переменную
+        if (!currentProject) return;
+        document.getElementById('deleteProjectName').textContent = currentProject.title;
         this.showModal('deleteProjectModal');
     }
 
     static async handleDeleteProject() {
-        if (!currentProject) return; // Используем глобальную переменную
+        if (!currentProject) return;
         try {
-            await ApiService.deleteProject(currentProject.hash); // Используем метод из index.txt
+            await ApiService.deleteProject(currentProject.hash);
 
             this.hideModal('deleteProjectModal');
             this.showDashboard();
@@ -872,11 +830,11 @@ class App {
 
     // Task management methods
     static async showCreateTaskModal() {
-        if (!currentProject) return; // Используем глобальную переменную
+        if (!currentProject) return;
 
         try {
             // Загружаем участников проекта
-            const response = await ApiService.getProjectMembers(currentProject.hash); // Используем метод из index.txt
+            const response = await ApiService.getProjectMembers(currentProject.hash);
             const members = response.members || [];
 
             const assignedToSelect = document.getElementById('taskAssignedTo');
@@ -895,7 +853,7 @@ class App {
             });
 
             // Загружаем задачи для выбора родительской задачи
-            const tasksResponse = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
+            const tasksResponse = await ApiService.getTasks(currentProject.hash);
             const tasks = tasksResponse.tasks || [];
 
             const parentTaskSelect = document.getElementById('taskParentId');
@@ -921,8 +879,8 @@ class App {
     }
 
     static showCreateSubtaskModal() {
-        if (!currentProject || !currentTask) return; // Используем глобальные переменные
-        this.showCreateSubtaskModalForTask(currentTask.id); // Используем глобальную переменную
+        if (!currentProject || !currentTask) return;
+        this.showCreateSubtaskModalForTask(currentTask.id);
     }
 
     static showCreateSubtaskModalForTask(parentTaskId) {
@@ -932,7 +890,7 @@ class App {
     }
 
     static async handleCreateTask() {
-        if (!currentProject) return; // Используем глобальную переменную
+        if (!currentProject) return;
         const title = document.getElementById('taskTitle').value.trim();
         const description = document.getElementById('taskDescription').value.trim();
         const priority = document.getElementById('taskPriority').value;
@@ -950,7 +908,7 @@ class App {
                 title,
                 description,
                 priority,
-                project_hash: currentProject.hash // Используем глобальную переменную
+                project_hash: currentProject.hash
             };
 
             if (dueDate) taskData.due_date = dueDate;
@@ -958,7 +916,7 @@ class App {
             if (assignedTo) taskData.assigned_to_id = parseInt(assignedTo); // ИСПРАВЛЕНО: используем assigned_to_id
 
             console.log('Creating task with data:', taskData);
-            await ApiService.createTask(taskData); // Используем метод из index.txt
+            await ApiService.createTask(taskData);
 
             this.hideModal('createTaskModal');
             // ИСПРАВЛЕНО: Проверяем существование формы перед reset
@@ -970,12 +928,12 @@ class App {
             this.tempParentTaskId = null;
 
             // Reload tasks for the current view (project or task)
-            if (currentProject && !currentTask) { // Используем глобальные переменные
-                await this.loadProjectTasks(currentProject.hash); // Используем глобальную переменную
-            } else if (currentTask) { // Используем глобальную переменную
+            if (currentProject && !currentTask) {
+                await this.loadProjectTasks(currentProject.hash);
+            } else if (currentTask) {
                 // Reload subtasks if current task is parent
-                if (currentTask.id === parentTaskId || currentTask.id === this.tempParentTaskId) { // Используем глобальную переменную
-                     await this.loadSubtasks(currentTask.id); // Используем глобальную переменную
+                if (currentTask.id === parentTaskId || currentTask.id === this.tempParentTaskId) {
+                     await this.loadSubtasks(currentTask.id);
                 }
             }
 
@@ -988,7 +946,7 @@ class App {
 
     // --- Новое из index.txt ---
     static async handleCreateSubtask() {
-        if (!currentTask || !currentTask.id) return; // Используем глобальную переменную
+        if (!currentTask || !currentTask.id) return;
         const title = document.getElementById('subtaskTitle').value.trim();
         const description = ""; // Подзадачи без описания в index.txt
         if (!title) {
@@ -998,16 +956,16 @@ class App {
 
         try {
             // Получаем данные родительской задачи для наследования
-            const parentTaskResponse = await ApiService.getTask(currentTask.id); // Используем метод из index.txt
+            const parentTaskResponse = await ApiService.getTask(currentTask.id);
             const parentTask = parentTaskResponse.task || parentTaskResponse;
 
             const taskData = {
                 title,
                 description,
-                project_hash: currentProject.hash, // Используем глобальную переменную
+                project_hash: currentProject.hash,
                 priority: parentTask.priority || 'medium',
                 status: 'todo',
-                parent_task_id: currentTask.id // Используем глобальную переменную
+                parent_task_id: currentTask.id
             };
 
             // Наследуем исполнителя от родительской задачи
@@ -1016,7 +974,7 @@ class App {
             }
 
             console.log('Creating subtask with data:', taskData);
-            await ApiService.createTask(taskData); // Используем метод из index.txt
+            await ApiService.createTask(taskData);
 
             this.hideModal('createSubtaskModal');
             // Reset form
@@ -1026,8 +984,8 @@ class App {
             }
 
             // Reload subtasks for the current task
-            if (currentTask) { // Используем глобальную переменную
-                await this.loadSubtasks(currentTask.id); // Используем глобальную переменную
+            if (currentTask) {
+                await this.loadSubtasks(currentTask.id);
             }
 
             this.showSuccess('Подзадача создана успешно!');
@@ -1037,9 +995,8 @@ class App {
         }
     }
 
-
     static showEditTaskModal() {
-        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+        if (!currentTask || !currentTask.id) {
             console.error('No current task for editing:', currentTask);
             this.showError('Ошибка: задача не выбрана');
             return;
@@ -1052,23 +1009,23 @@ class App {
         const editTaskDueDate = document.getElementById('editTaskDueDate');
         const taskStatusSelect = document.getElementById('taskStatusSelect'); // Добавлено для установки статуса
 
-        if (editTaskTitle) editTaskTitle.value = currentTask.title; // Используем глобальную переменную
-        if (editTaskDescription) editTaskDescription.value = currentTask.description || ''; // Используем глобальную переменную
-        if (editTaskPriority) editTaskPriority.value = currentTask.priority; // Используем глобальную переменную
+        if (editTaskTitle) editTaskTitle.value = currentTask.title;
+        if (editTaskDescription) editTaskDescription.value = currentTask.description || '';
+        if (editTaskPriority) editTaskPriority.value = currentTask.priority;
         if (editTaskDueDate) {
             if (currentTask.due_date) {
-                const dueDate = new Date(currentTask.due_date); // Используем глобальную переменную
+                const dueDate = new Date(currentTask.due_date);
                 editTaskDueDate.value = dueDate.toISOString().split('T')[0];
             } else {
                 editTaskDueDate.value = '';
             }
         }
-        if (taskStatusSelect) taskStatusSelect.value = currentTask.status; // Используем глобальную переменную
+        if (taskStatusSelect) taskStatusSelect.value = currentTask.status;
         this.showModal('editTaskModal');
     }
 
     static async handleUpdateTask() {
-        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+        if (!currentTask || !currentTask.id) {
             console.error('No current task for update:', currentTask);
             this.showError('Ошибка: задача не выбрана');
             return;
@@ -1097,11 +1054,11 @@ class App {
                 taskData.due_date = null; // Explicitly set to null if cleared
             }
 
-            console.log('Updating task:', currentTask.id, taskData); // Используем глобальную переменную
-            await ApiService.updateTask(currentTask.id, taskData); // Используем метод из index.txt
+            console.log('Updating task:', currentTask.id, taskData);
+            await ApiService.updateTask(currentTask.id, taskData);
 
             this.hideModal('editTaskModal');
-            await this.openTask(currentTask.id); // Перезагружаем задачу, используем глобальную переменную
+            await this.openTask(currentTask.id); // Перезагружаем задачу
             this.showSuccess('Задача обновлена успешно!');
         } catch (error) {
             console.error('Error updating task:', error);
@@ -1110,7 +1067,7 @@ class App {
     }
 
     static showDeleteTaskModal() {
-        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+        if (!currentTask || !currentTask.id) {
             console.error('No current task for deletion:', currentTask);
             this.showError('Ошибка: задача не выбрана');
             return;
@@ -1119,24 +1076,24 @@ class App {
         // ИСПРАВЛЕНО: Проверяем существование элемента
         const deleteTaskName = document.getElementById('deleteTaskName');
         if (deleteTaskName) {
-            deleteTaskName.textContent = currentTask.title; // Используем глобальную переменную
+            deleteTaskName.textContent = currentTask.title;
         }
         this.showModal('deleteTaskModal');
     }
 
     static async handleDeleteTask() {
-        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+        if (!currentTask || !currentTask.id) {
             this.showError('Задача не выбрана');
             return;
         }
 
         try {
-            await ApiService.deleteTask(currentTask.id); // Используем метод из index.txt
+            await ApiService.deleteTask(currentTask.id);
 
             this.hideModal('deleteTaskModal');
             // Go back to project view or wherever appropriate
-            if (currentProject) { // Используем глобальную переменную
-                this.openProject(currentProject.hash); // Используем глобальную переменную
+            if (currentProject) {
+                this.openProject(currentProject.hash);
             } else {
                 this.showDashboard();
             }
@@ -1150,8 +1107,8 @@ class App {
     // --- Новые методы из index.txt ---
 
     // Изменение статуса задачи
-    static async updateTaskStatus() { // Используем taskStatusSelect.value
-        if (!currentTask || !currentTask.id) { // Используем глобальную переменную
+    static async updateTaskStatus() {
+        if (!currentTask || !currentTask.id) {
             console.error('No current task for status update:', currentTask);
             this.showError('Ошибка: задача не выбрана');
             return;
@@ -1164,8 +1121,8 @@ class App {
         }
 
         try {
-            console.log('Updating task status:', currentTask.id, newStatus); // Используем глобальную переменную
-            const updatedTask = await ApiService.updateTaskStatus(currentTask.id, newStatus); // Используем метод из index.txt
+            console.log('Updating task status:', currentTask.id, newStatus);
+            const updatedTask = await ApiService.updateTaskStatus(currentTask.id, newStatus);
 
             // Если задача выполнена, проверяем родительскую
             if (newStatus === 'done') {
@@ -1182,18 +1139,18 @@ class App {
             console.error('Error updating task status:', error);
             this.showError('Ошибка обновления статуса: ' + error.message);
             // Восстанавливаем предыдущее значение если возможно
-            if (currentTask) { // Используем глобальную переменную
-                document.getElementById('taskStatusSelect').value = currentTask.status; // Используем глобальную переменную
+            if (currentTask) {
+                document.getElementById('taskStatusSelect').value = currentTask.status;
             }
         }
     }
 
     // Проверка статуса родительской задачи
     static async checkParentTaskStatus(taskId) {
-        if (!currentProject || !taskId) return; // Используем глобальную переменную
+        if (!currentProject || !taskId) return;
 
         try {
-            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
+            const response = await ApiService.getTasks(currentProject.hash);
             const tasks = response.tasks || [];
             const currentTask = tasks.find(t => t.id === taskId);
 
@@ -1211,12 +1168,12 @@ class App {
 
                 if (allChildrenDone && parentTask.status !== 'done') {
                     // Все дочерние задачи выполнены - выполняем родительскую
-                    await ApiService.updateTaskStatus(parentTask.id, 'done'); // Используем метод из index.txt
+                    await ApiService.updateTaskStatus(parentTask.id, 'done');
                     // Рекурсивно проверяем родительскую задачу
                     await this.checkParentTaskStatus(parentTask.id);
                 } else if (!allChildrenDone && parentTask.status === 'done') {
                     // Не все дочерние выполнены, но родительская стоит как done - возвращаем в todo
-                    await ApiService.updateTaskStatus(parentTask.id, 'todo'); // Используем метод из index.txt
+                    await ApiService.updateTaskStatus(parentTask.id, 'todo');
                 }
             }
         } catch (error) {
@@ -1226,10 +1183,10 @@ class App {
 
     // Сброс статуса родительских задач
     static async resetParentTasksStatus(taskId) {
-        if (!currentProject || !taskId) return; // Используем глобальную переменную
+        if (!currentProject || !taskId) return;
 
         try {
-            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
+            const response = await ApiService.getTasks(currentProject.hash);
             const tasks = response.tasks || [];
             const currentTask = tasks.find(t => t.id === taskId);
 
@@ -1239,7 +1196,7 @@ class App {
 
                 // Обновляем статус родительской задачи на 'todo'
                 if (parentTask.status !== 'todo') {
-                    await ApiService.updateTaskStatus(parentTask.id, 'todo'); // Используем метод из index.txt
+                    await ApiService.updateTaskStatus(parentTask.id, 'todo');
                 }
 
                 // Рекурсивно сбрасываем статусы выше
@@ -1252,16 +1209,16 @@ class App {
 
     // Выполнение всех дочерних задач
     static async completeAllChildTasks(parentTaskId) {
-        if (!currentProject || !parentTaskId) return; // Используем глобальную переменную
+        if (!currentProject || !parentTaskId) return;
 
         try {
-            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
+            const response = await ApiService.getTasks(currentProject.hash);
             const tasks = response.tasks || [];
             const childTasks = tasks.filter(t => t.parent_task_id === parentTaskId);
 
             for (const childTask of childTasks) {
                 if (childTask.status !== 'done') {
-                    await ApiService.updateTaskStatus(childTask.id, 'done'); // Используем метод из index.txt
+                    await ApiService.updateTaskStatus(childTask.id, 'done');
                     // Рекурсивно выполнить дочерние подзадачи
                     await this.completeAllChildTasks(childTask.id);
                 }
@@ -1273,16 +1230,16 @@ class App {
 
     // Назначение задачи пользователю
     static async assignTaskToUser(userId) { // Принимает userId
-        if (!currentTask || !currentTask.id || !userId) { // Используем глобальную переменную
+        if (!currentTask || !currentTask.id || !userId) {
             this.showError('ID задачи и ID пользователя обязательны');
             return;
         }
         try {
-            await ApiService.updateTask(currentTask.id, { assigned_to_id: userId }); // Используем метод из index.txt
+            await ApiService.updateTask(currentTask.id, { assigned_to_id: userId });
             this.showSuccess('Исполнитель задачи обновлен!');
             // Перезагружаем задачу
-            if (currentTask && currentTask.id === currentTask.id) { // Используем глобальную переменную
-                await this.openTask(currentTask.id); // Используем глобальную переменную
+            if (currentTask && currentTask.id === currentTask.id) {
+                await this.openTask(currentTask.id);
             }
         } catch (error) {
             console.error('Error assigning task:', error);
@@ -1293,13 +1250,13 @@ class App {
     // Загрузка подзадач
     static async loadSubtasks(parentTaskId, level = 0, container = null) {
         try {
-            if (!currentProject || !currentProject.hash) { // Используем глобальную переменную
+            if (!currentProject || !currentProject.hash) {
                 console.error('No current project for loading subtasks');
                 document.getElementById('subtasksList').innerHTML = '<p>Ошибка загрузки подзадач</p>';
                 return;
             }
 
-            const response = await ApiService.getTasks(currentProject.hash); // ИСПРАВЛЕНО: используем правильный маршрут
+            const response = await ApiService.getTasks(currentProject.hash);
             const tasks = response.tasks || [];
             const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
 
@@ -1352,7 +1309,7 @@ class App {
         try {
             const newStatus = isDone ? 'done' : 'todo';
             // Обновляем статус текущей задачи
-            await ApiService.updateTaskStatus(taskId, newStatus); // Используем метод из index.txt
+            await ApiService.updateTaskStatus(taskId, newStatus);
 
             // Если задача выполняется, выполняем все дочерние задачи
             if (isDone) {
@@ -1366,8 +1323,8 @@ class App {
             await this.checkParentTaskStatus(taskId);
 
             // Перезагружаем отображение подзадач
-            if (currentTask) { // Используем глобальную переменную
-                await this.loadSubtasks(currentTask.id); // Используем глобальную переменную
+            if (currentTask) {
+                await this.loadSubtasks(currentTask.id);
             }
             this.showSuccess('Статус задачи обновлен!');
         } catch (error) {
@@ -1375,7 +1332,6 @@ class App {
             this.showError('Ошибка обновления статуса задачи: ' + error.message);
         }
     }
-
 
     // Search projects
     static async searchProjects() {
@@ -1411,13 +1367,13 @@ class App {
 
     static async searchProjectByExactHash(hash) {
         try {
-            const response = await ApiService.getProjectByHashExact(hash); // Используем метод из index.txt
+            const response = await ApiService.getProjectByHashExact(hash);
             const project = response.project;
 
             if (project) {
                 // Показываем найденный проект
                 const title = `Проект по хэшу: "${hash}"`;
-                this.renderSearchResults([project], title); // Используем метод из index.txt
+                this.renderSearchResults([project], title);
             } else {
                 // Если проект по хэшу не найден, выбрасываем ошибку для перехода к поиску по названию
                 throw new Error('Project not found by hash');
@@ -1431,17 +1387,17 @@ class App {
 
     static async searchProjectsByQuery(query) {
         try {
-            const response = await ApiService.searchPublicProjects(query); // Используем метод из index.txt
+            const response = await ApiService.searchPublicProjects(query);
             const projects = response.projects || [];
             const title = query ? `Результаты поиска по названию: "${query}"` : 'Публичные проекты';
-            this.renderSearchResults(projects, title); // Используем метод из index.txt
+            this.renderSearchResults(projects, title);
         } catch (error) {
             console.error('Error searching projects by query:', error);
             // Не показываем ошибку здесь, так как она обрабатывается в searchProjects
         }
     }
 
-    static renderSearchResults(projects, title) { // Используем метод из index.txt
+    static renderSearchResults(projects, title) {
         const container = document.getElementById('searchResultsList');
         if (!projects || projects.length === 0) {
             container.innerHTML = `<div class="empty-state">
@@ -1510,7 +1466,7 @@ class App {
         container.innerHTML = html;
     }
 
-    static getButtonColor(buttonClass) { // Используем метод из index.txt
+    static getButtonColor(buttonClass) {
         const colorMap = {
             'btn-primary': '#007bff',
             'btn-warning': '#ffc107',
@@ -1521,10 +1477,10 @@ class App {
         return colorMap[buttonClass] || '#007bff';
     }
 
-    static async handleJoinProject(projectHash) { // Используем метод из index.txt
+    static async handleJoinProject(projectHash) {
         try {
             console.log('Joining project:', projectHash);
-            const response = await ApiService.joinProject(projectHash); // Используем метод из index.txt
+            const response = await ApiService.joinProject(projectHash);
 
             if (response.status === 'joined') {
                 this.showSuccess('Вы успешно присоединились к проекту!');
@@ -1552,7 +1508,7 @@ class App {
         }
     }
 
-    static showProjectPreviewModal(project, projectData) { // Используем метод из index.txt
+    static showProjectPreviewModal(project, projectData) {
         // Используем renderSearchResults для отображения одного проекта
         this.renderSearchResults([project], `Предварительный просмотр: ${project.title}`);
         // Добавляем кнопку "Присоединиться" если можно
@@ -1563,9 +1519,9 @@ class App {
         container.innerHTML += joinBtnHtml;
     }
 
-    static async openProjectPreview(projectHash) { // Используем метод из index.txt
+    static async openProjectPreview(projectHash) {
         try {
-            const response = await ApiService.getProjectByHashExact(projectHash); // Используем метод из index.txt
+            const response = await ApiService.getProjectByHashExact(projectHash);
             const project = response.project;
 
             // Show modal with project info
@@ -1576,9 +1532,9 @@ class App {
         }
     }
 
-    static async joinProjectFromPreview(projectHash) { // Используем метод из index.txt
+    static async joinProjectFromPreview(projectHash) {
         try {
-            const response = await ApiService.joinProject(projectHash); // Используем метод из index.txt
+            const response = await ApiService.joinProject(projectHash);
 
             if (response.status === 'joined') {
                 this.showSuccess('Вы успешно присоединились к проекту!');
@@ -1613,10 +1569,10 @@ class App {
     }
 
     static async loadProjectMembersManagement() {
-        if (!currentProject) return; // Используем глобальную переменную
+        if (!currentProject) return;
 
         try {
-            const response = await ApiService.getProjectMembers(currentProject.hash); // Используем метод из index.txt
+            const response = await ApiService.getProjectMembers(currentProject.hash);
             const members = response.members || [];
             const container = document.getElementById('projectMembersManagementList');
 
@@ -1628,7 +1584,7 @@ class App {
             container.innerHTML = members.map(member => {
                 const memberData = member.user || member;
                 const displayName = (memberData.full_name && memberData.full_name.trim() !== '') ? memberData.full_name : (member.full_name && member.full_name.trim() !== '') ? member.full_name : `Участник #${member.user_id || memberData.id}`;
-                const isCurrentUser = (member.user_id || memberData.id) === currentUser.id; // Используем глобальную переменную
+                const isCurrentUser = (member.user_id || memberData.id) === currentUser.id;
                 const isOwnerMember = member.role === ProjectRole.OWNER;
                 const isAdminMember = member.role === ProjectRole.ADMIN;
 
@@ -1636,10 +1592,10 @@ class App {
                 let canChangeRole = false;
                 let canRemoveMember = false;
 
-                if (currentUser.id === currentProject.owner_id) { // Current user is owner, используем глобальные переменные
+                if (currentUser.id === currentProject.owner_id) { // Current user is owner
                     canChangeRole = !isCurrentUser && !isOwnerMember;
                     canRemoveMember = !isCurrentUser && !isOwnerMember;
-                } else if (currentUser.role === ProjectRole.ADMIN) { // Current user is admin, используем глобальные переменные
+                } else if (currentUser.role === ProjectRole.ADMIN) { // Current user is admin
                     canChangeRole = !isCurrentUser && !isOwnerMember && !isAdminMember;
                     canRemoveMember = !isCurrentUser && !isOwnerMember && !isAdminMember;
                 }
@@ -1680,7 +1636,7 @@ class App {
 
     static async updateMemberRole(memberId, newRole) {
         try {
-            await ApiService.updateProjectMemberRole(currentProject.hash, memberId, newRole); // Используем метод из index.txt
+            await ApiService.updateProjectMemberRole(currentProject.hash, memberId, newRole);
             this.showSuccess('Роль участника обновлена');
             // Reload the management list
             await this.loadProjectMembersManagement();
@@ -1699,7 +1655,7 @@ class App {
 
     static async removeMember(memberId) {
         try {
-            await ApiService.removeProjectMember(currentProject.hash, memberId); // Используем метод из index.txt
+            await ApiService.removeProjectMember(currentProject.hash, memberId);
             this.showSuccess('Участник удален');
             // Reload the management list
             await this.loadProjectMembersManagement();
@@ -1722,10 +1678,10 @@ class App {
     }
 
     static async loadJoinRequests() {
-        if (!currentProject) return; // Используем глобальную переменную
+        if (!currentProject) return;
 
         try {
-            const response = await ApiService.getProjectJoinRequests(currentProject.hash); // Используем метод из index.txt
+            const response = await ApiService.getProjectJoinRequests(currentProject.hash);
             const joinRequests = response.requests || [];
             const container = document.getElementById('joinRequestsList');
 
@@ -1774,11 +1730,11 @@ class App {
         return map[status] || '#6c757d';
     }
 
-    static async handleApproveRequest(requestId) { // Используем метод из index.txt
-        if (!currentProject) return; // Используем глобальную переменную
+    static async handleApproveRequest(requestId) {
+        if (!currentProject) return;
         try {
-            console.log('Approving join request:', requestId, 'for project:', currentProject.hash); // Используем глобальную переменную
-            await ApiService.approveJoinRequest(currentProject.hash, requestId); // Используем метод из index.txt
+            console.log('Approving join request:', requestId, 'for project:', currentProject.hash);
+            await ApiService.approveJoinRequest(currentProject.hash, requestId);
             this.showSuccess('Заявка одобрена!');
             await this.showJoinRequests(); // Перезагружаем список
         } catch (error) {
@@ -1791,11 +1747,11 @@ class App {
         }
     }
 
-    static async handleRejectRequest(requestId) { // Используем метод из index.txt
-        if (!currentProject) return; // Используем глобальную переменную
+    static async handleRejectRequest(requestId) {
+        if (!currentProject) return;
         try {
-            console.log('Rejecting join request:', requestId, 'for project:', currentProject.hash); // Используем глобальную переменную
-            await ApiService.rejectJoinRequest(currentProject.hash, requestId); // Используем метод из index.txt
+            console.log('Rejecting join request:', requestId, 'for project:', currentProject.hash);
+            await ApiService.rejectJoinRequest(currentProject.hash, requestId);
             this.showSuccess('Заявка отклонена!');
             await this.showJoinRequests(); // Перезагружаем список
         } catch (error) {
@@ -1809,9 +1765,9 @@ class App {
     }
 
     // Settings
-    static async loadSettings() { // Используем метод из index.txt
+    static async loadSettings() {
         try {
-            const userData = await ApiService.getCurrentUser(); // Используем метод из index.txt
+            const userData = await ApiService.getCurrentUser();
             document.getElementById('userFullName').value = userData.full_name || '';
             document.getElementById('userUsername').value = userData.username || '';
 
@@ -1833,21 +1789,21 @@ class App {
         }
     }
 
-    static async handleSaveSettings() { // Используем метод из index.txt
+    static async handleSaveSettings() {
         try {
             const fullName = document.getElementById('userFullName').value.trim();
             const username = document.getElementById('userUsername').value.trim();
 
             // Обновляем данные пользователя
             if (fullName || username) {
-                await ApiService.updateCurrentUser({ // Используем метод из index.txt
+                await ApiService.updateCurrentUser({
                     full_name: fullName,
                     username: username
                 });
             }
 
             // Обновляем настройки
-            await ApiService.updateUserPreferences({ // Используем метод из index.txt
+            await ApiService.updateUserPreferences({
                 theme: document.getElementById('userTheme').value,
                 notifications_enabled: document.getElementById('userNotificationsEnabled').checked,
                 compact_view: document.getElementById('userCompactView').checked
@@ -1861,9 +1817,9 @@ class App {
         }
     }
 
-    static async resetUserPreferences() { // Используем метод из index.txt
+    static async resetUserPreferences() {
         try {
-            await ApiService.resetUserPreferences(); // Используем метод из index.txt
+            await ApiService.resetUserPreferences();
             this.hideModal('settingsModal');
             this.showSuccess('Настройки сброшены к значениям по умолчанию!');
         } catch (error) {
