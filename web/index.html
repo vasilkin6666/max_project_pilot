@@ -888,29 +888,7 @@
             }
 
             static async joinProject(projectHash) {
-                try {
-                    const response = await ApiService.joinProject(projectHash);
-
-                    if (response.status === 'joined') {
-                        this.showSuccess('Вы успешно присоединились к проекту!');
-                        // Открываем проект
-                        await this.openProject(projectHash);
-                    } else if (response.status === 'pending_approval') {
-                        this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
-                        // Закрываем поиск и возвращаемся к дашборду
-                        this.showDashboard();
-                    }
-                } catch (error) {
-                    console.error('Error joining project:', error);
-                    if (error.message.includes('400') && error.message.includes('already a member')) {
-                        this.showError('Вы уже являетесь участником этого проекта');
-                        await this.openProject(projectHash);
-                    } else if (error.message.includes('400') && error.message.includes('already pending')) {
-                        this.showError('Заявка на вступление уже отправлена');
-                    } else {
-                        this.showError('Ошибка вступления в проект: ' + error.message);
-                    }
-                }
+                return this.post(`/projects/${projectHash}/join`);
             }
 
             static async regenerateInvite(projectHash) {
@@ -2964,14 +2942,18 @@
                 }
             }
 
-            static joinProjectFromPreview(projectHash) {
+            static async joinProjectFromPreview(projectHash) {
                 this.hideModal('projectPreviewModal');
-                this.joinProject(projectHash);
+                await this.joinProject(projectHash); // Добавьте await
             }
 
+            // В классе App замените проблемный метод joinProject:
             static async joinProject(projectHash) {
                 try {
+                    console.log('Attempting to join project:', projectHash);
+
                     const response = await ApiService.joinProject(projectHash);
+                    console.log('Join response:', response);
 
                     if (response.status === 'joined') {
                         this.showSuccess('Вы успешно присоединились к проекту!');
@@ -2981,14 +2963,22 @@
                         this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
                         // Закрываем поиск и возвращаемся к дашборду
                         this.showDashboard();
+                    } else {
+                        this.showError('Неизвестный статус ответа: ' + response.status);
                     }
                 } catch (error) {
                     console.error('Error joining project:', error);
+
+                    // Более детальная обработка ошибок
                     if (error.message.includes('400') && error.message.includes('already a member')) {
                         this.showError('Вы уже являетесь участником этого проекта');
                         await this.openProject(projectHash);
                     } else if (error.message.includes('400') && error.message.includes('already pending')) {
                         this.showError('Заявка на вступление уже отправлена');
+                    } else if (error.message.includes('403')) {
+                        this.showError('Доступ к проекту запрещен');
+                    } else if (error.message.includes('404')) {
+                        this.showError('Проект не найден');
                     } else {
                         this.showError('Ошибка вступления в проект: ' + error.message);
                     }
