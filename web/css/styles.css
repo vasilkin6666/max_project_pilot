@@ -123,6 +123,21 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* Темная тема */
+[data-theme="dark"] {
+  --max-primary: #3b82f6;
+  --max-primary-dark: #2563eb;
+  --max-primary-light: #60a5fa;
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --info: #60a5fa;
+
+  color: var(--neutral-100);
+  background-color: var(--neutral-900);
+}
+
 /* Container */
 .container {
   width: 100%;
@@ -172,12 +187,22 @@ body {
   color: var(--neutral-800);
 }
 
+/* Темная тема */
+[data-theme="dark"] .section-header h3 {
+  color: var(--neutral-100);
+}
+
 /* Stats */
 .stat-item {
   display: inline-block;
   margin-right: var(--space-6);
   font-size: var(--text-sm);
   color: var(--neutral-600);
+}
+
+/* Темная тема */
+[data-theme="dark"] .stat-item {
+  color: var(--neutral-400);
 }
 
 /* Tasks List */
@@ -215,6 +240,11 @@ body {
   font-size: var(--text-sm);
   color: var(--neutral-500);
   margin-top: var(--space-2);
+}
+
+/* Темная тема */
+[data-theme="dark"] .project-hash-info {
+  color: var(--neutral-400);
 }
 
 /* Loading Overlay (новый стиль, вдохновленный кодом друга, но под тематику проекта) */
@@ -328,7 +358,7 @@ body {
 .loading-bar-progress {
   height: 100%;
   background: var(--max-primary); /* Цвет из ТЗ */
-  width: 0%; /* Начинаем с 0% */
+  width: 100%; /* Установим 100% сразу после загрузки */
   transition: width 0.4s ease; /* Плавное заполнение */
   position: relative; /* Для анимации */
 }
@@ -344,6 +374,31 @@ body {
   background: white; /* Цвет "лидера" */
   border-radius: 50%; /* Круглый */
   box-shadow: 0 0 8px white; /* Свечение */
+}
+
+/* Кнопка "Начать" */
+.start-button {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background-color: var(--max-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.start-button:hover {
+  background-color: var(--max-primary-dark);
+  box-shadow: var(--shadow-lg);
+}
+
+.start-button:active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Искры (вдохновлено кодом друга) */
@@ -441,6 +496,11 @@ body {
   color: var(--neutral-600);
 }
 
+/* Темная тема */
+[data-theme="dark"] .stat-item {
+  color: var(--neutral-400);
+}
+
 .dashboard-stats {
   margin-bottom: var(--space-6);
   padding: var(--space-4);
@@ -449,4 +509,10 @@ body {
   display: flex;
   gap: var(--space-8);
   flex-wrap: wrap;
+}
+
+/* Темная тема */
+[data-theme="dark"] .dashboard-stats {
+  background-color: var(--neutral-800);
+  border: 1px solid var(--neutral-700);
 }
