@@ -62,16 +62,78 @@ class MaxIntegration {
         }
     }
 
+    static setupSecurity() {
+        // Включаем защиту от скриншотов для приватных данных
+        if (WebApp.ScreenCapture && WebApp.ScreenCapture.enableScreenCapture) {
+            try {
+                WebApp.ScreenCapture.enableScreenCapture();
+            } catch (error) {
+                console.warn('Screen capture protection not available:', error);
+            }
+        }
+
+        // Включаем подтверждение закрытия при несохраненных данных
+        if (WebApp.enableClosingConfirmation) {
+            try {
+                WebApp.enableClosingConfirmation();
+            } catch (error) {
+                console.warn('Closing confirmation not available:', error);
+            }
+        }
+    }
+
     static setupHapticFeedback() {
         if (WebApp.HapticFeedback) {
             window.hapticFeedback = {
-                light: () => WebApp.HapticFeedback.impactOccurred('light'),
-                medium: () => WebApp.HapticFeedback.impactOccurred('medium'),
-                heavy: () => WebApp.HapticFeedback.impactOccurred('heavy'),
-                success: () => WebApp.HapticFeedback.notificationOccurred('success'),
-                error: () => WebApp.HapticFeedback.notificationOccurred('error'),
-                warning: () => WebApp.HapticFeedback.notificationOccurred('warning'),
-                selection: () => WebApp.HapticFeedback.selectionChanged()
+                light: () => {
+                    try {
+                        WebApp.HapticFeedback.impactOccurred('light');
+                    } catch (error) {
+                        console.log('Haptic: light');
+                    }
+                },
+                medium: () => {
+                    try {
+                        WebApp.HapticFeedback.impactOccurred('medium');
+                    } catch (error) {
+                        console.log('Haptic: medium');
+                    }
+                },
+                heavy: () => {
+                    try {
+                        WebApp.HapticFeedback.impactOccurred('heavy');
+                    } catch (error) {
+                        console.log('Haptic: heavy');
+                    }
+                },
+                success: () => {
+                    try {
+                        WebApp.HapticFeedback.notificationOccurred('success');
+                    } catch (error) {
+                        console.log('Haptic: success');
+                    }
+                },
+                error: () => {
+                    try {
+                        WebApp.HapticFeedback.notificationOccurred('error');
+                    } catch (error) {
+                        console.log('Haptic: error');
+                    }
+                },
+                warning: () => {
+                    try {
+                        WebApp.HapticFeedback.notificationOccurred('warning');
+                    } catch (error) {
+                        console.log('Haptic: warning');
+                    }
+                },
+                selection: () => {
+                    try {
+                        WebApp.HapticFeedback.selectionChanged();
+                    } catch (error) {
+                        console.log('Haptic: selection');
+                    }
+                }
             };
         } else {
             // Fallback для standalone режима
@@ -84,18 +146,6 @@ class MaxIntegration {
                 warning: () => console.log('Haptic: warning'),
                 selection: () => console.log('Haptic: selection')
             };
-        }
-    }
-
-    static setupSecurity() {
-        // Включаем защиту от скриншотов для приватных данных
-        if (WebApp.ScreenCapture) {
-            WebApp.ScreenCapture.enableScreenCapture();
-        }
-
-        // Включаем подтверждение закрытия при несохраненных данных
-        if (WebApp.enableClosingConfirmation) {
-            WebApp.enableClosingConfirmation();
         }
     }
 

@@ -121,6 +121,11 @@ class App {
 
   static eventHandlers = new Map();
 
+  static showMyTasks() {
+      this.showView('myTasksView');
+      this.loadMyTasks();
+  }
+
   static addEventListener(elementId, event, handler) {
       const element = document.getElementById(elementId);
       if (element) {

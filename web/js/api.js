@@ -3,6 +3,22 @@ const CONFIG = {
     API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
 };
 
+// Глобальные переменные
+let currentProject = null;
+let currentTask = null;
+let currentUser = null;
+let currentMemberToUpdate = null;
+let currentMemberToRemove = null;
+let userSettings = {};
+
+// Константы ролей проекта
+const ProjectRole = {
+    OWNER: 'owner',
+    ADMIN: 'admin',
+    MEMBER: 'member',
+    GUEST: 'guest'
+};
+
 // API сервис
 class ApiService {
     static pendingRequests = new Map();
@@ -60,7 +76,7 @@ class ApiService {
             throw error;
         }
     }
-    
+
     static async get(endpoint) {
         return this.request(endpoint, { method: 'GET' });
     }

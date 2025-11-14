@@ -732,10 +732,10 @@
     <script src="js/main.js"></script>
 
     <script>
-        // Service Worker регистрация
+        // Service Worker регистрация с правильным путем
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('sw.js')
                     .then(function(registration) {
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
                     })
@@ -744,22 +744,6 @@
                     });
             });
         }
-
-        // Глобальные переменные
-        let currentProject = null;
-        let currentTask = null;
-        let currentUser = null;
-        let currentMemberToUpdate = null;
-        let currentMemberToRemove = null;
-        let userSettings = {};
-
-        // Константы ролей проекта
-        const ProjectRole = {
-            OWNER: 'owner',
-            ADMIN: 'admin',
-            MEMBER: 'member',
-            GUEST: 'guest'
-        };
     </script>
 </body>
 </html>
