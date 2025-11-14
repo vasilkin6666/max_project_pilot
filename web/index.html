@@ -1,4 +1,3 @@
-Вот мой текущий код Index.html:
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -10,24 +9,88 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <style>
+        /* Стили для плавно затухающего текста (фонового) */
+        .fading-text {
+            animation: fade 2s ease-in-out infinite;
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            pointer-events: none;
+            padding: 10px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes fade {
+            0%, 100% {
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        /* Гарантируем, что заставка будет поверх всего */
+        .loading-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 9999 !important;
+            transition: opacity 0.8s ease-in-out !important;
+            cursor: pointer;
+        }
+
+        /* Скрываем заставку после клика */
+        .loading-overlay.hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* Скрываем прогресс бар */
+        .loading-bar-container {
+            display: none !important;
+        }
+
+        /* Скрываем кнопку "Начать" */
+        .start-button {
+            display: none !important;
+        }
+
+        /* Делаем весь контент заставки ненажимаемым, кроме самой заставки */
+        .loading-content {
+            pointer-events: none;
+        }
+
+        /* Но сама заставка должна быть кликабельной */
+        .loading-overlay {
+            pointer-events: auto;
+        }
+    </style>
 </head>
 <body class="safe-area">
-    <!-- ИСПРАВЛЕНО: Новая структура загрузочной заставки -->
+    <!-- Заставка, которая всегда поверх всего -->
     <div id="loading" class="loading-overlay">
         <div class="loading-content">
-            <div class="icon-container"> <!-- Контейнер для иконки и орбиты -->
+            <div class="icon-container">
                 <div class="loading-icon"></div>
                 <div class="icon-orbit"></div>
             </div>
             <h2 class="loading-text">Project Pilot Pro</h2>
-            <p class="loading-subtitle">Запуск системы управления...</p>
+            <p class="loading-subtitle">Система управления проектами</p>
+            <!-- Прогресс бар скрыт -->
             <div class="loading-bar-container">
                 <div class="loading-bar-progress" id="loadingBarProgress"></div>
             </div>
-            <!-- ИСПРАВЛЕНО: Добавлена кнопка "Начать" -->
-            <button id="startButton" class="start-button" style="display: none;">Начать</button>
+            <!-- Фоновый текст "Нажми на экран" -->
+            <div id="tapToStart" class="fading-text">
+                Нажми на экран
+            </div>
         </div>
-        <div class="spark-container" id="sparkContainer"></div> <!-- Контейнер для искр -->
+        <div class="spark-container" id="sparkContainer"></div>
     </div>
 
     <div id="app" style="display: none;">
@@ -66,7 +129,6 @@
                         <h2 class="dashboard-title">Дашборд</h2>
                         <button class="btn btn-primary" id="createProjectBtn">Создать проект</button>
                     </div>
-                    <!-- Добавлены элементы для статистики -->
                     <div class="dashboard-stats">
                         <div class="stat-item">Проектов: <span id="projectsCount">0</span></div>
                         <div class="stat-item">Задач: <span id="tasksCount">0</span></div>
@@ -598,5 +660,67 @@
 
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
+    <script>
+    // Упрощенная инициализация - заставка всегда видна до клика
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('DOM fully loaded and parsed');
+
+        try {
+            console.log('Initializing App...');
+            // Инициализируем приложение в фоне
+            await App.init();
+            console.log('App initialized successfully');
+
+            // Все визуальные эффекты (искры, анимации) продолжают работать
+            // Текст "Нажми на экран" уже виден с самого начала как фоновый
+
+        } catch (error) {
+            console.error('Error during app initialization:', error);
+            // В случае ошибки показываем сообщение на заставке
+            const loadingContent = document.querySelector('.loading-content');
+            if (loadingContent) {
+                loadingContent.innerHTML = `
+                    <h2>Ошибка загрузки</h2>
+                    <p>${error.message || 'Неизвестная ошибка'}</p>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: white; border: none; border-radius: 5px; cursor: pointer;">Перезагрузить</button>
+                `;
+            }
+        }
+
+        // Обработчик клика по заставке
+        const loadingOverlay = document.getElementById('loading');
+        if (loadingOverlay) {
+            loadingOverlay.addEventListener('click', function() {
+                console.log('Loading overlay clicked, hiding splash screen');
+
+                // Добавляем класс для плавного скрытия
+                loadingOverlay.classList.add('hidden');
+
+                // Полностью скрываем через время анимации
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                    // Показываем основное приложение
+                    document.getElementById('app').style.display = 'block';
+                    console.log('Splash screen hidden, app is ready');
+
+                    // Запускаем основное приложение
+                    if (typeof App.showDashboard === 'function') {
+                        App.showDashboard();
+                    }
+                }, 800);
+            });
+        }
+
+        // Также можно скрывать по нажатию клавиши
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                const loadingOverlay = document.getElementById('loading');
+                if (loadingOverlay && loadingOverlay.style.display !== 'none') {
+                    loadingOverlay.click();
+                }
+            }
+        });
+    });
+    </script>
 </body>
 </html>
