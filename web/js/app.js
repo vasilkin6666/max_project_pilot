@@ -35,10 +35,12 @@ class AuthManager {
 
     static async authenticateWithMax() {
         const userData = WebApp.initDataUnsafe.user;
-        const maxId = userData.id.toString();
+        const maxId = userData.id.toString(); // Используем id как maxId
         const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
-        console.log('MAX authentication with:', { maxId, fullName });
-        const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
+        const username = userData.username || ''; // Используем username из WebApp
+        console.log('MAX authentication with:', { maxId, fullName, username });
+        // ИСПРАВЛЕНО: передаем maxId, fullName, username как ожидалось в index.txt
+        const tokenData = await ApiService.getAuthToken(maxId, fullName, username);
         if (tokenData?.access_token) {
             localStorage.setItem('access_token', tokenData.access_token);
             console.log('MAX authentication successful');
