@@ -1,29 +1,27 @@
-// sw.js - простой Service Worker
+// sw.js
 const CACHE_NAME = 'project-pilot-v1';
 const urlsToCache = [
   '/',
   '/index.html',
   '/css/styles.css',
   '/js/api.js',
-  '/js/app.js',
-  '/js/main.js',
-  '/js/max-integration.js',
-  '/js/auth-enhanced.js'
+  '/js/app.js'
 ];
 
-self.addEventListener('install', function(event) {
+self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(function(cache) {
+      .then(cache => {
+        console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
   );
 });
 
-self.addEventListener('fetch', function(event) {
+self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
-      .then(function(response) {
+      .then(response => {
         if (response) {
           return response;
         }

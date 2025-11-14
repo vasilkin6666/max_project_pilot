@@ -682,3 +682,65 @@ body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(0.98); }
 }
+
+/* Error states */
+.error-state {
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--error);
+}
+
+.error-state .icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-4);
+}
+
+.retry-button {
+    margin-top: var(--space-4);
+}
+
+/* Добавьте в css/styles.css */
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.error-state {
+    text-align: center;
+    padding: var(--space-6);
+    color: var(--error);
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-4);
+}
+
+.error-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: center;
+    margin-top: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.retry-button {
+    background: var(--error);
+}
+
+.retry-button:hover {
+    background: var(--error-dark);
+}
+
+/* Улучшенная анимация для кнопки "Начать" */
+#startButton {
+    animation: pulse 2s infinite, fadeIn 0.5s ease-in-out;
+}
+
+#tapToStart {
+    animation: fade 2s ease-in-out infinite, fadeIn 0.5s ease-in-out;
+}

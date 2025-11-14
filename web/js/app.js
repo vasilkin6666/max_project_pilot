@@ -14,36 +14,188 @@ class App {
           console.log('Initializing app...');
           this.isInitialized = true; // Устанавливаем флаг
 
-          // Инициализируем аутентификацию
-          currentUser = await AuthManager.initialize();
+          // Инициализируем онлайн-статус
+          this.initOnlineStatus();
 
-          // Загружаем данные
+          // Инициализируем аутентификацию с таймаутом
+          currentUser = await this.withTimeout(AuthManager.initialize(), 10000, 'Authentication timeout');
+
+          // Загружаем данные с обработкой ошибок
           await this.loadData();
 
           // Настраиваем обработчики событий
           this.setupEventListeners();
 
-          // ИСПРАВЛЕНО: Показываем кнопку "Начать" вместо автоматического скрытия заставки
-          showStartButton();
-          // ИСПРАВЛЕНО: Добавляем обработчик клика на кнопку "Начать"
-          attachStartButtonListener();
-
-          // ИСПРАВЛЕНО: Обновляем прогресс-бар до 100% и меняем цвет
-          const progressBar = document.getElementById('loadingBarProgress');
-          if (progressBar) {
-              progressBar.style.width = '100%';
-              // Дополнительная анимация завершения, если нужно
-              setTimeout(() => {
-                  progressBar.style.background = 'var(--success)'; // Зеленый цвет при завершении
-              }, 100);
+          // Инициализируем мобильные функции
+          if (typeof MobileApp !== 'undefined') {
+              MobileApp.init();
           }
 
+          // ИСПРАВЛЕНО: Показываем кнопку "Начать" вместо автоматического скрытия заставки
+          this.showStartButton();
+
+          // ИСПРАВЛЕНО: Добавляем обработчик клика на кнопку "Начать"
+          this.attachStartButtonListener();
+
+          // ИСПРАВЛЕНО: Обновляем прогресс-бар до 100% и меняем цвет
+          this.updateProgressBar();
+
           console.log('App initialized successfully');
+
+          // Отправляем событие успешной инициализации
+          window.dispatchEvent(new CustomEvent('appInitialized', {
+              detail: { user: currentUser, timestamp: new Date() }
+          }));
+
       } catch (error) {
           console.error('App initialization failed:', error);
-          this.showError('Ошибка инициализации приложения: ' + error.message);
+          this.handleInitError(error);
           this.isInitialized = false; // Сбрасываем флаг при ошибке
       }
+  }
+
+  static withTimeout(promise, timeoutMs, errorMessage = 'Operation timeout') {
+      return Promise.race([
+          promise,
+          new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+          )
+      ]);
+  }
+
+  static initOnlineStatus() {
+      window.addEventListener('online', () => {
+          this.showSuccess('Соединение восстановлено');
+          // Пытаемся перезагрузить данные при восстановлении связи
+          setTimeout(() => this.loadData(), 1000);
+      });
+
+      window.addEventListener('offline', () => {
+          this.showError('Отсутствует интернет-соединение');
+      });
+
+      // Показываем предупреждение если offline
+      if (!navigator.onLine) {
+          this.showError('Приложение работает в offline режиме');
+      }
+  }
+
+  static showStartButton() {
+      const startButton = document.getElementById('startButton');
+      const tapToStart = document.getElementById('tapToStart');
+
+      if (startButton) {
+          startButton.style.display = 'inline-block';
+          startButton.classList.add('fade-in');
+      }
+
+      if (tapToStart) {
+          tapToStart.style.display = 'block';
+          tapToStart.classList.add('fade-in');
+      }
+  }
+
+  static attachStartButtonListener() {
+      const startButton = document.getElementById('startButton');
+      const loadingOverlay = document.getElementById('loading');
+
+      if (startButton) {
+          // Удаляем существующие обработчики чтобы избежать дублирования
+          startButton.replaceWith(startButton.cloneNode(true));
+
+          document.getElementById('startButton').addEventListener('click', () => {
+              this.hideSplashScreen();
+          });
+      }
+
+      // Также обрабатываем клик по самой заставке
+      if (loadingOverlay) {
+          loadingOverlay.addEventListener('click', () => {
+              this.hideSplashScreen();
+          });
+      }
+  }
+
+  static updateProgressBar() {
+      const progressBar = document.getElementById('loadingBarProgress');
+      if (progressBar) {
+          progressBar.style.width = '100%';
+          progressBar.style.transition = 'all 0.5s ease-in-out';
+
+          setTimeout(() => {
+              progressBar.style.background = 'var(--success)';
+              progressBar.style.boxShadow = '0 0 10px var(--success)';
+          }, 100);
+      }
+  }
+
+  static hideSplashScreen() {
+      const loadingOverlay = document.getElementById('loading');
+      const appElement = document.getElementById('app');
+
+      if (loadingOverlay) {
+          console.log('Hiding splash screen...');
+
+          // Добавляем класс для плавного скрытия
+          loadingOverlay.classList.add('hidden');
+
+          // Полностью скрываем через время анимации
+          setTimeout(() => {
+              loadingOverlay.style.display = 'none';
+
+              // Показываем основное приложение
+              if (appElement) {
+                  appElement.style.display = 'block';
+                  appElement.classList.add('fade-in');
+              }
+
+              console.log('Splash screen hidden, app is ready');
+
+              // Запускаем основное приложение
+              this.showDashboard();
+
+              // Отправляем событие
+              window.dispatchEvent(new Event('appStarted'));
+
+          }, 800);
+      }
+  }
+
+  static handleInitError(error) {
+      const loadingContent = document.querySelector('.loading-content');
+
+      if (loadingContent) {
+          loadingContent.innerHTML = `
+              <div class="error-state">
+                  <div class="error-icon">⚠️</div>
+                  <h2>Ошибка загрузки</h2>
+                  <p>${error.message || 'Неизвестная ошибка'}</p>
+                  <div class="error-actions">
+                      <button onclick="location.reload()" class="btn btn-primary retry-button">
+                          Перезагрузить
+                      </button>
+                      <button onclick="App.continueWithoutData()" class="btn btn-outline">
+                          Продолжить без данных
+                      </button>
+                  </div>
+              </div>
+          `;
+      }
+
+      // Показываем ошибку пользователю
+      this.showError('Ошибка инициализации приложения: ' + error.message);
+  }
+
+  static continueWithoutData() {
+      console.log('Continuing without data...');
+      this.hideSplashScreen();
+
+      // Показываем пустое состояние
+      this.renderProjects([]);
+      this.updateStats([], []);
+      this.renderRecentTasks([]);
+
+      this.showSuccess('Приложение запущено в ограниченном режиме');
   }
 
   static setupEventListeners() {
@@ -299,14 +451,38 @@ class App {
         return div.innerHTML;
     }
 
+    // Проверка онлайн статуса
+    static initOnlineStatus() {
+        window.addEventListener('online', () => {
+            this.showSuccess('Соединение восстановлено');
+            this.loadData();
+        });
+
+        window.addEventListener('offline', () => {
+            this.showError('Отсутствует интернет-соединение');
+        });
+    }
+
     // Navigation methods
     static showView(viewId) {
-        // Скрываем все вью
-        document.querySelectorAll('.view').forEach(view => {
-            view.style.display = 'none';
-        });
-        // Показываем нужную вью
-        document.getElementById(viewId).style.display = 'block';
+        try {
+            // Скрываем все вью
+            document.querySelectorAll('.view').forEach(view => {
+                view.style.display = 'none';
+            });
+
+            // Показываем нужную вью
+            const targetView = document.getElementById(viewId);
+            if (targetView) {
+                targetView.style.display = 'block';
+            } else {
+                console.error(`View ${viewId} not found`);
+                this.showDashboard(); // Fallback
+            }
+        } catch (error) {
+            console.error('Error showing view:', error);
+            this.showDashboard(); // Fallback to dashboard
+        }
     }
 
     static showDashboard() {

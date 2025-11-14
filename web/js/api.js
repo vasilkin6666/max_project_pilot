@@ -290,7 +290,17 @@ class ApiService {
 
     // Dashboard endpoints
     static async getDashboard() {
-        return this.get('/dashboard/');
+        try {
+            const response = await this.get('/dashboard/');
+            return response;
+        } catch (error) {
+            console.error('Dashboard loading failed, returning fallback data');
+            return {
+                settings: {},
+                projects: [],
+                recent_tasks: []
+            };
+        }
     }
 
     // Health endpoints
