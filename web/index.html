@@ -1,23 +1,17 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Pilot Pro - Премиум PWA для управления проектами</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
     <style>
-        /* Динамические CSS переменные для анимаций */
-        :root {
-            --mouse-x: 0;
-            --mouse-y: 0;
-            --scroll-y: 0;
-        }
-
         /* Стили для плавно затухающего текста (фонового) */
         .fading-text {
             animation: fade 2s ease-in-out infinite;
@@ -58,6 +52,16 @@
             pointer-events: none !important;
         }
 
+        /* Скрываем прогресс бар */
+        .loading-bar-container {
+            display: none !important;
+        }
+
+        /* Скрываем кнопку "Начать" */
+        .start-button {
+            display: none !important;
+        }
+
         /* Делаем весь контент заставки ненажимаемым, кроме самой заставки */
         .loading-content {
             pointer-events: none;
@@ -68,230 +72,99 @@
             pointer-events: auto;
         }
 
-        /* Временные стили для анимаций */
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        /* Стили для бейджей поиска */
+        .search-type-badge {
+            background: var(--max-primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
         }
 
-        @keyframes slideOutLeft {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* Дополнительные утилитарные стили */
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 10000;
+            max-width: 300px;
         }
     </style>
 </head>
 <body class="safe-area">
-    <!-- Кастомный курсор для десктопа -->
-    <div id="cursor" class="cursor"></div>
-    <div id="cursor-follower" class="cursor-follower"></div>
-
-    <!-- Анимированный фон -->
-    <div class="animated-bg">
-        <div class="floating-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-            <div class="shape shape-4"></div>
-        </div>
-    </div>
-
-    <!-- Заставка в новом стиле -->
-    <div id="loading" class="loading-overlay neo-overlay">
+    <!-- Заставка, которая всегда поверх всего -->
+    <div id="loading" class="loading-overlay">
         <div class="loading-content">
-            <div class="logo-animation">
-                <div class="logo-icon">
-                    <i class="fas fa-rocket"></i>
-                </div>
-                <div class="logo-orbits">
-                    <div class="orbit orbit-1"></div>
-                    <div class="orbit orbit-2"></div>
-                    <div class="orbit orbit-3"></div>
-                </div>
+            <div class="icon-container">
+                <div class="loading-icon"></div>
+                <div class="icon-orbit"></div>
             </div>
-
-            <h1 class="logo-text glitch" data-text="Project Pilot Pro">Project Pilot Pro</h1>
-            <p class="loading-subtitle">Твой цифровой ассистент проектов</p>
-
-            <div class="loading-progress">
-                <div class="progress-bar neo-progress">
-                    <div class="progress-fill" id="loadingBarProgress"></div>
-                </div>
+            <h2 class="loading-text">Project Pilot Pro</h2>
+            <p class="loading-subtitle">Система управления проектами</p>
+            <!-- Прогресс бар скрыт -->
+            <div class="loading-bar-container">
+                <div class="loading-bar-progress" id="loadingBarProgress"></div>
             </div>
-
-            <div class="start-hint">
-                <div class="hint-pulse">
-                    <i class="fas fa-hand-pointer"></i>
-                </div>
-                <span>Нажми для старта</span>
+            <!-- Фоновый текст "Нажми на экран" -->
+            <div id="tapToStart" class="fading-text">
+                Нажми на экран
             </div>
         </div>
-
         <div class="spark-container" id="sparkContainer"></div>
-        <div class="noise-overlay"></div>
     </div>
 
     <div id="app" style="display: none;">
-        <!-- Новый хедер в стиле glassmorphism -->
-        <header class="header glass-header">
-            <div class="header-blur"></div>
+        <!-- Header -->
+        <header class="header glass-morphism">
             <div class="container">
                 <div class="header-content">
-                    <div class="logo-section">
-                        <div class="app-logo">
-                            <i class="fas fa-rocket"></i>
-                        </div>
-                        <h1 class="logo">Project Pilot</h1>
-                    </div>
-
+                    <h1 class="logo">Project Pilot Pro</h1>
                     <nav class="nav-main">
                         <button class="nav-item" id="dashboardBtn">
-                            <i class="fas fa-th-large"></i>
                             <span class="nav-text">Дашборд</span>
                         </button>
                         <button class="nav-item" id="searchProjectsBtn">
-                            <i class="fas fa-search"></i>
-                            <span class="nav-text">Поиск</span>
+                            <span class="nav-text">Поиск проектов</span>
                         </button>
                         <button class="nav-item" id="notificationsBtn">
-                            <i class="fas fa-bell"></i>
                             <span class="nav-text">Уведомления</span>
-                            <span class="nav-badge">3</span>
                         </button>
                         <button class="nav-item" id="myTasksBtn">
-                            <i class="fas fa-tasks"></i>
-                            <span class="nav-text">Задачи</span>
+                            <span class="nav-text">Мои задачи</span>
                         </button>
                         <button class="nav-item" id="settingsBtn">
-                            <i class="fas fa-cog"></i>
                             <span class="nav-text">Настройки</span>
                         </button>
                     </nav>
-
-                    <div class="user-section">
-                        <div class="user-avatar">
-                            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=40&h=40&fit=crop&crop=face" alt="User">
-                        </div>
-                    </div>
                 </div>
             </div>
         </header>
 
-        <!-- Основной контент -->
+        <!-- Main Content Area -->
         <main class="main-content">
             <div class="container">
-                <!-- Дашборд с новой структурой -->
-                <div id="dashboardView" class="view active">
+                <!-- Dashboard View -->
+                <div id="dashboardView" class="view">
                     <div class="dashboard-header">
-                        <div class="greeting-section">
-                            <h2 class="greeting">Привет, Кодер! 👋</h2>
-                            <p class="greeting-sub">Готов к новым вызовам?</p>
-                        </div>
-                        <button class="btn btn-primary neo-button" id="createProjectBtn">
-                            <i class="fas fa-plus"></i>
-                            <span>Новый проект</span>
-                        </button>
+                        <h2 class="dashboard-title">Дашборд</h2>
+                        <button class="btn btn-primary" id="createProjectBtn">Создать проект</button>
                     </div>
-
-                    <!-- Статистика в виде карточек -->
-                    <div class="stats-grid">
-                        <div class="stat-card neo-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-folder"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3 id="projectsCount">0</h3>
-                                <p>Проектов</p>
-                            </div>
-                        </div>
-                        <div class="stat-card neo-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3 id="tasksCount">0</h3>
-                                <p>Задач</p>
-                            </div>
-                        </div>
-                        <div class="stat-card neo-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3 id="recentTasksCount">0</h3>
-                                <p>Активных</p>
-                            </div>
-                        </div>
+                    <div class="dashboard-stats">
+                        <div class="stat-item">Проектов: <span id="projectsCount">0</span></div>
+                        <div class="stat-item">Задач: <span id="tasksCount">0</span></div>
+                        <div class="stat-item">Недавних задач: <span id="recentTasksCount">0</span></div>
                     </div>
-
-                    <!-- Быстрые действия -->
-                    <div class="quick-actions">
-                        <h3>Быстрые действия</h3>
-                        <div class="actions-grid">
-                            <button class="action-btn neo-card" onclick="App.showCreateTaskModal()">
-                                <i class="fas fa-plus"></i>
-                                <span>Новая задача</span>
-                            </button>
-                            <button class="action-btn neo-card" onclick="App.showSearchProjects()">
-                                <i class="fas fa-search"></i>
-                                <span>Найти проект</span>
-                            </button>
-                            <button class="action-btn neo-card" onclick="App.loadMyTasks()">
-                                <i class="fas fa-list"></i>
-                                <span>Мои задачи</span>
-                            </button>
-                            <button class="action-btn neo-card" onclick="App.showSettings()">
-                                <i class="fas fa-chart-line"></i>
-                                <span>Аналитика</span>
-                            </button>
-                        </div>
+                    <div id="projectsList" class="projects-grid">
+                        <!-- Project cards will be loaded here -->
                     </div>
-
-                    <!-- Сетка проектов -->
-                    <div class="section">
-                        <div class="section-header">
-                            <h3>Мои проекты</h3>
-                            <button class="btn btn-ghost" onclick="App.showCreateProjectModal()">
-                                <i class="fas fa-ellipsis-h"></i>
-                            </button>
-                        </div>
-                        <div id="projectsList" class="projects-grid">
-                            <!-- Project cards will be loaded here -->
-                        </div>
-                    </div>
-
-                    <!-- Недавние задачи -->
-                    <div class="section">
-                        <div class="section-header">
-                            <h3>Недавние задачи</h3>
-                            <button class="btn btn-ghost" onclick="App.showMyTasks()">
-                                <i class="fas fa-arrow-right"></i>
-                            </button>
-                        </div>
+                    <div id="recentTasksSection" class="section">
+                        <h3>Недавние задачи</h3>
                         <div id="recentTasksList" class="tasks-list">
                             <!-- Recent tasks will be loaded here -->
                         </div>
@@ -433,7 +306,7 @@
                 </div>
 
                 <!-- Search Projects View -->
-                <div id="searchProjectsView" class="view" style="display: none;">
+                <div id="searchProjectsView" style="display: none;">
                     <div class="search-projects-header">
                         <h2>Поиск проектов</h2>
                         <button class="btn btn-outline" onclick="App.showDashboard()">Назад</button>
@@ -448,7 +321,7 @@
                 </div>
 
                 <!-- Join Requests View -->
-                <div id="joinRequestsView" class="view" style="display: none;">
+                <div id="joinRequestsView" style="display: none;">
                     <div class="join-requests-header">
                         <h2>Заявки на вступление</h2>
                         <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
@@ -459,7 +332,7 @@
                 </div>
 
                 <!-- Project Members Management View -->
-                <div id="projectMembersView" class="view" style="display: none;">
+                <div id="projectMembersView" style="display: none;">
                     <div class="members-management-header">
                         <h2>Управление участниками</h2>
                         <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
@@ -470,51 +343,6 @@
                 </div>
             </div>
         </main>
-
-        <!-- Плавающая кнопка действий -->
-        <div class="fab-container">
-            <button class="fab neo-fab" id="mainFab">
-                <i class="fas fa-plus"></i>
-            </button>
-            <div class="fab-menu">
-                <button class="fab-item" onclick="App.showCreateProjectModal()">
-                    <i class="fas fa-folder-plus"></i>
-                </button>
-                <button class="fab-item" onclick="App.showCreateTaskModal()">
-                    <i class="fas fa-tasks"></i>
-                </button>
-                <button class="fab-item" onclick="App.showSearchProjects()">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Мобильная навигация -->
-        <nav class="mobile-nav glass-nav">
-            <div class="mobile-nav-items">
-                <a href="#" class="mobile-nav-item active" data-view="dashboardView">
-                    <i class="fas fa-th-large"></i>
-                    <span>Главная</span>
-                </a>
-                <a href="#" class="mobile-nav-item" data-view="myTasksView">
-                    <i class="fas fa-tasks"></i>
-                    <span>Задачи</span>
-                </a>
-                <a href="#" class="mobile-nav-item" data-view="searchProjectsView">
-                    <i class="fas fa-search"></i>
-                    <span>Поиск</span>
-                </a>
-                <a href="#" class="mobile-nav-item" data-view="notificationsView">
-                    <i class="fas fa-bell"></i>
-                    <span>Уведомления</span>
-                    <span class="nav-badge">3</span>
-                </a>
-                <a href="#" class="mobile-nav-item" id="mobileSettingsBtn">
-                    <i class="fas fa-user"></i>
-                    <span>Профиль</span>
-                </a>
-            </div>
-        </nav>
     </div>
 
     <!-- Modals -->
@@ -856,221 +684,82 @@
         </div>
     </div>
 
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <div class="mobile-nav-items">
+            <a href="#" class="mobile-nav-item active" data-view="dashboardView">
+                <span class="nav-icon">📊</span>
+                <span>Дашборд</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="myTasksView">
+                <span class="nav-icon">✅</span>
+                <span>Задачи</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="searchProjectsView">
+                <span class="nav-icon">🔍</span>
+                <span>Поиск</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="notificationsView">
+                <span class="nav-icon">🔔</span>
+                <span>Уведомления</span>
+                <span class="nav-badge">3</span>
+            </a>
+            <a href="#" class="mobile-nav-item" id="mobileSettingsBtn">
+                <span class="nav-icon">⚙️</span>
+                <span>Настройки</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Floating Action Button -->
+    <button class="fab" id="mainFab">+</button>
+    <div class="fab-menu" id="fabMenu">
+        <button class="fab-item" id="fabCreateProject" title="Создать проект">📁</button>
+        <button class="fab-item" id="fabCreateTask" title="Создать задачу">✅</button>
+        <button class="fab-item" id="fabQuickNote" title="Быстрая заметка">📝</button>
+    </div>
+
+    <!-- Pull to refresh indicator -->
+    <div class="pull-indicator">
+        <div class="spinner"></div> Обновление...
+    </div>
+
+    <!-- Scripts -->
     <script src="js/api.js"></script>
+    <script src="js/max-integration.js"></script>
+    <script src="js/auth-enhanced.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/main.js"></script>
+
     <script>
-    // Advanced animations and interactions
-    class AppAnimations {
-        static init() {
-            this.initCursor();
-            this.initScrollAnimations();
-            this.initPageTransitions();
-            this.initMicroInteractions();
-        }
-
-        // Кастомный курсор
-        static initCursor() {
-            const cursor = document.getElementById('cursor');
-            const follower = document.getElementById('cursor-follower');
-
-            if (!cursor || !follower) return;
-
-            document.addEventListener('mousemove', (e) => {
-                cursor.style.left = e.clientX + 'px';
-                cursor.style.top = e.clientY + 'px';
-
-                setTimeout(() => {
-                    follower.style.left = e.clientX + 'px';
-                    follower.style.top = e.clientY + 'px';
-                }, 100);
-            });
-
-            // Эффекты при наведении на интерактивные элементы
-            const interactiveElements = document.querySelectorAll('button, a, .project-card, .task-card');
-
-            interactiveElements.forEach(el => {
-                el.addEventListener('mouseenter', () => {
-                    cursor.style.transform = 'scale(1.5)';
-                    follower.style.transform = 'scale(1.5)';
-                    follower.style.borderColor = 'var(--primary)';
-                });
-
-                el.addEventListener('mouseleave', () => {
-                    cursor.style.transform = 'scale(1)';
-                    follower.style.transform = 'scale(1)';
-                    follower.style.borderColor = 'var(--primary)';
-                });
+        // Service Worker регистрация
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
             });
         }
 
-        // Анимации при скролле
-        static initScrollAnimations() {
-            const observerOptions = {
-                threshold: 0.1,
-                rootMargin: '0px 0px -50px 0px'
-            };
+        // Глобальные переменные
+        let currentProject = null;
+        let currentTask = null;
+        let currentUser = null;
+        let currentMemberToUpdate = null;
+        let currentMemberToRemove = null;
+        let userSettings = {};
 
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.style.animation = 'fadeIn 0.6s ease forwards';
-                    }
-                });
-            }, observerOptions);
-
-            // Наблюдаем за элементами для анимации
-            document.querySelectorAll('.neo-card, .stat-card, .project-card').forEach(el => {
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(30px)';
-                observer.observe(el);
-            });
-        }
-
-        // Плавные переходы между страницами
-        static initPageTransitions() {
-            const originalShowView = App.showView;
-
-            App.showView = function(viewId) {
-                const currentView = document.querySelector('.view.active');
-                const newView = document.getElementById(viewId);
-
-                if (currentView) {
-                    currentView.style.animation = 'slideOutLeft 0.3s ease';
-                    setTimeout(() => {
-                        currentView.classList.remove('active');
-                        currentView.style.animation = '';
-
-                        newView.classList.add('active');
-                        newView.style.animation = 'slideInRight 0.3s ease';
-
-                        setTimeout(() => {
-                            newView.style.animation = '';
-                        }, 300);
-                    }, 300);
-                } else {
-                    newView.classList.add('active');
-                }
-            };
-        }
-
-        // Микро-интеракции
-        static initMicroInteractions() {
-            // Анимация кнопок
-            document.addEventListener('click', (e) => {
-                if (e.target.matches('.neo-button, .btn')) {
-                    const button = e.target;
-                    button.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        button.style.transform = '';
-                    }, 150);
-                }
-            });
-
-            // Параллакс эффект
-            document.addEventListener('mousemove', (e) => {
-                const x = (e.clientX / window.innerWidth) * 100;
-                const y = (e.clientY / window.innerHeight) * 100;
-
-                document.documentElement.style.setProperty('--mouse-x', x + '%');
-                document.documentElement.style.setProperty('--mouse-y', y + '%');
-
-                // Легкий параллакс для фоновых элементов
-                const shapes = document.querySelectorAll('.shape');
-                shapes.forEach((shape, index) => {
-                    const speed = (index + 1) * 0.5;
-                    const xMove = (x - 50) * speed * 0.01;
-                    const yMove = (y - 50) * speed * 0.01;
-                    shape.style.transform = `translate(${xMove}px, ${yMove}px)`;
-                });
-            });
-        }
-
-        // Анимация появления элементов
-        static animateElement(element, animation = 'fadeIn') {
-            element.style.animation = `${animation} 0.6s ease forwards`;
-        }
-
-        // Вибро-эффект для ошибок
-        static shakeElement(element) {
-            element.style.animation = 'shake 0.5s ease';
-            setTimeout(() => {
-                element.style.animation = '';
-            }, 500);
-        }
-    }
-
-    // Упрощенная инициализация - заставка всегда видна до клика
-    document.addEventListener('DOMContentLoaded', async () => {
-        console.log('DOM fully loaded and parsed');
-
-        try {
-            console.log('Initializing App...');
-            // Инициализируем приложение в фоне
-            await App.init();
-            console.log('App initialized successfully');
-
-            // Initialize animations
-            AppAnimations.init();
-
-        } catch (error) {
-            console.error('Error during app initialization:', error);
-            // В случае ошибки показываем сообщение на заставке
-            const loadingContent = document.querySelector('.loading-content');
-            if (loadingContent) {
-                loadingContent.innerHTML = `
-                    <h2>Ошибка загрузки</h2>
-                    <p>${error.message || 'Неизвестная ошибка'}</p>
-                    <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 20px;">Перезагрузить</button>
-                `;
-            }
-        }
-
-        // Обработчик клика по заставке
-        const loadingOverlay = document.getElementById('loading');
-        if (loadingOverlay) {
-            loadingOverlay.addEventListener('click', function() {
-                console.log('Loading overlay clicked, hiding splash screen');
-
-                // Добавляем класс для плавного скрытия
-                loadingOverlay.classList.add('hidden');
-
-                // Полностью скрываем через время анимации
-                setTimeout(() => {
-                    loadingOverlay.style.display = 'none';
-                    // Показываем основное приложение
-                    document.getElementById('app').style.display = 'block';
-                    console.log('Splash screen hidden, app is ready');
-
-                    // Initialize mobile features if not already
-                    if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
-                        MobileApp.init();
-                    }
-
-                    // Запускаем основное приложение
-                    if (typeof App.showDashboard === 'function') {
-                        App.showDashboard();
-                    }
-                }, 800);
-            });
-        }
-
-        // Также можно скрывать по нажатию клавиши
-        document.addEventListener('keydown', function(e) {
-            if (e.code === 'Space' || e.code === 'Enter') {
-                const loadingOverlay = document.getElementById('loading');
-                if (loadingOverlay && loadingOverlay.style.display !== 'none') {
-                    loadingOverlay.click();
-                }
-            }
-
-            // Back button simulation with Escape key
-            if (e.code === 'Escape') {
-                if (typeof App.backToPreviousView === 'function') {
-                    App.backToPreviousView();
-                }
-            }
-        });
-    });
+        // Константы ролей проекта
+        const ProjectRole = {
+            OWNER: 'owner',
+            ADMIN: 'admin',
+            MEMBER: 'member',
+            GUEST: 'guest'
+        };
     </script>
 </body>
 </html>

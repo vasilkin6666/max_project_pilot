@@ -1,0 +1,242 @@
+/* css/components/max-enhanced.css */
+/* Специальные стили для MAX окружения */
+
+/* Безопасные зоны для разных платформ */
+.max-enhanced .header {
+    padding-top: env(safe-area-inset-top);
+    height: calc(60px + env(safe-area-inset-top));
+    background: var(--neutral-50);
+}
+
+[data-theme="dark"].max-enhanced .header {
+    background: var(--neutral-800);
+}
+
+.max-enhanced .mobile-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(70px + env(safe-area-inset-bottom));
+}
+
+/* Адаптация под разные платформы */
+.max-ios .btn {
+    border-radius: 12px;
+    font-weight: var(--font-semibold);
+}
+
+.max-android .btn {
+    border-radius: 8px;
+    font-weight: var(--font-medium);
+}
+
+.max-desktop .btn {
+    border-radius: var(--radius-lg);
+}
+
+/* Анимации для тактильной обратной связи */
+.max-enhanced .btn:active,
+.max-enhanced .nav-item:active,
+.max-enhanced .mobile-nav-item:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+}
+
+.max-enhanced .project-card:active,
+.max-enhanced .task-card:active {
+    transform: scale(0.995);
+    transition: transform 0.1s ease;
+}
+
+/* Улучшенная поддержка темной темы MAX */
+@media (prefers-color-scheme: dark) {
+    .max-auto-theme {
+        --neutral-50: #0f172a;
+        --neutral-100: #1e293b;
+        --neutral-200: #334155;
+        --neutral-300: #475569;
+        --neutral-400: #64748b;
+        --neutral-500: #94a3b8;
+        --neutral-600: #cbd5e1;
+        --neutral-700: #e2e8f0;
+        --neutral-800: #f1f5f9;
+        --neutral-900: #f8fafc;
+    }
+}
+
+/* Специальные стили для премиум пользователей */
+.max-user-premium .project-card.premium {
+    background: var(--gradient-primary);
+    position: relative;
+    overflow: hidden;
+}
+
+.max-user-premium .project-card.premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ffd700, #ffed4e, #ffd700);
+    animation: shimmer 2s infinite;
+}
+
+/* Улучшенная навигация для MAX */
+.max-enhanced .nav-main {
+    gap: var(--space-2);
+}
+
+.max-enhanced .nav-item {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+}
+
+/* Адаптация модальных окон для MAX */
+.max-enhanced .modal-content {
+    border-radius: var(--radius-2xl);
+    margin: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.max-ios .modal-content {
+    border-radius: 14px;
+}
+
+.max-android .modal-content {
+    border-radius: 12px;
+}
+
+/* Улучшенные карточки для тач-интерфейсов */
+.max-enhanced .project-card,
+.max-enhanced .task-card {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+/* Специальные стили для разных размеров экранов */
+@media (max-width: 380px) {
+    .max-enhanced .header-content {
+        padding: 0 var(--space-3);
+    }
+
+    .max-enhanced .logo {
+        font-size: var(--text-xl);
+    }
+
+    .max-enhanced .mobile-nav-item span:not(.nav-icon) {
+        font-size: var(--text-xs);
+    }
+}
+
+/* Анимации для взаимодействий */
+@keyframes max-bounce {
+    0%, 20%, 53%, 80%, 100% {
+        transform: translate3d(0,0,0);
+    }
+    40%, 43% {
+        transform: translate3d(0, -8px, 0);
+    }
+    70% {
+        transform: translate3d(0, -4px, 0);
+    }
+    90% {
+        transform: translate3d(0, -2px, 0);
+    }
+}
+
+.max-enhanced .nav-badge {
+    animation: max-bounce 1s ease infinite;
+}
+
+/* Улучшенный скроллбар для MAX */
+.max-enhanced ::-webkit-scrollbar {
+    width: 6px;
+}
+
+.max-enhanced ::-webkit-scrollbar-track {
+    background: var(--neutral-100);
+}
+
+[data-theme="dark"].max-enhanced ::-webkit-scrollbar-track {
+    background: var(--neutral-700);
+}
+
+.max-enhanced ::-webkit-scrollbar-thumb {
+    background: var(--neutral-300);
+    border-radius: 3px;
+}
+
+[data-theme="dark"].max-enhanced ::-webkit-scrollbar-thumb {
+    background: var(--neutral-500);
+}
+
+.max-enhanced ::-webkit-scrollbar-thumb:hover {
+    background: var(--neutral-400);
+}
+
+/* Стили для состояний загрузки в MAX */
+.max-enhanced .loading-overlay {
+    background: linear-gradient(135deg, var(--neutral-800) 0%, var(--neutral-900) 100%);
+}
+
+.max-ios .loading-overlay {
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+}
+
+.max-android .loading-overlay {
+    background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+}
+
+/* Адаптация под разные ориентации */
+@media (orientation: landscape) and (max-height: 500px) {
+    .max-enhanced .loading-content {
+        transform: scale(0.8);
+    }
+
+    .max-enhanced .mobile-nav {
+        height: calc(60px + env(safe-area-inset-bottom));
+    }
+}
+
+/* Специальные стили для MAX Web */
+.max-web .header {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+}
+
+/* Улучшенная типографика для MAX */
+.max-enhanced {
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Анимация появления для контента */
+.max-enhanced .view {
+    animation: maxSlideInRight 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes maxSlideInRight {
+    from {
+        opacity: 0;
+        transform: translate3d(30px, 0, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.max-enhanced .view.slide-left {
+    animation: maxSlideInLeft 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes maxSlideInLeft {
+    from {
+        opacity: 0;
+        transform: translate3d(-30px, 0, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
