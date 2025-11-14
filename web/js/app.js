@@ -33,6 +33,7 @@ class App {
 
           // ИСПРАВЛЕНО: Показываем кнопку "Начать" вместо автоматического скрытия заставки
           this.showStartButton();
+          this.initMaxBackButton();
 
           // ИСПРАВЛЕНО: Добавляем обработчик клика на кнопку "Начать"
           this.attachStartButtonListener();
@@ -92,6 +93,41 @@ class App {
       if (tapToStart) {
           tapToStart.style.display = 'block';
           tapToStart.classList.add('fade-in');
+      }
+  }
+
+  static hapticFeedback(style = 'light') {
+      try {
+          if (typeof MaxBridge !== 'undefined') {
+              MaxBridge.hapticFeedback(style);
+          } else if (typeof WebApp !== 'undefined' && WebApp.HapticFeedback) {
+              WebApp.HapticFeedback.impactOccurred(style);
+          }
+      } catch (error) {
+          console.log('Haptic feedback not available');
+      }
+  }
+
+  static initMaxBackButton() {
+      if (typeof WebApp !== 'undefined' && WebApp.BackButton) {
+          try {
+              WebApp.BackButton.onClick(() => {
+                  this.backToPreviousView();
+              });
+              console.log('MAX Back button handler initialized');
+          } catch (error) {
+              console.log('MAX Back button setup failed:', error);
+          }
+      }
+  }
+
+  static showExitConfirmation() {
+      if (confirm('Вы уверены, что хотите выйти из приложения?')) {
+          if (typeof WebApp !== 'undefined' && WebApp.close) {
+              WebApp.close();
+          } else {
+              console.log('Exit confirmed (standalone mode)');
+          }
       }
   }
 
@@ -757,7 +793,7 @@ class App {
             this.showError('Ошибка открытия задачи: ' + error.message);
         }
     }
-    
+
     static async loadTaskAssigneeInfo(assigneeId) {
         try {
             console.log('Loading assignee info for:', assigneeId);
@@ -2072,18 +2108,21 @@ class App {
         alert('Ошибка: ' + message);
     }
 
-    // Back button functionality
     static backToPreviousView() {
         const currentView = document.querySelector('.view[style*="display: block"]');
+        console.log('Back button pressed, current view:', currentView?.id);
+
         if (currentView && currentView.id !== 'dashboardView') {
             currentView.style.animation = 'slideOutRight 0.3s ease-out';
             setTimeout(() => {
                 this.showDashboard();
                 document.getElementById('dashboardView').style.animation = 'slideInLeft 0.3s ease-out';
             }, 150);
+        } else {
+            // Если уже на дашборде, показываем подтверждение выхода
+            this.showExitConfirmation();
         }
     }
-}
 
 // Mobile navigation and enhanced features
 class MobileApp {

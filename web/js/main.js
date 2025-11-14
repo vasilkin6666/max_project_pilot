@@ -1,4 +1,56 @@
-// js/main.js - обновленная инициализация
+// main.js
+console.log('Project Pilot Pro - Initializing...');
+
+// Инициализация MAX Bridge
+try {
+    if (typeof MaxBridge !== 'undefined') {
+        await MaxBridge.init();
+        console.log('MAX integration: successful');
+    } else {
+        console.log('MAX integration: standalone mode');
+    }
+} catch (error) {
+    console.log('MAX integration: standalone mode due to error');
+}
+
+console.log('Starting authentication...');
+
+// Инициализация основного приложения
+try {
+    if (typeof App !== 'undefined') {
+        await App.init();
+        console.log('Main app initialized');
+    } else {
+        console.error('App class not found');
+    }
+} catch (error) {
+    console.error('Main app initialization failed:', error);
+}
+
+// Инициализация мобильных функций
+try {
+    if (typeof MobileApp !== 'undefined') {
+        MobileApp.init();
+        console.log('Mobile features initialized');
+    }
+} catch (error) {
+    console.log('Mobile features not available');
+}
+
+console.log('Animations initialized');
+console.log('Application initialized successfully');
+
+// Информация о среде
+const envInfo = {
+    max: typeof WebApp !== 'undefined',
+    platform: 'web',
+    version: '25.11.2',
+    authMethod: 'max',
+    user: currentUser || null
+};
+console.log('Environment info:', envInfo);
+
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Project Pilot Pro - Initializing...');
 
@@ -203,13 +255,38 @@ window.addEventListener('offline', () => {
 
 // Service Worker регистрация для PWA
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-                console.log('SW registered: ', registration);
-            })
-            .catch((registrationError) => {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
+    try {
+        // Правильный путь к SW - относительно корня
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/'
+        });
+        console.log('ServiceWorker registration successful with scope:', registration.scope);
+    } catch (error) {
+        console.log('SW registration failed: ', error);
+        // Не блокируем приложение при ошибке SW
+    }
 }
+document.addEventListener('DOMContentLoaded', () => {
+    const loadingOverlay = document.getElementById('loading');
+    if (loadingOverlay) {
+        loadingOverlay.addEventListener('click', () => {
+            console.log('Loading overlay clicked, starting application...');
+
+            // Тактильная обратная связь
+            if (typeof MaxBridge !== 'undefined') {
+                MaxBridge.hapticFeedback('medium');
+            }
+
+            // Скрываем заставку
+            if (typeof App !== 'undefined' && App.hideSplashScreen) {
+                App.hideSplashScreen();
+            } else {
+                // Fallback
+                loadingOverlay.style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+            }
+
+            console.log('Application started successfully');
+        });
+    }
+});

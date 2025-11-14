@@ -1,34 +1,26 @@
 // js/max-integration.js
 class MaxIntegration {
-    static init() {
-        console.log('Initializing MAX Bridge integration...');
+    constructor() {
+        this.isMax = typeof WebApp !== 'undefined';
+        this.setupSecurity = this.setupSecurity.bind(this);
+    }
 
-        // Проверяем наличие MAX окружения
-        if (typeof WebApp === 'undefined') {
-            console.warn('MAX Bridge not available - running in standalone mode');
-            this.addMaxDetectionClass(false);
-            return false;
-        }
-
+    async init() {
         try {
-            // Добавляем класс для стилизации под MAX
-            this.addMaxDetectionClass(true);
+            console.log('Initializing MAX Bridge integration...');
 
-            // Инициализируем MAX Bridge
-            WebApp.ready();
+            if (!this.isMax) {
+                console.log('MAX environment not detected, running in standalone mode');
+                return;
+            }
+
+            await this.setupSecurity();
+            await this.setupBackButton();
+
             console.log('MAX Bridge initialized successfully');
-
-            // Настраиваем компоненты MAX
-            this.setupBackButton();
-            this.setupHapticFeedback();
-            this.setupSecurity();
-            this.setupEventListeners();
-
-            return true;
         } catch (error) {
             console.error('MAX Bridge initialization failed:', error);
-            this.addMaxDetectionClass(false);
-            return false;
+            // Продолжаем работу в standalone режиме
         }
     }
 
@@ -62,23 +54,55 @@ class MaxIntegration {
         }
     }
 
-    // В max-integration.js
     async setupSecurity() {
         try {
-            await WebApp.enableScreenCapture();
-            console.log('Screen capture enabled');
+            if (WebApp.enableScreenCapture) {
+                await WebApp.enableScreenCapture();
+                console.log('Screen capture enabled');
+            }
         } catch (error) {
             console.warn('Screen capture not available:', error);
-            // Продолжаем без этой функции
         }
 
         try {
-            await WebApp.setupClosingBehavior({ need_confirmation: true });
-            console.log('Closing behavior set');
+            if (WebApp.setupClosingBehavior) {
+                await WebApp.setupClosingBehavior({ need_confirmation: true });
+                console.log('Closing behavior set');
+            }
         } catch (error) {
             console.warn('Closing behavior not available:', error);
         }
     }
+
+    async setupBackButton() {
+        try {
+            if (WebApp.BackButton && WebApp.BackButton.onClick) {
+                WebApp.BackButton.onClick(() => {
+                    console.log('MAX Back button pressed');
+                    if (typeof App !== 'undefined' && App.backToPreviousView) {
+                        App.backToPreviousView();
+                    }
+                });
+                console.log('Back button handler set');
+            }
+        } catch (error) {
+            console.warn('Back button setup failed:', error);
+        }
+    }
+
+    hapticFeedback(style = 'light') {
+        try {
+            if (WebApp.HapticFeedback && WebApp.HapticFeedback.impactOccurred) {
+                WebApp.HapticFeedback.impactOccurred(style);
+            }
+        } catch (error) {
+            console.log('Haptic feedback not available');
+        }
+    }
+}
+
+// Создаем глобальный экземпляр
+const MaxBridge = new MaxIntegration();
 
     static setupHapticFeedback() {
         if (WebApp.HapticFeedback) {
