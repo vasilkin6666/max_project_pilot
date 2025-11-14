@@ -2,7 +2,7 @@
     "name": "Project Pilot MAX",
     "short_name": "ProjectPilotMAX",
     "description": "Премиум PWA для управления проектами с интеграцией MAX UI",
-    "start_url": "/project-pilot-max/",
+    "start_url": "/max_project_pilot/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#2563eb",
@@ -23,7 +23,7 @@
     "categories": ["productivity", "business"],
     "lang": "ru",
     "orientation": "portrait-primary",
-    "scope": "/project-pilot-max/",
+    "scope": "/max_project_pilot/",
     "screenshots": [
         {
             "src": "screenshots/dashboard.png",
