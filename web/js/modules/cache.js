@@ -8,13 +8,8 @@ class CacheManager {
 
     async init() {
         console.log('Cache manager initialized');
-
-        // Load persistent cache from localStorage
         this.loadPersistentCache();
-
-        // Start cleanup interval
         this.startCleanupInterval();
-
         return Promise.resolve();
     }
 

@@ -16,11 +16,9 @@ class ProjectPilotApp {
 
         try {
             console.log('Initializing Project Pilot...');
-
-            // Show loading screen
             this.showLoading();
 
-            // Initialize modules
+            // Initialize modules with error handling
             await this.initializeModules();
 
             // Initialize components
@@ -32,25 +30,26 @@ class ProjectPilotApp {
             // Load initial data
             await this.loadInitialData();
 
-            // Hide loading and show app
             this.showApp();
-
             this.isInitialized = true;
             console.log('Project Pilot initialized successfully');
 
-            // Start background processes
             this.startBackgroundProcesses();
 
         } catch (error) {
             console.error('App initialization failed:', error);
             this.showError('Ошибка инициализации приложения: ' + error.message);
+
+            // Показать приложение даже при ошибке
+            this.showApp();
         }
     }
 
     async initializeModules() {
         console.log('Initializing modules...');
 
-        this.modules.utils = new Utils();
+        // Создаем экземпляры модулей
+        this.modules.utils = Utils; // Статический класс
         this.modules.cache = new CacheManager();
         this.modules.auth = new AuthManager();
         this.modules.api = new ApiService();
@@ -60,8 +59,12 @@ class ProjectPilotApp {
         // Initialize each module
         for (const [name, module] of Object.entries(this.modules)) {
             try {
-                await module.init();
-                console.log(`Module ${name} initialized`);
+                if (typeof module.init === 'function') {
+                    await module.init();
+                    console.log(`Module ${name} initialized`);
+                } else {
+                    console.log(`Module ${name} doesn't require initialization`);
+                }
             } catch (error) {
                 console.error(`Failed to initialize module ${name}:`, error);
                 throw error;

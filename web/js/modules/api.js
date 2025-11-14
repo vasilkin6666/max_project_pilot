@@ -1,23 +1,23 @@
 // API service with caching and error handling
 class ApiService {
-    constructor() {
-        this.config = {
-            API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api',
-            RETRY_ATTEMPTS: 3,
-            RETRY_DELAY: 1000,
-            TIMEOUT: 30000
-        };
+  constructor() {
+      this.config = {
+          API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api',
+          RETRY_ATTEMPTS: 3,
+          RETRY_DELAY: 1000,
+          TIMEOUT: 30000
+      };
 
-        this.cache = null;
-        this.auth = null;
-    }
+      this.cache = null;
+      this.auth = null;
+  }
 
-    async init() {
-        console.log('API service initialized');
-        this.cache = window.App?.modules?.cache;
-        this.auth = window.App?.modules?.auth;
-        return Promise.resolve();
-    }
+  async init() {
+      console.log('API service initialized');
+      this.cache = window.App?.modules?.cache;
+      this.auth = window.App?.modules?.auth;
+      return Promise.resolve();
+  }
 
     // Base request method
     async request(endpoint, options = {}) {
