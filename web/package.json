@@ -1,0 +1,24 @@
+{
+    "name": "project-pilot-max",
+    "version": "1.0.0",
+    "description": "Премиум PWA для управления проектами с интеграцией MAX UI",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "deploy": "npm run build && gh-pages -d dist"
+    },
+    "dependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "@maxhub/max-ui": "^1.0.0",
+        "framer-motion": "^10.16.4"
+    },
+    "devDependencies": {
+        "vite": "^4.4.5",
+        "@vitejs/plugin-react": "^4.0.3",
+        "gh-pages": "^5.0.0",
+        "tailwindcss": "^3.3.0"
+    }
+}
