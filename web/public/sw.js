@@ -1,10 +1,10 @@
 const CACHE_NAME = 'project-pilot-max-v1.0.0';
 const urlsToCache = [
-    '/project-pilot-max/',
-    '/project-pilot-max/index.html',
-    '/project-pilot-max/manifest.json',
-    '/project-pilot-max/icons/icon-192x192.png',
-    '/project-pilot-max/icons/icon-512x512.png'
+    './',
+    './index.html',
+    './manifest.json',
+    './icons/icon-192x192.png',
+    './icons/icon-512x512.png'
 ];
 
 // Установка Service Worker

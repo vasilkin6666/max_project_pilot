@@ -2,9 +2,10 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
     plugins: [],
-    base: '/project-pilot-max/',
+    base: '/max_project_pilot/',
     build: {
         outDir: 'dist',
+        sourcemap: false,
         rollupOptions: {
             input: {
                 main: './index.html'
