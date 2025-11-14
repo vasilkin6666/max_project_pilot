@@ -11,6 +11,8 @@ class ProjectPilotApp {
         this.isInitialized = false;
     }
 
+    // В файле js\app.js добавляем в метод init:
+
     async init() {
         if (this.isInitialized) return;
 
@@ -18,7 +20,10 @@ class ProjectPilotApp {
             console.log('Initializing Project Pilot...');
             this.showLoading();
 
-            // Initialize modules with error handling
+            // Apply default theme immediately for better UX
+            this.applyDefaultTheme();
+
+            // Initialize modules
             await this.initializeModules();
 
             // Initialize components
@@ -43,6 +48,60 @@ class ProjectPilotApp {
             // Показать приложение даже при ошибке
             this.showApp();
         }
+    }
+
+    handleUserAction(action) {
+        this.hideUserMenu();
+
+        switch (action) {
+            case 'profile':
+                this.showProfile();
+                break;
+            case 'settings':
+                this.showSettings();
+                break;
+            case 'toggleTheme':
+                this.toggleTheme();
+                break;
+            case 'logout':
+                this.logout();
+                break;
+        }
+    }
+
+    // Добавляем метод toggleTheme:
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+        this.setTheme(newTheme);
+
+        // Сохраняем в настройках пользователя, если есть API
+        if (this.modules.api && this.currentUser) {
+            this.saveThemePreference(newTheme);
+        }
+
+        Utils.showToast(`Тема изменена на ${newTheme === 'dark' ? 'тёмную' : 'светлую'}`, 'success');
+    }
+
+    async saveThemePreference(theme) {
+        try {
+            await this.modules.api.patchUserPreferences({ theme });
+        } catch (error) {
+            console.error('Error saving theme preference:', error);
+        }
+    }
+
+    // Добавляем метод applyDefaultTheme:
+    applyDefaultTheme() {
+        // Проверяем сохраненную тему или используем системную
+        const savedTheme = Utils.getStorage('user_theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        let theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+
+        console.log('Applying default theme:', { savedTheme, systemPrefersDark, theme });
+        this.setTheme(theme);
     }
 
     async initializeModules() {
@@ -208,9 +267,14 @@ class ProjectPilotApp {
     }
 
     applyUserSettings(settings) {
+        console.log('Applying user settings:', settings);
+
         // Apply theme
         if (settings.theme) {
             this.setTheme(settings.theme);
+        } else {
+            // Default theme if not set
+            this.setTheme('dark'); // или 'light' в зависимости от предпочтений
         }
 
         // Apply other settings
@@ -224,16 +288,18 @@ class ProjectPilotApp {
     }
 
     setTheme(theme) {
+        console.log('Setting theme to:', theme);
+
         const lightTheme = document.getElementById('light-theme');
         const darkTheme = document.getElementById('dark-theme');
 
         if (theme === 'dark') {
-            lightTheme.disabled = true;
-            darkTheme.disabled = false;
+            if (lightTheme) lightTheme.disabled = true;
+            if (darkTheme) darkTheme.disabled = false;
             document.documentElement.setAttribute('data-theme', 'dark');
         } else {
-            lightTheme.disabled = false;
-            darkTheme.disabled = true;
+            if (lightTheme) lightTheme.disabled = false;
+            if (darkTheme) darkTheme.disabled = true;
             document.documentElement.setAttribute('data-theme', 'light');
         }
 

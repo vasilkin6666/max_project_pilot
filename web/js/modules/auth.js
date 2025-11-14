@@ -148,6 +148,7 @@ class AuthManager {
     async restoreSession() {
         const token = this.getToken();
         if (!token) {
+            console.log('No token found in storage');
             return false;
         }
 
@@ -155,14 +156,14 @@ class AuthManager {
             const api = window.App?.modules?.api;
             if (!api) return false;
 
-            // Проверяем токен через запрос к текущему пользователю
+            console.log('Attempting to restore session with token');
             const user = await api.getCurrentUser();
             this.setCurrentUser(user);
             this.isAuthenticated = true;
             console.log('Session restored successfully');
             return true;
         } catch (error) {
-            console.error('Session restoration failed:', error);
+            console.log('Session restoration failed:', error.message);
             this.clearToken();
             return false;
         }
