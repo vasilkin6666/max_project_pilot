@@ -1,9 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Дополнительные глобальные стили */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 * {
     box-sizing: border-box;
@@ -158,7 +159,7 @@ body {
     /* Можно добавить кастомные стили для переопределения MAX UI */
 }
 
-/* Адаптивность для мобильных устройств */
+/* Адаптивность для мобильных устройрств */
 @media (max-width: 768px) {
     .mobile-hidden {
         display: none !important;
