@@ -208,7 +208,7 @@ window.addEventListener('offline', () => {
 if ('serviceWorker' in navigator) {
     try {
         // Правильный путь к SW - относительно корня
-        const registration = await navigator.serviceWorker.register('/sw.js', {
+        navigator.serviceWorker.register('/sw.js', {
             scope: '/'
         });
         console.log('ServiceWorker registration successful with scope:', registration.scope);

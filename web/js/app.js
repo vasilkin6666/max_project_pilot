@@ -1962,7 +1962,6 @@ class App {
   }
 }
 
-// Mobile navigation and enhanced features
 class MobileApp {
   static init() {
     this.initMobileNavigation();
