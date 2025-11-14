@@ -81,20 +81,6 @@
             font-size: var(--text-xs);
             font-weight: var(--font-medium);
         }
-
-        /* Дополнительные утилитарные стили */
-        .debug-info {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            z-index: 10000;
-            max-width: 300px;
-        }
     </style>
 </head>
 <body class="safe-area">
@@ -724,10 +710,10 @@
         <div class="spinner"></div> Обновление...
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts в правильном порядке -->
     <script src="js/api.js"></script>
-    <script src="js/max-integration.js"></script>
     <script src="js/auth-enhanced.js"></script>
+    <script src="js/max-integration.js"></script>
     <script src="js/app.js"></script>
     <script src="js/main.js"></script>
 

@@ -1,22 +1,7 @@
+// js/api.js
 // Конфигурация
 const CONFIG = {
     API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
-};
-
-// Глобальные переменные
-let currentProject = null;
-let currentTask = null;
-let currentUser = null;
-let currentMemberToUpdate = null;
-let currentMemberToRemove = null;
-let userSettings = {};
-
-// Константы ролей проекта
-const ProjectRole = {
-    OWNER: 'owner',
-    ADMIN: 'admin',
-    MEMBER: 'member',
-    GUEST: 'guest'
 };
 
 // API сервис
