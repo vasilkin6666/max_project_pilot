@@ -19,19 +19,11 @@
     <!-- Framer Motion для анимаций -->
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключаем наш CSS с Tailwind -->
+    <link rel="stylesheet" href="/src/components/styles/globals.css">
 
     <style>
-        :root {
-            --max-primary: #2563eb;
-            --project-pilot-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --surface-glass: rgba(255, 255, 255, 0.1);
-            --success-emerald: #10b981;
-            --warning-amber: #f59e0b;
-            --error-ruby: #ef4444;
-        }
-
+        /* Инлайн стили для быстрой загрузки */
         .glass-morphism {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -63,83 +55,6 @@
             height: 100%;
             pointer-events: none;
             z-index: 10000;
-        }
-
-        .page-transition-enter {
-            opacity: 0;
-            transform: translateX(-100px);
-        }
-
-        .page-transition-enter-active {
-            opacity: 1;
-            transform: translateX(0);
-            transition: opacity 0.3s, transform 0.3s;
-        }
-
-        .page-transition-exit {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .page-transition-exit-active {
-            opacity: 0;
-            transform: translateX(100px);
-            transition: opacity 0.3s, transform 0.3s;
-        }
-
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .line-clamp-3 {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        /* Стили для древовидных подзадач */
-        .subtask-children {
-            transition: all 0.3s ease-in-out;
-        }
-
-        .subtask-level-0 { margin-left: 0; }
-        .subtask-level-1 { margin-left: 20px; }
-        .subtask-level-2 { margin-left: 40px; }
-        .subtask-level-3 { margin-left: 60px; }
-
-        /* Кастомный скроллбар */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-track {
-            background: #374151;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #6b7280;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
         }
     </style>
 </head>
