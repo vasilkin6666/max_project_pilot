@@ -1,9 +1,18 @@
 // js/app.js
 // Основное приложение
 class App {
+  static isInitialized = false; // Добавляем флаг инициализации
+
   static async init() {
+      // Проверяем, не инициализировано ли уже приложение
+      if (this.isInitialized) {
+          console.log('App already initialized, skipping...');
+          return;
+      }
+
       try {
           console.log('Initializing app...');
+          this.isInitialized = true; // Устанавливаем флаг
 
           // Инициализируем аутентификацию
           currentUser = await AuthManager.initialize();
@@ -33,124 +42,110 @@ class App {
       } catch (error) {
           console.error('App initialization failed:', error);
           this.showError('Ошибка инициализации приложения: ' + error.message);
+          this.isInitialized = false; // Сбрасываем флаг при ошибке
       }
   }
 
-    static setupEventListeners() {
-        // Navigation
-        document.getElementById('dashboardBtn').addEventListener('click', () => {
-            this.showDashboard();
-        });
-        document.getElementById('createProjectBtn').addEventListener('click', () => {
-            this.showModal('createProjectModal');
-        });
-        document.getElementById('searchProjectsBtn').addEventListener('click', () => {
-            this.showSearchProjects();
-        });
-        document.getElementById('notificationsBtn').addEventListener('click', () => {
-            this.showNotifications();
-        });
-        document.getElementById('myTasksBtn').addEventListener('click', () => {
-            this.showMyTasks();
-        });
-        document.getElementById('settingsBtn').addEventListener('click', () => {
-            this.showSettings();
-        });
+  static setupEventListeners() {
+      // Удаляем существующие обработчики перед добавлением новых
+      this.removeEventListeners();
 
-        // Project View Actions
-        document.getElementById('manageMembersBtn').addEventListener('click', () => {
-            this.showProjectMembersManagement();
-        });
-        document.getElementById('joinRequestsBtn').addEventListener('click', () => {
-            this.showJoinRequests();
-        });
-        document.getElementById('editProjectBtn').addEventListener('click', () => {
-            this.showEditProjectModal();
-        });
-        document.getElementById('deleteProjectBtn').addEventListener('click', () => {
-            this.showDeleteProjectModal();
-        });
+      // Navigation
+      this.addEventListener('dashboardBtn', 'click', () => this.showDashboard());
+      this.addEventListener('createProjectBtn', 'click', () => this.showModal('createProjectModal'));
+      this.addEventListener('searchProjectsBtn', 'click', () => this.showSearchProjects());
+      this.addEventListener('notificationsBtn', 'click', () => this.showNotifications());
+      this.addEventListener('myTasksBtn', 'click', () => this.showMyTasks());
+      this.addEventListener('settingsBtn', 'click', () => this.showSettings());
 
-        // Task View Actions
-        document.getElementById('createTaskBtn').addEventListener('click', () => {
-            this.showCreateTaskModal();
-        });
-        document.getElementById('createSubtaskBtn').addEventListener('click', () => {
-            this.showCreateSubtaskModal();
-        });
-        document.getElementById('editTaskBtn').addEventListener('click', () => {
-            this.showEditTaskModal();
-        });
-        document.getElementById('deleteTaskBtn').addEventListener('click', () => {
-            this.showDeleteTaskModal();
-        });
-        document.getElementById('addCommentBtn').addEventListener('click', () => {
-            this.addComment();
-        });
+      // Project View Actions
+      this.addEventListener('manageMembersBtn', 'click', () => this.showProjectMembersManagement());
+      this.addEventListener('joinRequestsBtn', 'click', () => this.showJoinRequests());
+      this.addEventListener('editProjectBtn', 'click', () => this.showEditProjectModal());
+      this.addEventListener('deleteProjectBtn', 'click', () => this.showDeleteProjectModal());
 
-        // My Tasks Filters
-        document.getElementById('tasksFilterStatus').addEventListener('change', () => {
-            this.loadMyTasks();
-        });
-        document.getElementById('tasksFilterProject').addEventListener('change', () => {
-            this.loadMyTasks();
-        });
+      // Task View Actions
+      this.addEventListener('createTaskBtn', 'click', () => this.showCreateTaskModal());
+      this.addEventListener('createSubtaskBtn', 'click', () => this.showCreateSubtaskModal());
+      this.addEventListener('editTaskBtn', 'click', () => this.showEditTaskModal());
+      this.addEventListener('deleteTaskBtn', 'click', () => this.showDeleteTaskModal());
+      this.addEventListener('addCommentBtn', 'click', () => this.addComment());
 
-        // Search Projects
-        document.getElementById('searchProjectsSubmitBtn').addEventListener('click', () => {
-            this.searchProjects();
-        });
+      // My Tasks Filters
+      this.addEventListener('tasksFilterStatus', 'change', () => this.loadMyTasks());
+      this.addEventListener('tasksFilterProject', 'change', () => this.loadMyTasks());
 
-        // Form submissions
-        document.getElementById('submitCreateProjectBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleCreateProject();
-        });
-        document.getElementById('submitEditProjectBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleUpdateProject();
-        });
-        document.getElementById('confirmDeleteProjectBtn').addEventListener('click', () => {
-            this.handleDeleteProject();
-        });
-        document.getElementById('submitCreateTaskBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleCreateTask();
-        });
-        document.getElementById('submitEditTaskBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleUpdateTask();
-        });
-        document.getElementById('confirmDeleteTaskBtn').addEventListener('click', () => {
-            this.handleDeleteTask();
-        });
-        document.getElementById('joinProjectFromPreviewBtn').addEventListener('click', () => {
-            this.joinProjectFromPreview();
-        });
+      // Search Projects
+      this.addEventListener('searchProjectsSubmitBtn', 'click', () => this.searchProjects());
 
-        // --- Добавлены обработчики для новых форм ---
-        document.getElementById('submitCreateSubtaskBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleCreateSubtask();
-        });
-        document.getElementById('submitUpdateMemberRoleBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleUpdateMemberRole();
-        });
-        document.getElementById('confirmRemoveMemberBtn').addEventListener('click', () => {
-            this.handleRemoveMember();
-        });
+      // Form submissions
+      this.addEventListener('submitCreateProjectBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleCreateProject();
+      });
+      this.addEventListener('submitEditProjectBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleUpdateProject();
+      });
+      this.addEventListener('confirmDeleteProjectBtn', 'click', () => this.handleDeleteProject());
+      this.addEventListener('submitCreateTaskBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleCreateTask();
+      });
+      this.addEventListener('submitEditTaskBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleUpdateTask();
+      });
+      this.addEventListener('confirmDeleteTaskBtn', 'click', () => this.handleDeleteTask());
+      this.addEventListener('joinProjectFromPreviewBtn', 'click', () => this.joinProjectFromPreview());
 
-        document.getElementById('taskStatusSelect').addEventListener('change', () => {
-            this.updateTaskStatus();
-        });
+      // --- Добавлены обработчики для новых форм ---
+      this.addEventListener('submitCreateSubtaskBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleCreateSubtask();
+      });
+      this.addEventListener('submitUpdateMemberRoleBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleUpdateMemberRole();
+      });
+      this.addEventListener('confirmRemoveMemberBtn', 'click', () => this.handleRemoveMember());
 
-        document.getElementById('searchProjectsInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.searchProjects();
-            }
-        });
-    }
+      this.addEventListener('taskStatusSelect', 'change', () => this.updateTaskStatus());
+
+      this.addEventListener('searchProjectsInput', 'keypress', (e) => {
+          if (e.key === 'Enter') {
+              this.searchProjects();
+          }
+      });
+  }
+
+  static eventHandlers = new Map();
+
+  static addEventListener(elementId, event, handler) {
+      const element = document.getElementById(elementId);
+      if (element) {
+          // Создаем уникальный ключ для обработчика
+          const key = `${elementId}_${event}`;
+
+          // Удаляем существующий обработчик
+          if (this.eventHandlers.has(key)) {
+              const { element: oldElement, event: oldEvent, handler: oldHandler } = this.eventHandlers.get(key);
+              oldElement.removeEventListener(oldEvent, oldHandler);
+          }
+
+          // Добавляем новый обработчик и сохраняем ссылку
+          element.addEventListener(event, handler);
+          this.eventHandlers.set(key, { element, event, handler });
+      }
+  }
+
+  static removeEventListeners() {
+      // Удаляем все сохраненные обработчики
+      for (const [key, { element, event, handler }] of this.eventHandlers) {
+          element.removeEventListener(event, handler);
+      }
+      this.eventHandlers.clear();
+  }
 
     static async loadData() {
         try {

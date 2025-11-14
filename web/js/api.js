@@ -5,7 +5,18 @@ const CONFIG = {
 
 // API сервис
 class ApiService {
+    static pendingRequests = new Map();
+
     static async request(endpoint, options = {}) {
+        // Создаем уникальный ключ для запроса
+        const requestKey = `${options.method || 'GET'}_${endpoint}_${JSON.stringify(options.body || '')}`;
+
+        // Проверяем, нет ли уже такого запроса в процессе
+        if (this.pendingRequests.has(requestKey)) {
+            console.log('Duplicate request detected, returning pending promise');
+            return this.pendingRequests.get(requestKey);
+        }
+
         const token = localStorage.getItem('access_token');
         const url = `${CONFIG.API_BASE_URL}${endpoint}`;
 
@@ -21,25 +32,35 @@ class ApiService {
         console.log(`API Request: ${options.method || 'GET'} ${url}`);
 
         try {
-            const response = await fetch(url, {
-                ...options,
-                headers
-            });
+            // Сохраняем промис в карту
+            const requestPromise = (async () => {
+                const response = await fetch(url, {
+                    ...options,
+                    headers
+                });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
 
-            const data = await response.json();
-            console.log(`API Response:`, data);
-            return data;
+                const data = await response.json();
+                console.log(`API Response:`, data);
+                return data;
+            })();
+
+            this.pendingRequests.set(requestKey, requestPromise);
+            const result = await requestPromise;
+            this.pendingRequests.delete(requestKey);
+            return result;
+
         } catch (error) {
+            this.pendingRequests.delete(requestKey);
             console.error('API request failed:', error);
             throw error;
         }
     }
-
+    
     static async get(endpoint) {
         return this.request(endpoint, { method: 'GET' });
     }
