@@ -130,6 +130,7 @@
             </div>
 
             <!-- Task Details View -->
+            <!-- Task Details View -->
             <div id="taskView" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 id="taskTitleHeader">Название задачи</h2>
@@ -1486,7 +1487,7 @@
             static async openTask(taskId) {
                 try {
                     console.log('Opening task:', taskId);
-                    this.tempParentTaskId = null;
+
                     const response = await ApiService.getTask(taskId);
                     currentTask = response.task || response;
                     console.log('Current task set to:', currentTask);
@@ -1533,12 +1534,6 @@
 
                     // Загружаем комментарии
                     await this.loadTaskComments(taskId);
-
-                    // Загружаем зависимости
-                    await this.loadTaskDependencies(taskId);
-
-                    // Загружаем список задач для добавления зависимостей
-                    await this.loadAvailableDependencies(taskId);
 
                     // Показываем вью задачи
                     this.showView('taskView');
@@ -1954,147 +1949,6 @@
                 } catch (error) {
                     console.error('Error loading task comments:', error);
                     document.getElementById('taskCommentsList').innerHTML = '<p>Ошибка загрузки комментариев</p>';
-                }
-            }
-
-            // Загрузка зависимостей задачи
-            static async loadTaskDependencies(taskId) {
-                try {
-                    const response = await ApiService.getTaskDependencies(taskId);
-                    const dependencies = response.dependencies || [];
-                    const dependents = response.dependents || [];
-
-                    const dependenciesContainer = document.getElementById('taskDependenciesList');
-                    const dependentsContainer = document.getElementById('taskDependentsList');
-
-                    // Отображаем зависимости (задачи, от которых зависит текущая)
-                    if (!dependencies || dependencies.length === 0) {
-                        dependenciesContainer.innerHTML = '<p>Нет зависимостей</p>';
-                    } else {
-                        dependenciesContainer.innerHTML = `
-                            <h4>Зависит от:</h4>
-                            ${dependencies.map(dep => `
-                                <div style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: between; align-items: center;">
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: bold; cursor: pointer;" onclick="App.openTask(${dep.id})">
-                                            ${this.escapeHtml(dep.title)}
-                                        </div>
-                                        <div style="font-size: 12px; color: #666;">
-                                            Статус: ${this.getStatusText(dep.status)} |
-                                            Приоритет: ${this.getPriorityText(dep.priority)}
-                                        </div>
-                                    </div>
-                                    <button onclick="App.removeTaskDependency(${taskId}, ${dep.id})"
-                                            style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                        Удалить
-                                    </button>
-                                </div>
-                            `).join('')}
-                        `;
-                    }
-
-                    // Отображаем зависимые задачи (задачи, которые зависят от текущей)
-                    if (!dependents || dependents.length === 0) {
-                        dependentsContainer.innerHTML = '<p>Нет зависимых задач</p>';
-                    } else {
-                        dependentsContainer.innerHTML = `
-                            <h4>Зависят от этой задачи:</h4>
-                            ${dependents.map(dep => `
-                                <div style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;">
-                                    <div style="font-weight: bold; cursor: pointer;" onclick="App.openTask(${dep.id})">
-                                        ${this.escapeHtml(dep.title)}
-                                    </div>
-                                    <div style="font-size: 12px; color: #666;">
-                                        Статус: ${this.getStatusText(dep.status)} |
-                                        Приоритет: ${this.getPriorityText(dep.priority)}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        `;
-                    }
-
-                } catch (error) {
-                    console.error('Error loading task dependencies:', error);
-                    document.getElementById('taskDependenciesList').innerHTML = '<p>Ошибка загрузки зависимостей</p>';
-                    document.getElementById('taskDependentsList').innerHTML = '';
-                }
-            }
-
-            // Загрузка доступных задач для добавления зависимостей
-            static async loadAvailableDependencies(taskId) {
-                try {
-                    // ИСПРАВЛЕНО: Проверяем наличие currentProject
-                    if (!currentProject || !currentProject.hash) {
-                        console.error('No current project for loading dependencies');
-                        return;
-                    }
-
-                    const response = await ApiService.getTasks(currentProject.hash);
-                    const tasks = response.tasks || [];
-
-                    // Исключаем текущую задачу и уже добавленные зависимости
-                    const availableTasks = tasks.filter(task =>
-                        task.id !== taskId &&
-                        task.parent_task_id === null // Только основные задачи
-                    );
-
-                    const select = document.getElementById('addDependencySelect');
-                    select.innerHTML = '<option value="">Выберите задачу для добавления зависимости</option>';
-
-                    availableTasks.forEach(task => {
-                        const option = document.createElement('option');
-                        option.value = task.id;
-                        option.textContent = `${task.title} (${this.getStatusText(task.status)})`;
-                        select.appendChild(option);
-                    });
-
-                } catch (error) {
-                    console.error('Error loading available dependencies:', error);
-                }
-            }
-
-            // Добавление зависимости
-            static async addTaskDependency() {
-                if (!currentTask || !currentTask.id) return;
-
-                const select = document.getElementById('addDependencySelect');
-                const dependsOnId = select.value;
-
-                if (!dependsOnId) {
-                    this.showError('Выберите задачу для добавления зависимости');
-                    return;
-                }
-
-                try {
-                    await ApiService.addTaskDependency(currentTask.id, dependsOnId);
-                    this.showSuccess('Зависимость добавлена!');
-
-                    // Обновляем списки зависимостей
-                    await this.loadTaskDependencies(currentTask.id);
-                    await this.loadAvailableDependencies(currentTask.id);
-
-                    // Сбрасываем выбор
-                    select.value = '';
-
-                } catch (error) {
-                    console.error('Error adding task dependency:', error);
-                    this.showError('Ошибка добавления зависимости: ' + error.message);
-                }
-            }
-
-            // Удаление зависимости
-            static async removeTaskDependency(taskId, dependsOnId) {
-                try {
-                    await ApiService.removeTaskDependency(taskId, dependsOnId);
-                    this.showSuccess('Зависимость удалена!');
-
-                    // Обновляем списки зависимостей
-                    await this.loadTaskDependencies(taskId);
-                    await this.loadAvailableDependencies(taskId);
-
-                } catch (error) {
-                    console.error('Error removing task dependency:', error);
-                    this.showError('Ошибка удаления зависимости: ' + error.message);
                 }
             }
 
