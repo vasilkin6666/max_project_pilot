@@ -1,7 +1,7 @@
 #/backend/app/api/project.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, text
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models import User, Project, ProjectMember, JoinRequest, Task
@@ -321,29 +321,167 @@ async def delete_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Удаление проекта"""
-    result = await db.execute(select(Project).where(Project.hash == project_hash))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    """Удаление проекта с каскадным удалением всех связанных данных"""
+    try:
+        result = await db.execute(select(Project).where(Project.hash == project_hash))
+        project = result.scalar_one_or_none()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
 
-    # Проверка прав доступа - только владелец
-    membership = await db.execute(
-        select(ProjectMember).where(
-            ProjectMember.project_id == project.id,
-            ProjectMember.user_id == current_user.id,
-            ProjectMember.role == ProjectRole.OWNER
+        # Проверка прав доступа - только владелец
+        membership = await db.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id == current_user.id,
+                ProjectMember.role == ProjectRole.OWNER
+            )
         )
-    )
-    member = membership.scalar_one_or_none()
-    if not member:
-        raise HTTPException(status_code=403, detail="Only project owner can delete project")
+        member = membership.scalar_one_or_none()
+        if not member:
+            raise HTTPException(status_code=403, detail="Only project owner can delete project")
 
-    # Удаление проекта (каскадное удаление настроено в моделях)
-    await db.delete(project)
-    await db.commit()
+        logger.info(f"Starting deletion of project {project.id} ({project.title})")
 
-    return {"status": "success", "message": "Project deleted successfully"}
+        # 1. Проверяем существование таблицы task_assignees и удаляем данные из нее
+        logger.info("Checking for task_assignees table")
+        table_check = await db.execute(
+            text("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_name = 'task_assignees'
+            """)
+        )
+
+        task_assignees_exists = table_check.scalar_one_or_none() is not None
+
+        if task_assignees_exists:
+            logger.info(f"Deleting from task_assignees for project {project.id}")
+            await db.execute(
+                text("""
+                    DELETE FROM task_assignees
+                    WHERE task_id IN (SELECT id FROM tasks WHERE project_id = :project_id)
+                """),
+                {"project_id": project.id}
+            )
+        else:
+            logger.info("task_assignees table does not exist, skipping")
+
+        # 2. Удаляем комментарии к задачам проекта
+        logger.info(f"Deleting comments for project {project.id}")
+        await db.execute(
+            text("DELETE FROM comments WHERE task_id IN (SELECT id FROM tasks WHERE project_id = :project_id)"),
+            {"project_id": project.id}
+        )
+
+        # 3. Удаляем зависимости задач
+        logger.info(f"Deleting task dependencies for project {project.id}")
+        await db.execute(
+            text("""
+                DELETE FROM task_dependencies
+                WHERE task_id IN (SELECT id FROM tasks WHERE project_id = :project_id)
+                OR depends_on_id IN (SELECT id FROM tasks WHERE project_id = :project_id)
+            """),
+            {"project_id": project.id}
+        )
+
+        # 4. Удаляем задачи проекта
+        logger.info(f"Deleting tasks for project {project.id}")
+        await db.execute(
+            text("DELETE FROM tasks WHERE project_id = :project_id"),
+            {"project_id": project.id}
+        )
+
+        # 5. Удаляем заявки на вступление
+        logger.info(f"Deleting join requests for project {project.id}")
+        await db.execute(
+            text("DELETE FROM join_requests WHERE project_id = :project_id"),
+            {"project_id": project.id}
+        )
+
+        # 6. Удаляем участников проекта
+        logger.info(f"Deleting project members for project {project.id}")
+        await db.execute(
+            text("DELETE FROM project_members WHERE project_id = :project_id"),
+            {"project_id": project.id}
+        )
+
+        # 7. Удаляем уведомления, связанные с проектом
+        logger.info(f"Deleting notifications for project {project.id}")
+        await db.execute(
+            text("DELETE FROM notifications WHERE project_id = :project_id"),
+            {"project_id": project.id}
+        )
+
+        # 8. Удаляем сам проект
+        logger.info(f"Deleting project {project.id}")
+        await db.execute(
+            text("DELETE FROM projects WHERE id = :project_id"),
+            {"project_id": project.id}
+        )
+
+        await db.commit()
+
+        logger.info(f"Project {project.id} deleted successfully")
+        return {"status": "success", "message": "Project deleted successfully"}
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error deleting project: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting project: {str(e)}"
+        )
+
+@router.get("/{project_hash}/debug")
+async def debug_project_structure(
+    project_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Диагностика структуры проекта"""
+    try:
+        result = await db.execute(select(Project).where(Project.hash == project_hash))
+        project = result.scalar_one_or_none()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Проверяем существование таблицы task_assignees
+        table_check = await db.execute(
+            text("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_name = 'task_assignees'
+            """)
+        )
+        task_assignees_exists = table_check.scalar_one_or_none() is not None
+
+        # Если таблица существует, получаем ее данные
+        task_assignees_data = []
+        if task_assignees_exists:
+            assignees_result = await db.execute(
+                text("""
+                    SELECT * FROM task_assignees
+                    WHERE task_id IN (
+                        SELECT id FROM tasks WHERE project_id = :project_id
+                    )
+                """),
+                {"project_id": project.id}
+            )
+            task_assignees_data = assignees_result.fetchall()
+
+        return {
+            "project_id": project.id,
+            "task_assignees_table_exists": task_assignees_exists,
+            "task_assignees_count": len(task_assignees_data),
+            "task_assignees_data": [
+                {"task_id": row[1], "user_id": row[2]} if len(row) > 2 else dict(row)
+                for row in task_assignees_data
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"Debug error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{project_hash}/members")
 async def get_project_members(
@@ -394,7 +532,6 @@ async def get_project_members(
     ]
 
     return {"members": members_data}
-
 @router.delete("/{project_hash}/members/{user_id}")
 async def remove_project_member(
     project_hash: str,
@@ -416,12 +553,10 @@ async def remove_project_member(
         )
     )
     current_user_member = membership.scalar_one_or_none()
+
+    # Только владелец или администратор могут удалять участников
     if not current_user_member or current_user_member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Access denied")
-
-    # Нельзя удалить владельца
-    if user_id == project.created_by:
-        raise HTTPException(status_code=400, detail="Cannot remove project owner")
 
     # Найти участника для удаления
     member_to_remove = await db.execute(
@@ -433,6 +568,22 @@ async def remove_project_member(
     member = member_to_remove.scalar_one_or_none()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
+
+    # Нельзя удалить владельца проекта
+    if member.role == ProjectRole.OWNER:
+        raise HTTPException(status_code=400, detail="Cannot remove project owner")
+
+    # Нельзя удалить самого себя
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself from project")
+
+    # Администраторы не могут удалять других администраторов
+    if (member.role == ProjectRole.ADMIN and
+        current_user_member.role == ProjectRole.ADMIN):
+        raise HTTPException(
+            status_code=403,
+            detail="Admins cannot remove other admins"
+        )
 
     await db.delete(member)
     await db.commit()
@@ -453,17 +604,18 @@ async def update_member_role(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Проверка прав доступа - только владелец
+    # Проверка прав доступа - владелец или администратор
     membership = await db.execute(
         select(ProjectMember).where(
             ProjectMember.project_id == project.id,
-            ProjectMember.user_id == current_user.id,
-            ProjectMember.role == ProjectRole.OWNER
+            ProjectMember.user_id == current_user.id
         )
     )
     current_user_member = membership.scalar_one_or_none()
-    if not current_user_member:
-        raise HTTPException(status_code=403, detail="Only project owner can change roles")
+
+    # Только владелец или администратор могут менять роли
+    if not current_user_member or current_user_member.role not in [ProjectRole.OWNER, ProjectRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Only project owner or admin can change roles")
 
     # Найти участника для изменения роли
     member_to_update = await db.execute(
@@ -475,6 +627,28 @@ async def update_member_role(
     member = member_to_update.scalar_one_or_none()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
+
+    # Проверка: нельзя изменять роль владельца проекта
+    if member.role == ProjectRole.OWNER:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot change role of project owner"
+        )
+
+    # Проверка: администраторы не могут назначать/изменять роль владельца
+    if role_data.role == ProjectRole.OWNER and current_user_member.role != ProjectRole.OWNER:
+        raise HTTPException(
+            status_code=403,
+            detail="Only project owner can assign owner role"
+        )
+
+    # Проверка: администраторы не могут понижать других администраторов или владельца
+    if (member.role in [ProjectRole.OWNER, ProjectRole.ADMIN] and
+        current_user_member.role == ProjectRole.ADMIN):
+        raise HTTPException(
+            status_code=403,
+            detail="Admins cannot change roles of other admins or owner"
+        )
 
     # Обновление роли
     member.role = role_data.role

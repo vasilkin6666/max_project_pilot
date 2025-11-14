@@ -697,7 +697,13 @@
         let currentMemberToUpdate = null;
         let currentMemberToRemove = null;
         let userSettings = {};
-
+        // Константы ролей проекта
+        const ProjectRole = {
+            OWNER: 'owner',
+            ADMIN: 'admin',
+            MEMBER: 'member',
+            GUEST: 'guest'
+        };
         // Менеджер аутентификации
         class AuthManager {
             static async initialize() {
@@ -1856,10 +1862,16 @@
                     if (!members || members.length === 0) {
                         container.innerHTML = '<p>Участников нет</p>';
                     } else {
-                        // ИСПРАВЛЕНО: Правильная проверка прав доступа
-                        const canManageMembers = userRole === 'owner' || userRole === 'admin';
+                        // Правильная проверка прав доступа
+                        const isOwner = userRole === ProjectRole.OWNER;
+                        const isAdmin = userRole === ProjectRole.ADMIN;
 
-                        console.log('Can manage members:', canManageMembers);
+                        // Владелец может управлять всеми, администраторы - только участниками
+                        const canManageAll = isOwner;
+                        const canManageMembers = isAdmin; // Админы могут управлять обычными участниками
+
+                        console.log('User can manage all:', canManageAll);
+                        console.log('User can manage members:', canManageMembers);
 
                         container.innerHTML = members.map(member => {
                             // Правильное получение данных участника
@@ -1871,6 +1883,22 @@
                                 : `Участник #${member.user_id || memberData.id}`;
 
                             const isCurrentUser = (member.user_id || memberData.id) === currentUser.id;
+                            const isOwnerMember = member.role === ProjectRole.OWNER;
+                            const isAdminMember = member.role === ProjectRole.ADMIN;
+
+                            // Определяем доступные действия
+                            let canChangeRole = false;
+                            let canRemove = false;
+
+                            if (isOwner) {
+                                // Владелец может изменять роли всех, кроме себя
+                                canChangeRole = !isCurrentUser && !isOwnerMember;
+                                canRemove = !isCurrentUser && !isOwnerMember;
+                            } else if (isAdmin) {
+                                // Администратор может изменять роли только участников (не админов и не владельца)
+                                canChangeRole = !isCurrentUser && !isOwnerMember && !isAdminMember;
+                                canRemove = !isCurrentUser && !isOwnerMember && !isAdminMember;
+                            }
 
                             return `
                                 <div style="padding: 15px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
@@ -1880,18 +1908,24 @@
                                             <div style="color: #666; font-size: 14px;">
                                                 Роль: ${this.getRoleText(member.role)}
                                                 ${isCurrentUser ? ' (Вы)' : ''}
+                                                ${isOwnerMember ? ' ⭐ Владелец' : ''}
+                                                ${isAdminMember && !isOwnerMember ? ' 🔧 Администратор' : ''}
                                             </div>
                                         </div>
-                                        ${canManageMembers && !isCurrentUser ? `
+                                        ${(canChangeRole || canRemove) ? `
                                         <div style="display: flex; gap: 10px;">
+                                            ${canChangeRole ? `
                                             <button onclick="App.showUpdateMemberRoleModal(${member.user_id || memberData.id}, '${this.escapeHtml(displayName)}', '${member.role}')"
                                                     style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                                 Изменить роль
                                             </button>
+                                            ` : ''}
+                                            ${canRemove ? `
                                             <button onclick="App.showRemoveMemberModal(${member.user_id || memberData.id}, '${this.escapeHtml(displayName)}')"
                                                     style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                                 Удалить
                                             </button>
+                                            ` : ''}
                                         </div>
                                         ` : ''}
                                     </div>
@@ -2109,7 +2143,28 @@
             static showUpdateMemberRoleModal(userId, userName, currentRole) {
                 currentMemberToUpdate = { userId, userName, currentRole };
                 document.getElementById('memberName').textContent = userName;
-                document.getElementById('memberRoleSelect').value = currentRole;
+
+                const roleSelect = document.getElementById('memberRoleSelect');
+
+                // Получаем текущую роль пользователя
+                const currentUserRole = currentProject.current_user_role;
+
+                // Если пользователь администратор (не владелец), ограничиваем доступные роли
+                if (currentUserRole === 'admin') {
+                    roleSelect.innerHTML = `
+                        <option value="member">Участник</option>
+                        <option value="guest">Гость</option>
+                    `;
+                } else {
+                    // Владелец может назначать любые роли
+                    roleSelect.innerHTML = `
+                        <option value="admin">Администратор</option>
+                        <option value="member">Участник</option>
+                        <option value="guest">Гость</option>
+                    `;
+                }
+
+                roleSelect.value = currentRole;
                 this.showModal('updateMemberRoleModal');
             }
 
