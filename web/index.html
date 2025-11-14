@@ -715,21 +715,93 @@
     <script src="js/auth-enhanced.js"></script>
     <script src="js/max-integration.js"></script>
     <script src="js/app.js"></script>
-    <script src="js/main.js"></script>
 
     <script>
-        // Service Worker регистрация с правильным путем
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('ServiceWorker registration failed: ', error);
-                    });
+    // Упрощенная инициализация - заставка всегда видна до клика
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('DOM fully loaded and parsed');
+
+        try {
+            console.log('Initializing App...');
+            // Инициализируем приложение в фоне
+            await App.init();
+            console.log('App initialized successfully');
+
+            // Initialize mobile features
+            if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
+                MobileApp.init();
+            }
+
+        } catch (error) {
+            console.error('Error during app initialization:', error);
+            // В случае ошибки показываем сообщение на заставке
+            const loadingContent = document.querySelector('.loading-content');
+            if (loadingContent) {
+                loadingContent.innerHTML = `
+                    <h2>Ошибка загрузки</h2>
+                    <p>${error.message || 'Неизвестная ошибка'}</p>
+                    <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 20px;">Перезагрузить</button>
+                `;
+            }
+        }
+
+        // Обработчик клика по заставке
+        const loadingOverlay = document.getElementById('loading');
+        if (loadingOverlay) {
+            loadingOverlay.addEventListener('click', function() {
+                console.log('Loading overlay clicked, hiding splash screen');
+
+                // Добавляем класс для плавного скрытия
+                loadingOverlay.classList.add('hidden');
+
+                // Полностью скрываем через время анимации
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                    // Показываем основное приложение
+                    document.getElementById('app').style.display = 'block';
+                    console.log('Splash screen hidden, app is ready');
+
+                    // Initialize mobile features if not already
+                    if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
+                        MobileApp.init();
+                    }
+
+                    // Запускаем основное приложение
+                    if (typeof App.showDashboard === 'function') {
+                        App.showDashboard();
+                    }
+                }, 800);
             });
         }
+
+        // Также можно скрывать по нажатию клавиши
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                const loadingOverlay = document.getElementById('loading');
+                if (loadingOverlay && loadingOverlay.style.display !== 'none') {
+                    loadingOverlay.click();
+                }
+            }
+
+            // Back button simulation with Escape key
+            if (e.code === 'Escape') {
+                if (typeof App.backToPreviousView === 'function') {
+                    App.backToPreviousView();
+                }
+            }
+        });
+
+        // Service Worker регистрация с правильным путем
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(function(error) {
+                    console.log('ServiceWorker registration failed: ', error);
+                });
+        }
+    });
     </script>
 </body>
 </html>
