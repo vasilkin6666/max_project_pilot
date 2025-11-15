@@ -74,9 +74,10 @@
                     <!-- Right side actions -->
                     <div class="flex items-center space-x-2">
                         <!-- Search Button (Mobile) -->
-                        <button class="md:hidden p-2.5 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors focus-premium">
+                        <button class="md:hidden p-2.5 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors focus-premium" onclick="App.showMobileSearch()">
                             <i class="fas fa-search text-gray-700 dark:text-gray-300"></i>
                         </button>
+
 
                         <!-- Create Button -->
                         <div class="relative" x-data="{ open: false }">
@@ -162,7 +163,6 @@
                                 class="absolute right-0 mt-2 w-56 glass-intense rounded-xl shadow-large border border-white/20 dark:border-gray-700/50 py-2 z-50">
                                 <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                                     <div class="font-medium text-gray-900 dark:text-gray-100" id="dropdownUserName">Пользователь</div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400" id="dropdownUserEmail">user@example.com</div>
                                 </div>
                                 <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showProfileModal()">
                                     <i class="fas fa-user mr-3 text-gray-500"></i>
@@ -180,6 +180,20 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Добавьте после основного хедера -->
+<div id="mobileSearchContainer" class="hidden md:hidden fixed top-0 left-0 right-0 z-50 glass-intense p-4 border-b border-white/20 dark:border-gray-800/50">
+    <div class="flex items-center space-x-2">
+        <div class="flex-1 relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input type="text" id="mobileSearchInput" class="w-full premium-input pl-10 pr-4 py-3 rounded-xl focus-premium" placeholder="Поиск проектов, задач...">
+        </div>
+        <button onclick="App.hideMobileSearch()" class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-xl font-medium">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>
                 </div>
             </div>
         </header>

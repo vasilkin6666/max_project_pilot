@@ -885,7 +885,7 @@ class App {
 
             const modalHtml = `
                 <div id="profileModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
-                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto">
                         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                             <div class="flex items-center justify-between">
                                 <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Профиль пользователя</h3>
@@ -902,25 +902,25 @@ class App {
                                         (userData.full_name ? userData.full_name.charAt(0).toUpperCase() : 'U')
                                     }
                                 </div>
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">${userData.full_name || 'Пользователь'}</h3>
-                                <p class="text-gray-500 dark:text-gray-400">${userData.username || ''}</p>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">${this.escapeHtml(userData.full_name || 'Пользователь')}</h3>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">${userData.username || ''}</p>
                             </div>
 
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Полное имя</label>
-                                    <input type="text" id="profileFullName" value="${userData.full_name || ''}"
-                                           class="premium-input w-full rounded-xl focus-premium">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Полное имя</label>
+                                    <input type="text" id="profileFullName" value="${this.escapeHtml(userData.full_name || '')}"
+                                           class="premium-input w-full rounded-xl focus-premium px-4 py-3 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
-                                    <input type="text" id="profileUsername" value="${userData.username || ''}"
-                                           class="premium-input w-full rounded-xl focus-premium">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username</label>
+                                    <input type="text" id="profileUsername" value="${this.escapeHtml(userData.username || '')}"
+                                           class="premium-input w-full rounded-xl focus-premium px-4 py-3 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID пользователя</label>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID пользователя</label>
                                     <input type="text" value="${userData.id || 'N/A'}" readonly
-                                           class="premium-input w-full rounded-xl focus-premium bg-gray-50 dark:bg-gray-800">
+                                           class="premium-input w-full rounded-xl focus-premium px-4 py-3 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                                 </div>
                             </div>
                         </div>
@@ -1401,6 +1401,23 @@ static renderTeamMembers(members) {
             }).join('')}
         </div>
     `;
+}
+
+// Методы для мобильного поиска
+static showMobileSearch() {
+    const mobileSearch = document.getElementById('mobileSearchContainer');
+    if (mobileSearch) {
+        mobileSearch.classList.remove('hidden');
+        const input = document.getElementById('mobileSearchInput');
+        if (input) input.focus();
+    }
+}
+
+static hideMobileSearch() {
+    const mobileSearch = document.getElementById('mobileSearchContainer');
+    if (mobileSearch) {
+        mobileSearch.classList.add('hidden');
+    }
 }
 
 static async handleSearch(query) {
@@ -2097,13 +2114,6 @@ static async resetSettings() {
                 }
             });
 
-            // Обновляем email
-            const userEmail = document.getElementById('dropdownUserEmail');
-            if (userEmail && currentUser.username) {
-                userEmail.textContent = currentUser.username;
-            }
-
-            // Обновляем приветствие
             const welcomeHeader = document.getElementById('welcomeHeader');
             if (welcomeHeader && currentUser.full_name) {
                 welcomeHeader.textContent = `Добро пожаловать, ${currentUser.full_name}!`;
@@ -2163,6 +2173,9 @@ static async resetSettings() {
             this.renderRecentTasks(recentTasks);
             this.renderSidebarProjects(projects);
 
+            // ЗАГРУЖАЕМ КОМАНДУ ДЛЯ САЙДБАРА
+            await this.loadSidebarTeam(projects);
+
             // Загружаем уведомления с обработкой ошибок
             try {
                 await this.loadNotifications();
@@ -2174,8 +2187,74 @@ static async resetSettings() {
         } catch (error) {
             console.error('Error loading data:', error);
             this.showError('Ошибка загрузки данных: ' + error.message);
-            throw error; // Пробрасываем ошибку дальше
+            throw error;
         }
+    }
+
+    // Новый метод для загрузки команды в сайдбар
+    static async loadSidebarTeam(projects) {
+        try {
+            const allMembers = new Map();
+
+            // Собираем участников из всех проектов
+            for (const project of projects.slice(0, 5)) { // Ограничиваем 5 проектами
+                const projectData = project.project || project;
+                try {
+                    const membersResponse = await ApiService.getProjectMembers(projectData.hash);
+                    const members = membersResponse.members || [];
+
+                    members.forEach(member => {
+                        const memberData = member.user || member;
+                        const memberId = member.user_id || memberData.id;
+
+                        if (!allMembers.has(memberId)) {
+                            allMembers.set(memberId, {
+                                ...memberData,
+                                role: member.role
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.error(`Error loading team for project ${projectData.title}:`, error);
+                }
+            }
+
+            this.renderSidebarTeam(Array.from(allMembers.values()));
+        } catch (error) {
+            console.error('Error loading sidebar team:', error);
+        }
+    }
+
+    // Метод для отрисовки команды в сайдбаре
+    static renderSidebarTeam(members) {
+        const container = document.getElementById('sidebarTeamMembers');
+        if (!container) return;
+
+        if (!members || members.length === 0) {
+            container.innerHTML = `
+                <div class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                    Участников нет
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = members.slice(0, 5).map(member => {
+            const displayName = member.full_name || `Участник #${member.id}`;
+            const role = this.getRoleText(member.role);
+
+            return `
+                <div class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                    <div class="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-medium mr-3">
+                        ${displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate">${this.escapeHtml(displayName)}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${role}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     // Применение настроек пользователя
@@ -2275,6 +2354,8 @@ static async resetSettings() {
         container.innerHTML = projects.slice(0, 5).map(project => {
             const projectData = project.project || project;
             const stats = project.stats || projectData.stats || {};
+
+            // ИСПРАВЛЕНИЕ: Правильное получение количества задач
             const tasksCount = stats.tasks_count || stats.tasksCount || 0;
 
             let colorClass = 'bg-primary-500';
@@ -2285,8 +2366,8 @@ static async resetSettings() {
             return `
                 <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors group" onclick="App.openProject('${projectData.hash}')">
                     <div class="w-2 h-2 ${colorClass} rounded-full mr-3"></div>
-                    <span class="truncate">${this.escapeHtml(projectData.title)}</span>
-                    <span class="ml-auto text-xs bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 px-2 py-0.5 rounded-full">${tasksCount}</span>
+                    <span class="truncate flex-1">${this.escapeHtml(projectData.title)}</span>
+                    <span class="ml-2 text-xs bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 px-2 py-0.5 rounded-full min-w-[20px] text-center">${tasksCount}</span>
                 </a>
             `;
         }).join('');
@@ -3092,35 +3173,53 @@ static async resetSettings() {
     }
 
     static renderProjectView(project, summary) {
-        const projectView = document.getElementById('projectView');
+      const projectView = document.getElementById('projectView');
+
+      // Проверяем права пользователя
+      const userMember = project.members?.find(member =>
+          (member.user && member.user.id === currentUser?.id) ||
+          member.user_id === currentUser?.id
+      );
+      const canManage = userMember?.role === 'owner' || userMember?.role === 'admin';
 
         // Формируем HTML для представления проекта
         projectView.innerHTML = `
-            <div class="mb-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                    <div>
-                        <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">${this.escapeHtml(project.title)}</h1>
-                        <div class="flex items-center mt-2 space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                            <span><i class="fas fa-users mr-1"></i> ${summary.members_count || 0} участников</span>
-                            <span><i class="fas fa-tasks mr-1"></i> ${summary.tasks_count || 0} задач</span>
-                            <span><i class="fas fa-check-circle mr-1"></i> ${summary.tasks_done || 0} выполнено</span>
-                            <span><i class="fas fa-sync-alt mr-1"></i> ${summary.tasks_in_progress || 0} в работе</span>
-                        </div>
-                    </div>
-                    <div class="flex space-x-2 mt-4 md:mt-0">
-                        <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showCreateTaskModal()">
-                            <i class="fas fa-plus"></i>
-                            <span>Новая задача</span>
-                        </button>
-                        <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showDashboard()">
-                            <i class="fas fa-arrow-left"></i>
-                            <span>Назад</span>
-                        </button>
+        <div class="mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                <div class="flex-1">
+                    <h1 class="text-2xl md:text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">${this.escapeHtml(project.title)}</h1>
+                    <div class="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <span><i class="fas fa-users mr-1"></i> ${summary.members_count || 0} участников</span>
+                        <span><i class="fas fa-tasks mr-1"></i> ${summary.tasks_count || 0} задач</span>
+                        <span><i class="fas fa-check-circle mr-1"></i> ${summary.tasks_done || 0} выполнено</span>
+                        <span><i class="fas fa-sync-alt mr-1"></i> ${summary.tasks_in_progress || 0} в работе</span>
                     </div>
                 </div>
-                <p class="text-gray-600 dark:text-gray-400">${this.escapeHtml(project.description || 'Без описания')}</p>
-            </div>
+                <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
+                    <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showCreateTaskModal()">
+                        <i class="fas fa-plus"></i>
+                        <span class="hidden sm:inline">Новая задача</span>
+                    </button>
 
+                    ${canManage ? `
+                        <button class="btn-premium bg-warning-500 hover:bg-warning-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showEditProjectModal('${project.hash}')">
+                            <i class="fas fa-edit"></i>
+                            <span class="hidden sm:inline">Редактировать</span>
+                        </button>
+                        <button class="btn-premium bg-purple-500 hover:bg-purple-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showProjectManagement('${project.hash}')">
+                            <i class="fas fa-users-cog"></i>
+                            <span class="hidden sm:inline">Управление</span>
+                        </button>
+                    ` : ''}
+
+                    <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="hidden sm:inline">Назад</span>
+                    </button>
+                </div>
+            </div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm md:text-base">${this.escapeHtml(project.description || 'Без описания')}</p>
+        </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-2">
                     <div class="premium-card rounded-2xl overflow-hidden mb-6">
