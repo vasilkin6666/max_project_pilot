@@ -1,511 +1,462 @@
 // js/app.js
 // Основное приложение
 class App {
-    static isInitialized = false;
-    static tempParentTaskId = null;
-    static eventHandlers = new Map();
-    static loadDataInProgress = false;
+  static isInitialized = false; // Добавляем флаг инициализации
 
-    static async init() {
-        if (this.isInitialized) {
-            console.log('App already initialized, skipping...');
-            return;
-        }
+  static async init() {
+      // Проверяем, не инициализировано ли уже приложение
+      if (this.isInitialized) {
+          console.log('App already initialized, skipping...');
+          return;
+      }
 
-        try {
-            console.log('Initializing app...');
-            this.isInitialized = true;
+      try {
+          console.log('Initializing app...');
+          this.isInitialized = true; // Устанавливаем флаг
 
-            // Инициализация менеджера устройств
-            this.initDeviceManager();
+          // Инициализируем аутентификацию
+          currentUser = await AuthManager.initialize();
 
-            // Инициализация онлайн статуса
-            this.initOnlineStatus();
+          // Загружаем данные
+          await this.loadData();
 
-            // Аутентификация пользователя
-            currentUser = await this.withTimeout(EnhancedAuthManager.initialize(), 10000, 'Authentication timeout');
+          // Настраиваем обработчики событий
+          this.setupEventListeners();
 
-            // Загрузка данных
-            await this.loadData();
+          // ИСПРАВЛЕНО: Показываем кнопку "Начать" вместо автоматического скрытия заставки
+          showStartButton();
+          // ИСПРАВЛЕНО: Добавляем обработчик клика на кнопку "Начать"
+          attachStartButtonListener();
 
-            // Настройка обработчиков событий
-            this.setupEventListeners();
+          // ИСПРАВЛЕНО: Обновляем прогресс-бар до 100% и меняем цвет
+          const progressBar = document.getElementById('loadingBarProgress');
+          if (progressBar) {
+              progressBar.style.width = '100%';
+              // Дополнительная анимация завершения, если нужно
+              setTimeout(() => {
+                  progressBar.style.background = 'var(--success)'; // Зеленый цвет при завершении
+              }, 100);
+          }
 
-            // Инициализация мобильных функций
-            if (typeof MobileApp !== 'undefined') {
-                MobileApp.init();
-            }
+          console.log('App initialized successfully');
+      } catch (error) {
+          console.error('App initialization failed:', error);
+          this.showError('Ошибка инициализации приложения: ' + error.message);
+          this.isInitialized = false; // Сбрасываем флаг при ошибке
+      }
+  }
 
-            // Показ кнопки старта
-            this.showStartButton();
-
-            // Инициализация кнопки назад для MAX
-            this.initMaxBackButton();
-
-            // Прикрепление обработчика кнопки старта
-            this.attachStartButtonListener();
-
-            // Обновление прогресс бара
-            this.updateProgressBar();
-
-            console.log('App initialized successfully');
-
-            // Отправка события инициализации
-            window.dispatchEvent(new CustomEvent('appInitialized', {
-                detail: { user: currentUser, timestamp: new Date() }
-            }));
-        } catch (error) {
-            console.error('App initialization failed:', error);
-            this.handleInitError(error);
-            this.isInitialized = false;
-        }
-    }
-
-    static initDeviceManager() {
-        // Определение платформы
-        const ua = navigator.userAgent;
-        if (/Android/i.test(ua)) {
-            document.body.classList.add('platform-android');
-        } else if (/iPhone|iPad|iPod/i.test(ua)) {
-            document.body.classList.add('platform-ios');
-        } else if (/Windows/i.test(ua)) {
-            document.body.classList.add('platform-windows');
-        } else if (/Mac/i.test(ua)) {
-            document.body.classList.add('platform-mac');
-        } else if (/Linux/i.test(ua)) {
-            document.body.classList.add('platform-linux');
-        }
-
-        // Определение типа ввода
-        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-            document.body.classList.add('input-touch');
-        } else {
-            document.body.classList.add('input-mouse');
-        }
-
-        // Проверка PWA режима
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            document.body.classList.add('pwa-standalone');
-        }
-    }
-
-    static initOnlineStatus() {
-        window.addEventListener('online', () => {
-            this.showSuccess('Соединение восстановлено');
-            setTimeout(() => this.loadData(), 1000);
-        });
-
-        window.addEventListener('offline', () => {
-            this.showError('Отсутствует интернет-соединение');
-        });
-
-        if (!navigator.onLine) {
-            this.showError('Приложение работает в offline режиме');
-        }
-    }
-
-    static withTimeout(promise, timeoutMs, errorMessage = 'Operation timeout') {
-        return Promise.race([
-            promise,
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
-            )
-        ]);
-    }
-
-    static showStartButton() {
-        const tapToStart = document.getElementById('tapToStart');
-        if (tapToStart) {
-            tapToStart.style.display = 'block';
-            tapToStart.classList.add('fade-in');
-        }
-    }
-
-    static hapticFeedback(style = 'light') {
-        try {
-            if (typeof MaxBridge !== 'undefined' && MaxBridge.hapticFeedback) {
-                MaxBridge.hapticFeedback(style);
-            } else if (typeof WebApp !== 'undefined' && WebApp.HapticFeedback) {
-                WebApp.HapticFeedback.impactOccurred(style);
-            }
-        } catch (error) {
-            console.log('Haptic feedback not available');
-        }
-    }
-
-    static initMaxBackButton() {
-        if (typeof WebApp !== 'undefined' && WebApp.BackButton) {
-            try {
-                WebApp.BackButton.onClick(() => {
-                    this.backToPreviousView();
-                });
-                console.log('MAX Back button handler initialized');
-            } catch (error) {
-                console.log('MAX Back button setup failed:', error);
-            }
-        }
-    }
-
-    static showExitConfirmation() {
-        if (confirm('Вы уверены, что хотите выйти из приложения?')) {
-            if (typeof WebApp !== 'undefined' && WebApp.close) {
-                WebApp.close();
-            } else {
-                console.log('Exit confirmed (standalone mode)');
-            }
-        }
-    }
-
-    static attachStartButtonListener() {
-        const loadingOverlay = document.getElementById('loading');
-        if (loadingOverlay) {
-            loadingOverlay.addEventListener('click', () => {
-                this.hideSplashScreen();
-            });
-        }
-    }
-
-    static updateProgressBar() {
-        const progressBar = document.getElementById('loadingBarProgress');
-        if (progressBar) {
-            progressBar.style.width = '100%';
-            progressBar.style.transition = 'all 0.5s ease-in-out';
-            setTimeout(() => {
-                progressBar.style.background = 'var(--success)';
-                progressBar.style.boxShadow = '0 0 10px var(--success)';
-            }, 100);
-        }
-    }
-
-    static hideSplashScreen() {
-        const loadingOverlay = document.getElementById('loading');
-        const appElement = document.getElementById('app');
-        if (loadingOverlay) {
-            console.log('Hiding splash screen...');
-            loadingOverlay.classList.add('hidden');
-            setTimeout(() => {
-                loadingOverlay.style.display = 'none';
-                if (appElement) {
-                    appElement.style.display = 'block';
-                    appElement.classList.add('fade-in');
-                }
-                console.log('Splash screen hidden, app is ready');
-                this.showDashboard();
-                window.dispatchEvent(new Event('appStarted'));
-            }, 800);
-        }
-    }
-
-    static handleInitError(error) {
-        const loadingContent = document.querySelector('.loading-content');
-        if (loadingContent) {
-            loadingContent.innerHTML = `
-                <div class="error-state">
-                    <div class="error-icon">⚠️</div>
-                    <h2>Ошибка загрузки</h2>
-                    <p>${error.message || 'Неизвестная ошибка'}</p>
-                    <div class="error-actions">
-                        <button onclick="location.reload()" class="btn btn-primary retry-button">
-                            Перезагрузить
-                        </button>
-                        <button onclick="App.continueWithoutData()" class="btn btn-outline">
-                            Продолжить без данных
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-        this.showError('Ошибка инициализации приложения: ' + error.message);
-    }
-
-    static continueWithoutData() {
-        console.log('Continuing without data...');
-        this.hideSplashScreen();
-        this.renderEnhancedProjects([]);
-        this.updateStats([], []);
-        this.showSuccess('Приложение запущено в ограниченном режиме');
-    }
-
-    // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
-
-    static setupEventListeners() {
+  static setupEventListeners() {
+      // Удаляем существующие обработчики перед добавлением новых
       this.removeEventListeners();
 
-      // Основная навигация
+      // Navigation
       this.addEventListener('dashboardBtn', 'click', () => this.showDashboard());
+      this.addEventListener('createProjectBtn', 'click', () => this.showModal('createProjectModal'));
+      this.addEventListener('searchProjectsBtn', 'click', () => this.showSearchProjects());
+      this.addEventListener('notificationsBtn', 'click', () => this.showNotifications());
       this.addEventListener('myTasksBtn', 'click', () => this.showMyTasks());
       this.addEventListener('settingsBtn', 'click', () => this.showSettings());
 
-      // Действия на главной
-      this.addEventListener('notificationsBtn', 'click', () => this.showEnhancedNotifications());
-      this.addEventListener('searchProjectsBtn', 'click', () => this.showSearchProjects());
-      this.addEventListener('createProjectBtn', 'click', () => this.showCreateProjectModal());
+      // Project View Actions
+      this.addEventListener('manageMembersBtn', 'click', () => this.showProjectMembersManagement());
+      this.addEventListener('joinRequestsBtn', 'click', () => this.showJoinRequests());
+      this.addEventListener('editProjectBtn', 'click', () => this.showEditProjectModal());
+      this.addEventListener('deleteProjectBtn', 'click', () => this.showDeleteProjectModal());
 
-      // Мобильная навигация
-      const mobileNavItems = document.querySelectorAll('.mobile-nav-item[data-view]');
-      mobileNavItems.forEach(item => {
-          item.addEventListener('click', (e) => {
-              e.preventDefault();
-              const view = item.dataset.view;
-              if (view) {
-                  this.showView(view);
-                  // Загружаем данные для представления
-                  switch(view) {
-                      case 'dashboardView':
-                          this.loadData();
-                          break;
-                      case 'myTasksView':
-                          this.loadEnhancedMyTasks();
-                          break;
-                      case 'settingsView':
-                          this.loadUserSettings();
-                          break;
-                  }
-              }
-          });
+      // Task View Actions
+      this.addEventListener('createTaskBtn', 'click', () => this.showCreateTaskModal());
+      this.addEventListener('createSubtaskBtn', 'click', () => this.showCreateSubtaskModal());
+      this.addEventListener('editTaskBtn', 'click', () => this.showEditTaskModal());
+      this.addEventListener('deleteTaskBtn', 'click', () => this.showDeleteTaskModal());
+      this.addEventListener('addCommentBtn', 'click', () => this.addComment());
+
+      // My Tasks Filters
+      this.addEventListener('tasksFilterStatus', 'change', () => this.loadMyTasks());
+      this.addEventListener('tasksFilterProject', 'change', () => this.loadMyTasks());
+
+      // Search Projects
+      this.addEventListener('searchProjectsSubmitBtn', 'click', () => this.searchProjects());
+
+      // Form submissions
+      this.addEventListener('submitCreateProjectBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleCreateProject();
       });
+      this.addEventListener('submitEditProjectBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleUpdateProject();
+      });
+      this.addEventListener('confirmDeleteProjectBtn', 'click', () => this.handleDeleteProject());
+      this.addEventListener('submitCreateTaskBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleCreateTask();
+      });
+      this.addEventListener('submitEditTaskBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleUpdateTask();
+      });
+      this.addEventListener('confirmDeleteTaskBtn', 'click', () => this.handleDeleteTask());
+      this.addEventListener('joinProjectFromPreviewBtn', 'click', () => this.joinProjectFromPreview());
 
-        // Проекты
-        this.addEventListener('manageMembersBtn', 'click', () => this.showProjectMembersManagement());
-        this.addEventListener('joinRequestsBtn', 'click', () => this.showJoinRequests());
-        this.addEventListener('editProjectBtn', 'click', () => this.showEditProjectModal());
-        this.addEventListener('deleteProjectBtn', 'click', () => this.showDeleteProjectModal());
-        this.addEventListener('createTaskBtn', 'click', () => this.showCreateTaskModal());
+      // --- Добавлены обработчики для новых форм ---
+      this.addEventListener('submitCreateSubtaskBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleCreateSubtask();
+      });
+      this.addEventListener('submitUpdateMemberRoleBtn', 'click', (e) => {
+          e.preventDefault();
+          this.handleUpdateMemberRole();
+      });
+      this.addEventListener('confirmRemoveMemberBtn', 'click', () => this.handleRemoveMember());
 
-        // Задачи
-        this.addEventListener('createSubtaskBtn', 'click', () => this.showCreateSubtaskModal());
-        this.addEventListener('editTaskBtn', 'click', () => this.showEditTaskModal());
-        this.addEventListener('deleteTaskBtn', 'click', () => this.showDeleteTaskModal());
-        this.addEventListener('addCommentBtn', 'click', () => this.addComment());
+      this.addEventListener('taskStatusSelect', 'change', () => this.updateTaskStatus());
 
-        // Фильтры задач
-        this.addEventListener('tasksFilterStatus', 'change', () => this.loadEnhancedMyTasks());
-        this.addEventListener('tasksFilterPriority', 'change', () => this.loadEnhancedMyTasks());
-        this.addEventListener('tasksFilterAssignment', 'change', () => this.loadEnhancedMyTasks());
-        this.addEventListener('tasksSortBy', 'change', () => this.loadEnhancedMyTasks());
+      this.addEventListener('searchProjectsInput', 'keypress', (e) => {
+          if (e.key === 'Enter') {
+              this.searchProjects();
+          }
+      });
+  }
 
-        // Поиск
-        this.addEventListener('searchProjectsSubmitBtn', 'click', () => this.enhancedSearchProjects());
-        this.addEventListener('searchProjectsInput', 'keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.enhancedSearchProjects();
-            }
-        });
+  static eventHandlers = new Map();
 
-        // Модальные окна
-        this.addEventListener('submitCreateProjectBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleCreateProject();
-        });
-        this.addEventListener('submitEditProjectBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleUpdateProject();
-        });
-        this.addEventListener('confirmDeleteProjectBtn', 'click', () => this.handleDeleteProject());
-        this.addEventListener('submitCreateTaskBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleCreateTask();
-        });
-        this.addEventListener('submitEditTaskBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleUpdateTask();
-        });
-        this.addEventListener('confirmDeleteTaskBtn', 'click', () => this.handleDeleteTask());
-        this.addEventListener('submitCreateSubtaskBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleCreateSubtask();
-        });
+  static addEventListener(elementId, event, handler) {
+      const element = document.getElementById(elementId);
+      if (element) {
+          // Создаем уникальный ключ для обработчика
+          const key = `${elementId}_${event}`;
 
-        // Настройки
-        this.addEventListener('themeSelect', 'change', () => this.saveUserSettings());
-        this.addEventListener('notificationsEnabled', 'change', () => this.saveUserSettings());
-        this.addEventListener('userFullName', 'change', () => this.saveUserSettings());
+          // Удаляем существующий обработчик
+          if (this.eventHandlers.has(key)) {
+              const { element: oldElement, event: oldEvent, handler: oldHandler } = this.eventHandlers.get(key);
+              oldElement.removeEventListener(oldEvent, oldHandler);
+          }
 
-        // Project View Actions
-        this.addEventListener('manageMembersBtn', 'click', () => this.showProjectMembersManagement());
-        this.addEventListener('joinRequestsBtn', 'click', () => this.showJoinRequests());
-        this.addEventListener('editProjectBtn', 'click', () => this.showEditProjectModal());
-        this.addEventListener('deleteProjectBtn', 'click', () => this.showDeleteProjectModal());
+          // Добавляем новый обработчик и сохраняем ссылку
+          element.addEventListener(event, handler);
+          this.eventHandlers.set(key, { element, event, handler });
+      }
+  }
 
-        // Task View Actions
-        this.addEventListener('createTaskBtn', 'click', () => this.showCreateTaskModal());
-        this.addEventListener('createSubtaskBtn', 'click', () => this.showCreateSubtaskModal());
-        this.addEventListener('editTaskBtn', 'click', () => this.showEditTaskModal());
-        this.addEventListener('deleteTaskBtn', 'click', () => this.showDeleteTaskModal());
-        this.addEventListener('addCommentBtn', 'click', () => this.addComment());
+  static removeEventListeners() {
+      // Удаляем все сохраненные обработчики
+      for (const [key, { element, event, handler }] of this.eventHandlers) {
+          element.removeEventListener(event, handler);
+      }
+      this.eventHandlers.clear();
+  }
 
-        // My Tasks Filters
-        this.addEventListener('tasksFilterStatus', 'change', () => this.loadMyTasks());
-        this.addEventListener('tasksFilterProject', 'change', () => this.loadMyTasks());
+  // Обновленный метод рендера проектов
+  static renderProjects(projects) {
+      const container = document.getElementById('projectsList');
+      if (!projects || projects.length === 0) {
+          container.innerHTML = this.getEmptyState('projects');
+          return;
+      }
 
-        // Search Projects
-        this.addEventListener('searchProjectsSubmitBtn', 'click', () => this.searchProjects());
+      container.innerHTML = projects.map(project => {
+          const projectData = project.project || project;
+          const stats = project.stats || projectData.stats || {};
+          const userRole = project.user_role || projectData.user_role || 'member';
 
-        // Form submissions
-        this.addEventListener('submitCreateProjectBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleCreateProject();
-        });
-        this.addEventListener('submitEditProjectBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleUpdateProject();
-        });
-        this.addEventListener('confirmDeleteProjectBtn', 'click', () => this.handleDeleteProject());
-        this.addEventListener('submitCreateTaskBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleCreateTask();
-        });
-        this.addEventListener('submitEditTaskBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleUpdateTask();
-        });
-        this.addEventListener('confirmDeleteTaskBtn', 'click', () => this.handleDeleteTask());
-        this.addEventListener('joinProjectFromPreviewBtn', 'click', () => this.joinProjectFromPreview());
+          const membersCount = stats.members_count || stats.membersCount || 0;
+          const tasksCount = stats.tasks_count || stats.tasksCount || 0;
+          const doneTasks = stats.tasks_done || stats.done_tasks || stats.doneTasks || 0;
 
-        // --- Добавлены обработчики для новых форм ---
-        this.addEventListener('submitCreateSubtaskBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleCreateSubtask();
-        });
-        this.addEventListener('submitUpdateMemberRoleBtn', 'click', (e) => {
-            e.preventDefault();
-            this.handleUpdateMemberRole();
-        });
-        this.addEventListener('confirmRemoveMemberBtn', 'click', () => this.handleRemoveMember());
+          // Расчет прогресса только для основных задач (без родителя)
+          const progress = tasksCount > 0 ? (doneTasks / tasksCount) * 100 : 0;
 
-        this.addEventListener('taskStatusSelect', 'change', () => this.updateTaskStatus());
+          return `
+          <div class="project-card-enhanced hover-lift" onclick="App.openProject('${projectData.hash}')">
+              <div class="project-card-header-enhanced">
+                  <h3 class="project-title">${this.escapeHtml(projectData.title)}</h3>
+                  <span class="project-type-badge">${projectData.is_private ? '🔒' : '🌐'}</span>
+              </div>
 
-        this.addEventListener('searchProjectsInput', 'keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.searchProjects();
-            }
-        });
-    }
+              <p class="project-description">${this.escapeHtml(projectData.description || 'Без описания')}</p>
 
-    static addEventListener(elementId, event, handler) {
-        const element = document.getElementById(elementId);
-        if (element) {
-            const key = `${elementId}_${event}`;
-            if (this.eventHandlers.has(key)) {
-                const { element: oldElement, event: oldEvent, handler: oldHandler } = this.eventHandlers.get(key);
-                oldElement.removeEventListener(oldEvent, oldHandler);
-            }
-            element.addEventListener(event, handler);
-            this.eventHandlers.set(key, { element, event, handler });
-        }
-    }
+              <div class="project-meta-info">
+                  <span class="project-meta-badge">👥 ${membersCount} участников</span>
+                  <span class="project-meta-badge badge-role">${this.getRoleText(userRole)}</span>
+                  <span class="project-meta-badge ${projectData.is_private ? 'badge-private' : ''}">
+                      ${projectData.is_private ? 'Приватный' : 'Публичный'}
+                  </span>
+                  ${projectData.requires_approval ?
+                      `<span class="project-meta-badge badge-approval">Требуется одобрение</span>` :
+                      ''
+                  }
+              </div>
 
-    static removeEventListeners() {
-        for (const [key, { element, event, handler }] of this.eventHandlers) {
-            element.removeEventListener(event, handler);
-        }
-        this.eventHandlers.clear();
-    }
+              <div class="progress-section">
+                  <div class="progress-info">
+                      <span>Прогресс: ${doneTasks}/${tasksCount} (${Math.round(progress)}%)</span>
+                  </div>
+                  <div class="progress-bar">
+                      <div class="progress-fill" style="width: ${progress}%"></div>
+                  </div>
+              </div>
+          </div>`;
+      }).join('');
+  }
 
-    // ==================== ЗАГРУЗКА ДАННЫХ ====================
+  // Новый метод для страницы настроек
+  static renderSettings() {
+      return `
+      <div class="settings-container">
+          <div class="settings-section">
+              <h3>👤 Профиль</h3>
+              <div class="profile-info">
+                  <div class="avatar-section">
+                      <div class="avatar-placeholder">👤</div>
+                      <button class="btn btn-outline btn-sm">Изменить аватар</button>
+                  </div>
+                  <div class="profile-details">
+                      <div class="detail-item">
+                          <strong>Имя пользователя:</strong>
+                          <span id="userProfileName">${currentUser?.username || 'Не установлено'}</span>
+                      </div>
+                      <div class="detail-item">
+                          <strong>ID пользователя:</strong>
+                          <span>${currentUser?.id || 'N/A'}</span>
+                      </div>
+                      <div class="detail-item">
+                          <strong>IP адрес:</strong>
+                          <span id="userIpAddress">Загрузка...</span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div class="settings-section">
+              <h3>🎨 Оформление</h3>
+              <div class="form-group">
+                  <label for="themeSelect">Тема:</label>
+                  <select id="themeSelect" class="form-control">
+                      <option value="auto">Системная (авто)</option>
+                      <option value="light">Светлая</option>
+                      <option value="dark">Темная</option>
+                  </select>
+              </div>
+          </div>
+
+          <div class="settings-section">
+              <h3>🔔 Уведомления</h3>
+              <div class="toggle-group">
+                  <label class="toggle-label">
+                      <span>Включить уведомления</span>
+                      <label class="toggle-switch">
+                          <input type="checkbox" id="notificationsToggle" checked>
+                          <span class="toggle-slider"></span>
+                      </label>
+                  </label>
+              </div>
+          </div>
+
+          <div class="settings-section">
+              <h3>💾 Память</h3>
+              <div class="storage-info">
+                  <div class="storage-progress">
+                      <div class="progress-bar">
+                          <div class="progress-fill" style="width: 65%"></div>
+                      </div>
+                      <span>65% использовано</span>
+                  </div>
+                  <button class="btn btn-outline btn-sm" onclick="App.clearCache()">Очистить кэш</button>
+              </div>
+          </div>
+
+          <div class="settings-section">
+              <h3>❓ FAQ & Помощь</h3>
+              <div class="faq-links">
+                  <a href="#" class="help-link">Часто задаваемые вопросы</a>
+                  <a href="#" class="help-link">Политика конфиденциальности</a>
+                  <a href="#" class="help-link">Условия использования</a>
+              </div>
+          </div>
+
+          <div class="settings-section">
+              <h3>👨‍💻 Разработчики</h3>
+              <div class="developers-links">
+                  <a href="https://github.com/developer1" class="dev-link" target="_blank">GitHub Developer 1</a>
+                  <a href="https://github.com/developer2" class="dev-link" target="_blank">GitHub Developer 2</a>
+              </div>
+          </div>
+      </div>`;
+  }
+
+  // Метод для определения прав доступа
+  static checkPermissions(action, resource, resourceData = null) {
+      const userRole = currentUser?.role;
+      const isOwner = currentProject?.owner_id === currentUser?.id;
+      const isAdmin = userRole === ProjectRole.ADMIN || isOwner;
+      const isTaskCreator = resourceData?.created_by_id === currentUser?.id;
+      const isTaskAssignee = resourceData?.assigned_to_id === currentUser?.id;
+
+      switch (action) {
+          case 'create_project':
+              return true; // Все могут создавать проекты
+
+          case 'create_task':
+              return currentProject && (isOwner || isAdmin || userRole === ProjectRole.MEMBER);
+
+          case 'create_subtask':
+              if (!resourceData) return false;
+              return isOwner || isAdmin || isTaskCreator || isTaskAssignee;
+
+          case 'edit_project':
+              return isOwner;
+
+          case 'edit_task':
+          case 'edit_subtask':
+              return isOwner || isAdmin || isTaskCreator || isTaskAssignee;
+
+          case 'delete_project':
+              return isOwner;
+
+          case 'delete_task':
+          case 'delete_subtask':
+              return isOwner || isAdmin || isTaskCreator || isTaskAssignee;
+
+          case 'manage_join_requests':
+              return isOwner || isAdmin;
+
+          case 'manage_members':
+              return isOwner;
+
+          default:
+              return false;
+      }
+  }
+
+  // Обновленный метод открытия проекта с проверкой прав
+  static async openProject(projectHash) {
+      try {
+          const projectData = await ApiService.getProject(projectHash);
+          currentProject = projectData.project || projectData;
+
+          // Обновляем интерфейс в зависимости от прав
+          this.updateProjectUI();
+
+          // Загрузка остальных данных...
+      } catch (error) {
+          console.error('Error opening project:', error);
+          this.showError('Ошибка открытия проекта: ' + error.message);
+      }
+  }
+
+  // Обновление UI проекта в зависимости от прав
+  static updateProjectUI() {
+      const isOwner = currentProject.owner_id === currentUser.id;
+      const isAdmin = currentUser.role === ProjectRole.ADMIN || isOwner;
+
+      // Управление видимостью элементов
+      document.getElementById('manageMembersBtn').style.display = isOwner ? 'block' : 'none';
+      document.getElementById('joinRequestsBtn').style.display = isAdmin ? 'block' : 'none';
+      document.getElementById('editProjectBtn').style.display = isOwner ? 'block' : 'none';
+      document.getElementById('deleteProjectBtn').style.display = isOwner ? 'block' : 'none';
+
+      // Показываем хэш проекта только админам и владельцу
+      document.getElementById('projectHashInfo').style.display = isAdmin ? 'block' : 'none';
+  }
+
+  // Метод для фильтрации и сортировки задач
+  static async loadMyTasks() {
+      try {
+          const statusFilter = document.getElementById('tasksFilterStatus').value;
+          const projectFilter = document.getElementById('tasksFilterProject').value;
+          const priorityFilter = document.getElementById('tasksFilterPriority').value;
+          const assignmentFilter = document.getElementById('tasksFilterAssignment').value;
+          const sortBy = document.getElementById('tasksSortBy').value;
+
+          const filters = {};
+          if (statusFilter) filters.status = statusFilter;
+          if (projectFilter) filters.project_hash = projectFilter;
+          if (priorityFilter) filters.priority = priorityFilter;
+          if (assignmentFilter) filters.assignment = assignmentFilter;
+          if (sortBy) filters.sort_by = sortBy;
+
+          const response = await ApiService.getUserTasks(filters);
+          this.renderMyTasks(response.tasks || []);
+      } catch (error) {
+          console.error('Error loading my tasks:', error);
+          this.showError('Ошибка загрузки задач: ' + error.message);
+      }
+  }
 
     static async loadData() {
-        if (this.loadDataInProgress) {
-            console.log('Data loading already in progress, skipping...');
-            return;
-        }
-
         try {
-            this.loadDataInProgress = true;
             console.log('Loading data...');
-
+            // Загружаем дашборд с проектами
             const dashboardData = await ApiService.getDashboard();
             const projects = dashboardData.projects || [];
             const settings = dashboardData.settings || {};
             const recentTasks = dashboardData.recent_tasks || [];
 
+            // Сохраняем настройки
             userSettings = settings;
             this.applyUserSettings(settings);
 
-            this.renderEnhancedProjects(projects);
+            this.renderProjects(projects);
             this.updateStats(projects, recentTasks);
             this.renderRecentTasks(recentTasks);
-
             console.log('Data loaded successfully');
         } catch (error) {
             console.error('Error loading data:', error);
             this.showError('Ошибка загрузки данных: ' + error.message);
-        } finally {
-            this.loadDataInProgress = false;
         }
     }
 
+    // Применение настроек пользователя
     static applyUserSettings(settings) {
-        if (settings.theme && settings.theme !== 'auto') {
+        if (settings.theme) {
             document.documentElement.setAttribute('data-theme', settings.theme);
         }
     }
 
-    // ==================== ГЛАВНАЯ СТРАНИЦА ====================
-
-    static renderEnhancedProjects(projects) {
+    static renderProjects(projects) {
         const container = document.getElementById('projectsList');
         if (!projects || projects.length === 0) {
-            container.innerHTML = this.getEmptyProjectsState();
+            container.innerHTML = `<div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <p>Проектов пока нет</p>
+                <button class="btn btn-primary" onclick="App.showModal('createProjectModal')">Создать проект</button>
+            </div>`;
             return;
         }
 
         container.innerHTML = projects.map(project => {
             const projectData = project.project || project;
             const stats = project.stats || projectData.stats || {};
-            const userRole = projectData.current_user_role || 'member';
-
-            // Расчет прогресса (только основные задачи)
-            const totalTasks = stats.tasks_count || 0;
-            const doneTasks = stats.tasks_done || 0;
-            const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
+            const membersCount = stats.members_count || stats.membersCount || 0;
+            const tasksCount = stats.tasks_count || stats.tasksCount || 0;
+            const doneTasks = stats.tasks_done || stats.done_tasks || stats.doneTasks || 0;
 
             return `
-            <div class="project-card project-card-enhanced hover-lift" onclick="App.openProject('${projectData.hash}')">
+            <div class="project-card hover-lift" onclick="App.openProject('${projectData.hash}')">
                 <div class="project-card-header">
                     <h3 class="project-title">${this.escapeHtml(projectData.title)}</h3>
                     <span class="project-type-badge">${projectData.is_private ? '🔒' : '🌐'}</span>
                 </div>
                 <p class="project-description">${this.escapeHtml(projectData.description || 'Без описания')}</p>
-                <div class="project-meta">
-                    <span class="project-badge ${projectData.is_private ? 'badge-private' : 'badge-public'}">
-                        ${projectData.is_private ? 'Приватный' : 'Публичный'}
-                    </span>
-                    <span class="project-badge badge-role">
-                        ${this.getRoleText(userRole)}
-                    </span>
-                    ${projectData.requires_approval ? '<span class="project-badge badge-approval">Требует одобрения</span>' : ''}
-                </div>
                 <div class="project-stats">
-                    <span>👥 ${stats.members_count || 0}</span>
-                    <span>✅ ${doneTasks}/${totalTasks}</span>
+                    <span>Участников: ${membersCount}</span>
+                    <span>Задач: ${tasksCount}</span>
+                    <span>Выполнено: ${doneTasks}</span>
                 </div>
-                <div class="project-progress">
-                    <div class="progress-info">
-                        <span>Прогресс:</span>
-                        <span>${Math.round(progress)}%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress}%"></div>
-                    </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${tasksCount > 0 ? (doneTasks / tasksCount) * 100 : 0}%"></div>
+                </div>
+                <div class="project-card-actions">
+                    <button class="quick-action-btn quick-action-edit" onclick="event.stopPropagation(); App.showEditProjectModal('${projectData.hash}')">✏️</button>
+                    <button class="quick-action-btn quick-action-delete" onclick="event.stopPropagation(); App.showDeleteProjectModal('${projectData.hash}')">🗑️</button>
                 </div>
             </div>`;
         }).join('');
     }
 
-    static getEmptyProjectsState() {
-        return `
-        <div class="empty-state">
-            <div class="empty-state-icon">📋</div>
-            <h3>Проектов пока нет</h3>
-            <p>Создайте первый проект чтобы начать работу</p>
-            <button class="btn btn-primary" onclick="App.showCreateProjectModal()">
-                Создать проект
-            </button>
-        </div>`;
-    }
-
     static updateStats(projects, recentTasks) {
+        // ИСПРАВЛЕНО: Правильный подсчет статистики
         document.getElementById('projectsCount').textContent = projects.length;
         const totalTasks = projects.reduce((sum, project) => {
             const projectData = project.project || project;
@@ -544,642 +495,6 @@ class App {
         }).join('');
     }
 
-    // ==================== УВЕДОМЛЕНИЯ ====================
-
-    static showEnhancedNotifications() {
-        // Вместо показа отдельного представления, показываем модальное окно
-        this.showModal('notificationsModal');
-        this.loadNotifications();
-    }
-    static async markAllNotificationsRead() {
-        try {
-            await ApiService.markAllNotificationsRead();
-            this.showSuccess('Все уведомления отмечены как прочитанные');
-            this.showEnhancedNotifications();
-        } catch (error) {
-            console.error('Error marking notifications as read:', error);
-            this.showError('Ошибка отметки уведомлений');
-        }
-    }
-
-    // ==================== ПОИСК ПРОЕКТОВ ====================
-
-    static showSearchProjects() {
-        // Вместо показа отдельного представления, показываем модальное окно
-        this.showModal('searchProjectsModal');
-        this.loadRecentPublicProjects();
-    }
-
-    static async loadRecentPublicProjects() {
-        try {
-            const response = await ApiService.searchPublicProjects();
-            const projects = response.projects || [];
-            const title = 'Недавние публичные проекты';
-            this.renderEnhancedSearchResults(projects, title);
-        } catch (error) {
-            console.error('Error loading recent public projects:', error);
-        }
-    }
-
-    static async enhancedSearchProjects() {
-        const searchTerm = document.getElementById('searchProjectsInput').value.trim();
-        try {
-            if (!searchTerm) {
-                await this.loadRecentPublicProjects();
-                return;
-            }
-
-            // Поиск по хэшу (точное совпадение)
-            if (/^[a-zA-Z0-9]{6,}$/.test(searchTerm)) {
-                try {
-                    const response = await ApiService.getProjectByHashExact(searchTerm);
-                    if (response.project) {
-                        this.renderEnhancedSearchResults([response.project], `Проект по хэшу: "${searchTerm}"`);
-                        return;
-                    }
-                } catch (error) {
-                    console.log('Project not found by hash, trying by name...');
-                }
-            }
-
-            // Поиск по названию
-            const response = await ApiService.searchPublicProjects(searchTerm);
-            const projects = response.projects || [];
-            const title = `Результаты поиска: "${searchTerm}"`;
-            this.renderEnhancedSearchResults(projects, title);
-        } catch (error) {
-            console.error('Search error:', error);
-            this.showError('Ошибка поиска: ' + error.message);
-        }
-    }
-
-    static renderEnhancedSearchResults(projects, title) {
-        const container = document.getElementById('searchResultsList');
-        if (!projects || projects.length === 0) {
-            container.innerHTML = this.getEmptySearchState();
-            return;
-        }
-
-        let html = `<h3>${title}</h3>`;
-        html += projects.map(project => {
-            const stats = project.stats || {};
-            const isMember = project.is_member || false;
-            const canJoin = !isMember && (!project.is_private || project.requires_approval);
-
-            return `
-            <div class="search-result-preview">
-                <div class="preview-header">
-                    <h4>${this.escapeHtml(project.title)}</h4>
-                    <span class="project-type-badge">${project.is_private ? '🔒' : '🌐'}</span>
-                </div>
-                <p class="project-description">${this.escapeHtml(project.description || 'Без описания')}</p>
-                <div class="preview-meta">
-                    <span class="project-badge ${project.is_private ? 'badge-private' : 'badge-public'}">
-                        ${project.is_private ? 'Приватный' : 'Публичный'}
-                    </span>
-                    ${project.requires_approval ? '<span class="project-badge badge-approval">Требует одобрения</span>' : ''}
-                    <span class="project-badge">Участников: ${stats.members_count || 0}</span>
-                    <span class="project-badge">Задач: ${stats.tasks_count || 0}</span>
-                </div>
-                <div class="preview-actions">
-                    ${canJoin ? `
-                        <button class="btn ${project.is_private ? 'btn-warning' : 'btn-primary'}"
-                                onclick="App.handleJoinProject('${project.hash}')">
-                            ${project.is_private ? 'Подать заявку' : 'Присоединиться'}
-                        </button>
-                    ` : ''}
-                    <button class="btn btn-outline"
-                            onclick="App.openProjectPreview('${project.hash}')">
-                        Подробнее
-                    </button>
-                </div>
-            </div>`;
-        }).join('');
-
-        container.innerHTML = html;
-    }
-
-    static getEmptySearchState() {
-        return `
-        <div class="empty-state">
-            <div class="empty-state-icon">🔍</div>
-            <h3>Проекты не найдены</h3>
-            <p>Попробуйте изменить поисковый запрос или создать новый проект</p>
-        </div>`;
-    }
-
-    static async handleJoinProject(projectHash) {
-        try {
-            console.log('Joining project:', projectHash);
-            const response = await ApiService.joinProject(projectHash);
-
-            if (response.status === 'joined') {
-                this.showSuccess('Вы успешно присоединились к проекту!');
-                await this.openProject(projectHash);
-            } else if (response.status === 'pending_approval') {
-                this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
-                this.showDashboard();
-            } else {
-                this.showError('Неизвестный статус ответа: ' + response.status);
-            }
-        } catch (error) {
-            console.error('Error joining project:', error);
-            if (error.message.includes('400') && error.message.includes('already a member')) {
-                this.showError('Вы уже являетесь участником этого проекта');
-                await this.openProject(projectHash);
-            } else if (error.message.includes('400') && error.message.includes('already pending')) {
-                this.showError('Заявка на вступление уже отправлена');
-            } else if (error.message.includes('403')) {
-                this.showError('Доступ к проекту запрещен');
-            } else if (error.message.includes('404')) {
-                this.showError('Проект не найден');
-            } else {
-                this.showError('Ошибка вступления в проект: ' + error.message);
-            }
-        }
-    }
-
-    static async openProjectPreview(projectHash) {
-        try {
-            const response = await ApiService.getProjectByHashExact(projectHash);
-            const project = response.project;
-            this.showProjectPreviewModal(project, response);
-        } catch (error) {
-            console.error('Error opening project preview:', error);
-            this.showError('Ошибка загрузки информации о проекте: ' + error.message);
-        }
-    }
-
-    static showProjectPreviewModal(project, projectData) {
-        const content = `
-            <h4>${this.escapeHtml(project.title)}</h4>
-            <p><strong>Описание:</strong> ${this.escapeHtml(project.description || 'Без описания')}</p>
-            <p><strong>Тип:</strong> ${project.is_private ? '🔒 Приватный' : '🌐 Публичный'}</p>
-            <p><strong>Одобрение:</strong> ${project.requires_approval ? 'Требуется' : 'Не требуется'}</p>
-            ${project.owner ? `<p><strong>Владелец:</strong> ${this.escapeHtml(project.owner.full_name)}</p>` : ''}
-            <p><strong>Создан:</strong> ${new Date(project.created_at).toLocaleDateString()}</p>
-        `;
-        this.showModalContent('Информация о проекте', content);
-    }
-
-    // ==================== НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ ====================
-
-    static async loadUserSettings() {
-        try {
-            // Загрузка данных профиля
-            const userData = await ApiService.getCurrentUser();
-            const preferences = await ApiService.getUserPreferences();
-
-            // Заполнение формы
-            document.getElementById('userFullName').value = userData.full_name || '';
-            document.getElementById('userIdDisplay').textContent = userData.id || '-';
-            document.getElementById('userRegisteredDisplay').textContent =
-                userData.created_at ? new Date(userData.created_at).toLocaleDateString() : '-';
-
-            // Настройки темы
-            document.getElementById('themeSelect').value = preferences.theme || 'auto';
-            document.getElementById('notificationsEnabled').checked =
-                preferences.notifications_enabled !== false;
-
-            // Загрузка IP адреса
-            await this.loadUserIp();
-
-            // Расчет использования памяти
-            this.calculateStorageUsage();
-        } catch (error) {
-            console.error('Error loading settings:', error);
-        }
-    }
-
-    static async loadUserIp() {
-        try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-            document.getElementById('userIpDisplay').textContent = data.ip;
-        } catch (error) {
-            document.getElementById('userIpDisplay').textContent = 'Не доступен';
-        }
-    }
-
-    static calculateStorageUsage() {
-        let totalSize = 0;
-        for (let key in localStorage) {
-            if (localStorage.hasOwnProperty(key)) {
-                totalSize += localStorage[key].length * 2; // UTF-16 chars are 2 bytes
-            }
-        }
-        const usedKB = Math.round(totalSize / 1024);
-        document.getElementById('storageUsed').textContent = `${usedKB} KB`;
-    }
-
-    static async saveUserSettings() {
-        try {
-            const fullName = document.getElementById('userFullName').value.trim();
-            const theme = document.getElementById('themeSelect').value;
-            const notificationsEnabled = document.getElementById('notificationsEnabled').checked;
-
-            // Обновление данных пользователя
-            if (fullName) {
-                await ApiService.updateCurrentUser({ full_name: fullName });
-            }
-
-            // Обновление настроек
-            await ApiService.updateUserPreferences({
-                theme: theme,
-                notifications_enabled: notificationsEnabled
-            });
-
-            // Применение темы
-            if (theme === 'auto') {
-                document.documentElement.removeAttribute('data-theme');
-            } else {
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-
-            this.showSuccess('Настройки сохранены');
-        } catch (error) {
-            console.error('Error saving settings:', error);
-            this.showError('Ошибка сохранения настроек');
-        }
-    }
-
-    // ==================== УПРАВЛЕНИЕ ЗАДАЧАМИ С ФИЛЬТРАЦИЕЙ ====================
-
-    static async loadEnhancedMyTasks() {
-        try {
-            const statusFilter = document.getElementById('tasksFilterStatus').value;
-            const priorityFilter = document.getElementById('tasksFilterPriority').value;
-            const assignmentFilter = document.getElementById('tasksFilterAssignment').value;
-            const sortBy = document.getElementById('tasksSortBy').value;
-
-            const filters = {};
-            if (statusFilter) filters.status = statusFilter;
-            if (priorityFilter) filters.priority = priorityFilter;
-            if (assignmentFilter) filters.assignment = assignmentFilter;
-
-            const response = await ApiService.getUserTasks(filters);
-            let tasks = response.tasks || [];
-
-            // Сортировка
-            tasks = this.sortTasks(tasks, sortBy);
-            this.renderEnhancedTaskList(tasks);
-        } catch (error) {
-            console.error('Error loading tasks:', error);
-            this.showError('Ошибка загрузки задач');
-        }
-    }
-
-    static sortTasks(tasks, sortBy) {
-        return tasks.sort((a, b) => {
-            switch (sortBy) {
-                case 'title':
-                    return a.title.localeCompare(b.title);
-                case 'created_at':
-                    return new Date(b.created_at) - new Date(a.created_at);
-                case 'due_date':
-                    if (!a.due_date) return 1;
-                    if (!b.due_date) return -1;
-                    return new Date(a.due_date) - new Date(b.due_date);
-                case 'priority':
-                    const priorityOrder = { 'urgent': 0, 'high': 1, 'medium': 2, 'low': 3 };
-                    return priorityOrder[a.priority] - priorityOrder[b.priority];
-                default:
-                    return 0;
-            }
-        });
-    }
-
-    static renderEnhancedTaskList(tasks) {
-        const container = document.getElementById('myTasksList');
-        if (!tasks || tasks.length === 0) {
-            container.innerHTML = this.getEmptyTasksState();
-            return;
-        }
-
-        container.innerHTML = tasks.map(task => {
-            const projectTitle = task.project_title || (task.project && task.project.title) || 'N/A';
-            const isAssignedToMe = task.assigned_to_id === currentUser.id;
-            const isCreatedByMe = task.created_by_id === currentUser.id;
-
-            return `
-            <div class="task-card task-card-enhanced" onclick="App.openTask(${task.id})">
-                <div class="task-card-header">
-                    <h4 class="task-card-title">${this.escapeHtml(task.title)}</h4>
-                    <select class="status-select" onchange="App.updateTaskStatus(${task.id}, this.value)"
-                            onclick="event.stopPropagation()">
-                        <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>К выполнению</option>
-                        <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>В работе</option>
-                        <option value="done" ${task.status === 'done' ? 'selected' : ''}>Выполнено</option>
-                    </select>
-                </div>
-                <p class="task-card-priority">
-                    <strong>Приоритет:</strong> ${this.getPriorityText(task.priority)}
-                    ${task.priority === 'urgent' ? '🚨' : task.priority === 'high' ? '⚠️' : ''}
-                </p>
-                <p class="task-card-due-date ${this.isOverdue(task.due_date) ? 'overdue' : ''}">
-                    <strong>Срок:</strong> ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не указан'}
-                </p>
-                <div class="task-card-footer">
-                    <span><strong>Исполнитель:</strong> ${task.assigned_to_name || 'Не назначен'}</span>
-                    <span><strong>Проект:</strong> ${this.escapeHtml(projectTitle)}</span>
-                </div>
-                <div class="task-actions-inline">
-                    ${this.canEditTask(task) ? `
-                        <button class="btn btn-sm btn-outline"
-                                onclick="event.stopPropagation(); App.showEditTaskModal(${task.id})">
-                            Редактировать
-                        </button>
-                    ` : ''}
-                    ${this.canDeleteTask(task) ? `
-                        <button class="btn btn-sm btn-danger"
-                                onclick="event.stopPropagation(); App.showDeleteTaskModal(${task.id})">
-                            Удалить
-                        </button>
-                    ` : ''}
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    static getEmptyTasksState() {
-        return `
-        <div class="empty-state">
-            <div class="empty-state-icon">✅</div>
-            <h3>Задач нет</h3>
-            <p>Создайте первую задачу или дождитесь назначения</p>
-        </div>`;
-    }
-
-    // ==================== ПРОВЕРКИ ПРАВ ДОСТУПА ====================
-
-    static canEditProject(project) {
-        if (!project || !currentUser) return false;
-        return project.owner_id === currentUser.id ||
-               project.current_user_role === 'admin';
-    }
-
-    static canEditTask(task) {
-        if (!task || !currentUser) return false;
-        return task.created_by_id === currentUser.id ||
-               task.assigned_to_id === currentUser.id ||
-               (currentProject && this.canEditProject(currentProject));
-    }
-
-    static canDeleteTask(task) {
-        return this.canEditTask(task); // Те же права что и для редактирования
-    }
-
-    static canCreateSubtask(task) {
-        if (!task || !currentUser) return false;
-        return task.created_by_id === currentUser.id ||
-               task.assigned_to_id === currentUser.id ||
-               (currentProject && this.canEditProject(currentProject));
-    }
-
-    // ==================== ИЕРАРХИЧЕСКИЕ ПОДЗАДАЧИ ====================
-
-    static async loadHierarchicalSubtasks(parentTaskId, level = 0, container = null) {
-        try {
-            if (!currentProject || !currentProject.hash) {
-                console.error('No current project for loading subtasks');
-                document.getElementById('subtasksList').innerHTML = '<p>Ошибка загрузки подзадач</p>';
-                return;
-            }
-
-            const response = await ApiService.getTasks(currentProject.hash);
-            const tasks = response.tasks || [];
-            const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
-
-            const targetContainer = container || document.getElementById('subtasksList');
-
-            if (subtasks.length === 0 && level === 0) {
-                targetContainer.innerHTML = '<p>Подзадач нет</p>';
-                return;
-            }
-
-            let html = '';
-            subtasks.forEach(subtask => {
-                const hasChildren = tasks.some(t => t.parent_task_id === subtask.id);
-                const canEdit = this.canEditTask(subtask);
-
-                html += `
-                <div class="subtask-level" data-level="${level}">
-                    <div class="subtask-item">
-                        <div class="subtask-checkbox ${subtask.status === 'done' ? 'checked' : ''}"
-                             onclick="event.stopPropagation(); App.toggleSubtaskStatus(${subtask.id}, ${subtask.status !== 'done'})">
-                            ${subtask.status === 'done' ? '✓' : ''}
-                        </div>
-                        <div class="subtask-content">
-                            <div class="subtask-title">${this.escapeHtml(subtask.title)}</div>
-                            <div class="subtask-meta">
-                                ${this.getStatusText(subtask.status)} •
-                                ${this.getPriorityText(subtask.priority)} •
-                                ${subtask.due_date ? new Date(subtask.due_date).toLocaleDateString() : 'Без срока'}
-                            </div>
-                        </div>
-                        <div class="subtask-actions">
-                            ${canEdit ? `
-                                <button class="btn btn-sm btn-outline"
-                                        onclick="App.showCreateSubtaskModalForTask(${subtask.id})">
-                                    +
-                                </button>
-                                <button class="btn btn-sm btn-outline"
-                                        onclick="App.showEditTaskModal(${subtask.id})">
-                                    ✏️
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                    ${hasChildren ? '<div class="subtask-children"></div>' : ''}
-                </div>`;
-
-                // Рекурсивная загрузка дочерних подзадач
-                if (hasChildren) {
-                    const childrenContainer = document.createElement('div');
-                    childrenContainer.className = 'subtask-children';
-                    this.loadHierarchicalSubtasks(subtask.id, level + 1, childrenContainer);
-                    // Добавляем после создания элемента
-                    setTimeout(() => {
-                        const parentElement = targetContainer.querySelector(`[data-level="${level}"]:last-child`);
-                        if (parentElement) {
-                            parentElement.appendChild(childrenContainer);
-                        }
-                    }, 0);
-                }
-            });
-
-            if (level === 0) {
-                targetContainer.innerHTML = html;
-            } else {
-                container.innerHTML = html;
-            }
-        } catch (error) {
-            console.error('Error loading hierarchical subtasks:', error);
-        }
-    }
-
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
-
-    static isOverdue(dueDate) {
-        if (!dueDate) return false;
-        return new Date(dueDate) < new Date();
-    }
-
-    static changeAvatar() {
-        // Простая реализация смены аватара
-        const avatars = ['👤', '👨‍💼', '👩‍💼', '🦸', '🦹', '🧙', '🧚', '🧛'];
-        const currentAvatar = document.getElementById('userAvatar');
-        const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
-        currentAvatar.textContent = randomAvatar;
-        this.showSuccess('Аватар изменен');
-    }
-
-    static clearCache() {
-        localStorage.clear();
-        this.calculateStorageUsage();
-        this.showSuccess('Кэш очищен');
-    }
-
-    static exportData() {
-        const data = {
-            user: currentUser,
-            projects: [], // Можно добавить экспорт проектов
-            exportDate: new Date().toISOString()
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `project-pilot-backup-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    // ==================== ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ И ДРУГИЕ СТРАНИЦЫ ====================
-
-    static showPrivacyPolicy() {
-        const content = `
-        <h3>Политика конфиденциальности</h3>
-        <p>Мы серьезно относимся к защите ваших данных...</p>
-        <!-- Добавьте полный текст политики -->
-        `;
-        this.showModalContent('Политика конфиденциальности', content);
-    }
-
-    static showTermsOfService() {
-        const content = `
-        <h3>Условия использования</h3>
-        <p>Используя наше приложение, вы соглашаетесь с следующими условиями...</p>
-        <!-- Добавьте полный текст условий -->
-        `;
-        this.showModalContent('Условия использования', content);
-    }
-
-    static showFAQ() {
-        const content = `
-        <h3>Часто задаваемые вопросы</h3>
-        <div class="faq-item">
-            <h4>Как создать проект?</h4>
-            <p>Нажмите кнопку "Создать проект" на главной странице...</p>
-        </div>
-        <!-- Добавьте другие вопросы -->
-        `;
-        this.showModalContent('FAQ', content);
-    }
-
-    static showModalContent(title, content) {
-        const modal = document.getElementById('infoModal') || this.createInfoModal();
-        modal.querySelector('.modal-title').textContent = title;
-        modal.querySelector('.modal-body').innerHTML = content;
-        modal.classList.add('active');
-    }
-
-    static createInfoModal() {
-        const modal = document.createElement('div');
-        modal.id = 'infoModal';
-        modal.className = 'modal-overlay';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title"></h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('active')">×</button>
-                </div>
-                <div class="modal-body"></div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" onclick="this.closest('.modal-overlay').classList.remove('active')">Закрыть</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        return modal;
-    }
-
-    // ==================== СУЩЕСТВУЮЩИЕ МЕТОДЫ (сохранены для совместимости) ====================
-
-    static showView(viewId) {
-        // Скрываем все представления
-        document.querySelectorAll('.view').forEach(view => {
-            view.style.display = 'none';
-            view.classList.remove('active');
-        });
-
-        // Показываем нужное представление
-        const targetView = document.getElementById(viewId);
-        if (targetView) {
-            targetView.style.display = 'block';
-            targetView.classList.add('active');
-        }
-
-        // Обновляем активные кнопки навигации
-        this.updateNavigation(viewId);
-    }
-
-    static updateNavigation(activeView) {
-        // Обновляем десктопную навигацию
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            item.classList.remove('active');
-        });
-
-        switch(activeView) {
-            case 'dashboardView':
-                document.getElementById('dashboardBtn')?.classList.add('active');
-                break;
-            case 'myTasksView':
-                document.getElementById('myTasksBtn')?.classList.add('active');
-                break;
-            case 'settingsView':
-                document.getElementById('settingsBtn')?.classList.add('active');
-                break;
-        }
-
-        // Обновляем мобильную навигацию
-        const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
-        mobileNavItems.forEach(item => {
-            item.classList.remove('active');
-            if (item.dataset.view === activeView) {
-                item.classList.add('active');
-            }
-        });
-    }
-
-    static showDashboard() {
-        this.showView('dashboardView');
-        this.loadData();
-    }
-
-    static showMyTasks() {
-        this.showView('myTasksView');
-        this.loadEnhancedMyTasks();
-    }
-
-    static showSettings() {
-        this.showView('settingsView');
-        this.loadUserSettings();
-    }
-
-
-
     static getStatusText(status) {
         const statusMap = {
             'todo': 'К выполнению',
@@ -1216,39 +531,81 @@ class App {
         return div.innerHTML;
     }
 
-    static showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.add('active');
+    // Navigation methods
+    static showView(viewId) {
+        // Скрываем все вью
+        document.querySelectorAll('.view').forEach(view => {
+            view.style.display = 'none';
+        });
+        // Показываем нужную вью
+        document.getElementById(viewId).style.display = 'block';
+    }
+
+    static showDashboard() {
+        this.showView('dashboardView');
+        this.loadData();
+    }
+
+    static async showSearchProjects() {
+        this.showView('searchProjectsView');
+        // Сбрасываем поле поиска
+        document.getElementById('searchProjectsInput').value = '';
+        // Показываем недавние публичные проекты при открытии
+        await this.loadRecentPublicProjects();
+    }
+
+    static async loadRecentPublicProjects() {
+        try {
+            const response = await ApiService.searchPublicProjects();
+            const projects = response.projects || [];
+            const title = 'Недавние публичные проекты';
+            this.renderSearchResults(projects, title);
+        } catch (error) {
+            console.error('Error loading recent public projects:', error);
+            // Не показываем ошибку для этой опциональной функции
         }
     }
 
-    static hideModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('active');
+    static async showNotifications() {
+        try {
+            const response = await ApiService.getNotifications();
+            const notifications = response.notifications || [];
+            const container = document.getElementById('notificationsList');
+
+            if (!notifications || notifications.length === 0) {
+                container.innerHTML = '<p>Уведомлений нет</p>';
+                return;
+            }
+
+            container.innerHTML = notifications.map(notification => {
+                return `
+                <div class="notification-item">
+                    <div class="notification-content">${this.escapeHtml(notification.content)}</div>
+                    <div class="notification-date">${new Date(notification.created_at).toLocaleString()}</div>
+                </div>`;
+            }).join('');
+
+            this.showView('notificationsView');
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            this.showError('Ошибка загрузки уведомлений: ' + error.message);
         }
     }
 
-    static showSuccess(message) {
-        console.log('Success:', message);
-        alert(message);
+    static showSettings() {
+        const modalBody = document.querySelector('#settingsModal .modal-body');
+        modalBody.innerHTML = this.renderSettings();
+        this.loadUserIP();
+        this.showModal('settingsModal');
     }
 
-    static showError(message) {
-        console.error('Error:', message);
-        alert('Ошибка: ' + message);
-    }
-
-    static backToPreviousView() {
-        // Если мы в проекте или задаче, возвращаемся к проекту или главной
-        if (currentProject && document.getElementById('projectView').style.display === 'block') {
-            this.showDashboard();
-        } else if (currentTask && document.getElementById('taskView').style.display === 'block') {
-            this.backToProject();
-        } else {
-            // Иначе показываем главную
-            this.showDashboard();
+    static async loadUserIP() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            document.getElementById('userIpAddress').textContent = data.ip;
+        } catch (error) {
+            document.getElementById('userIpAddress').textContent = 'Не удалось загрузить';
         }
     }
 
@@ -2366,6 +1723,61 @@ class App {
         return colorMap[buttonClass] || '#007bff';
     }
 
+    static async handleJoinProject(projectHash) {
+        try {
+            console.log('Joining project:', projectHash);
+            const response = await ApiService.joinProject(projectHash);
+
+            if (response.status === 'joined') {
+                this.showSuccess('Вы успешно присоединились к проекту!');
+                await this.openProject(projectHash);
+            } else if (response.status === 'pending_approval') {
+                this.showSuccess('Заявка на вступление отправлена! Ожидайте одобрения.');
+                this.showDashboard(); // Закрываем поиск и возвращаемся к дашборду
+            } else {
+                this.showError('Неизвестный статус ответа: ' + response.status);
+            }
+        } catch (error) {
+            console.error('Error joining project:', error);
+            if (error.message.includes('400') && error.message.includes('already a member')) {
+                this.showError('Вы уже являетесь участником этого проекта');
+                await this.openProject(projectHash);
+            } else if (error.message.includes('400') && error.message.includes('already pending')) {
+                this.showError('Заявка на вступление уже отправлена');
+            } else if (error.message.includes('403')) {
+                this.showError('Доступ к проекту запрещен');
+            } else if (error.message.includes('404')) {
+                this.showError('Проект не найден');
+            } else {
+                this.showError('Ошибка вступления в проект: ' + error.message);
+            }
+        }
+    }
+
+    static showProjectPreviewModal(project, projectData) {
+        // Используем renderSearchResults для отображения одного проекта
+        this.renderSearchResults([project], `Предварительный просмотр: ${project.title}`);
+        // Добавляем кнопку "Присоединиться" если можно
+        const container = document.getElementById('searchResultsList');
+        const joinBtnHtml = projectData && projectData.can_join && !projectData.is_member
+            ? `<button onclick="App.joinProjectFromPreview('${project.hash}')" style="margin-top: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Присоединиться</button>`
+            : '';
+        container.innerHTML += joinBtnHtml;
+    }
+
+    static async openProjectPreview(projectHash) {
+        try {
+            const response = await ApiService.getProjectByHashExact(projectHash);
+            const project = response.project;
+
+            // Show modal with project info
+            this.showProjectPreviewModal(project, response);
+        } catch (error) {
+            console.error('Error opening project preview:', error);
+            this.showError('Ошибка загрузки информации о проекте: ' + error.message);
+        }
+    }
+
     static async joinProjectFromPreview(projectHash) {
         try {
             const response = await ApiService.joinProject(projectHash);
@@ -2661,253 +2073,298 @@ class App {
             this.showError('Ошибка сброса настроек: ' + error.message);
         }
     }
+
+    // Modal helpers
+    static showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+            // Trap focus? Add event listener for Escape key?
+        } else {
+             console.error(`Modal with id '${modalId}' not found`); // --- Добавлено из index.txt ---
+        }
+    }
+
+    static hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    // Notification helpers
+    static showSuccess(message) {
+        // Implement success notification (e.g., toast)
+        console.log('Success:', message);
+        // Example using a simple alert, replace with proper UI component
+        alert(message);
+    }
+
+    static showError(message) {
+        // Implement error notification (e.g., toast)
+        console.error('Error:', message);
+        // Example using a simple alert, replace with proper UI component
+        alert('Ошибка: ' + message);
+    }
+
+    // Back button functionality
+    static backToPreviousView() {
+        const currentView = document.querySelector('.view[style*="display: block"]');
+        if (currentView && currentView.id !== 'dashboardView') {
+            currentView.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => {
+                this.showDashboard();
+                document.getElementById('dashboardView').style.animation = 'slideInLeft 0.3s ease-out';
+            }, 150);
+        }
+    }
 }
 
 // Mobile navigation and enhanced features
 class MobileApp {
-    static init() {
-        this.initMobileNavigation();
-        this.initSwipeGestures();
-        this.initFloatingActionButton();
-        this.initPullToRefresh();
-    }
+  static init() {
+    this.initMobileNavigation();
+    this.initSwipeGestures();
+    this.initFloatingActionButton();
+    this.initPullToRefresh();
+  }
 
-    static initMobileNavigation() {
-        const mobileNavItems = document.querySelectorAll('.mobile-nav-item[data-view]');
+  static initMobileNavigation() {
+    const mobileNavItems = document.querySelectorAll('.mobile-nav-item[data-view]');
 
-        mobileNavItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
+    mobileNavItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
 
-                // Remove active class from all items
-                mobileNavItems.forEach(i => i.classList.remove('active'));
+        // Remove active class from all items
+        mobileNavItems.forEach(i => i.classList.remove('active'));
 
-                // Add active class to clicked item
-                item.classList.add('active');
+        // Add active class to clicked item
+        item.classList.add('active');
 
-                const view = item.dataset.view;
-                if (view) {
-                    App.showView(view);
+        const view = item.dataset.view;
+        if (view) {
+          App.showView(view);
 
-                    // Load specific data for the view
-                    switch(view) {
-                        case 'dashboardView':
-                            App.loadData();
-                            break;
-                        case 'myTasksView':
-                            App.loadEnhancedMyTasks();
-                            break;
-                        case 'notificationsView':
-                            App.showEnhancedNotifications();
-                            break;
-                        case 'searchProjectsView':
-                            App.showSearchProjects();
-                            break;
-                    }
-                }
-            });
-        });
-
-        // Mobile settings button
-        const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
-        if (mobileSettingsBtn) {
-            mobileSettingsBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                App.showSettings();
-            });
+          // Load specific data for the view
+          switch(view) {
+            case 'dashboardView':
+              App.loadData();
+              break;
+            case 'myTasksView':
+              App.loadMyTasks();
+              break;
+            case 'notificationsView':
+              App.showNotifications();
+              break;
+            case 'searchProjectsView':
+              App.showSearchProjects();
+              break;
+          }
         }
+      });
+    });
+
+    // Mobile settings button
+    const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
+    if (mobileSettingsBtn) {
+      mobileSettingsBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        App.showSettings();
+      });
     }
+  }
 
-    static initFloatingActionButton() {
-        const fab = document.createElement('button');
-        fab.className = 'fab';
-        fab.innerHTML = '+';
-        fab.id = 'mainFab';
+  static initFloatingActionButton() {
+    const fab = document.createElement('button');
+    fab.className = 'fab';
+    fab.innerHTML = '+';
+    fab.id = 'mainFab';
 
-        const fabMenu = document.createElement('div');
-        fabMenu.className = 'fab-menu';
-        fabMenu.innerHTML = `
-            <button class="fab-item" id="fabCreateProject" title="Создать проект">📁</button>
-            <button class="fab-item" id="fabCreateTask" title="Создать задачу">✅</button>
-            <button class="fab-item" id="fabQuickNote" title="Быстрая заметка">📝</button>
-        `;
+    const fabMenu = document.createElement('div');
+    fabMenu.className = 'fab-menu';
+    fabMenu.innerHTML = `
+      <button class="fab-item" id="fabCreateProject" title="Создать проект">📁</button>
+      <button class="fab-item" id="fabCreateTask" title="Создать задачу">✅</button>
+      <button class="fab-item" id="fabQuickNote" title="Быстрая заметка">📝</button>
+    `;
 
-        document.body.appendChild(fab);
-        document.body.appendChild(fabMenu);
+    document.body.appendChild(fab);
+    document.body.appendChild(fabMenu);
 
-        // FAB functionality
-        fab.addEventListener('click', () => {
-            fabMenu.classList.toggle('open');
+    // FAB functionality
+    fab.addEventListener('click', () => {
+      fabMenu.classList.toggle('open');
+    });
+
+    // FAB item functionality
+    document.getElementById('fabCreateProject')?.addEventListener('click', () => {
+      App.showCreateProjectModal();
+      fabMenu.classList.remove('open');
+    });
+
+    document.getElementById('fabCreateTask')?.addEventListener('click', () => {
+      if (currentProject) {
+        App.showCreateTaskModal();
+      } else {
+        App.showError('Сначала откройте проект');
+      }
+      fabMenu.classList.remove('open');
+    });
+
+    // Close FAB menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
+        fabMenu.classList.remove('open');
+      }
+    });
+  }
+
+  static initSwipeGestures() {
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+    let currentCard = null;
+
+    document.addEventListener('touchstart', (e) => {
+      const card = e.target.closest('.project-card, .task-card');
+      if (card) {
+        startX = e.touches[0].clientX;
+        currentX = startX;
+        isSwiping = true;
+        currentCard = card;
+
+        // Reset other swiped cards
+        document.querySelectorAll('.project-card.swiped, .task-card.swiped').forEach(c => {
+          if (c !== card) c.classList.remove('swiped');
         });
+      }
+    });
 
-        // FAB item functionality
-        document.getElementById('fabCreateProject')?.addEventListener('click', () => {
-            App.showCreateProjectModal();
-            fabMenu.classList.remove('open');
-        });
+    document.addEventListener('touchmove', (e) => {
+      if (!isSwiping || !currentCard) return;
 
-        document.getElementById('fabCreateTask')?.addEventListener('click', () => {
-            if (currentProject) {
-                App.showCreateTaskModal();
-            } else {
-                App.showError('Сначала откройте проект');
-            }
-            fabMenu.classList.remove('open');
-        });
+      currentX = e.touches[0].clientX;
+      const diff = startX - currentX;
 
-        // Close FAB menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
-                fabMenu.classList.remove('open');
-            }
-        });
-    }
+      // Only allow right-to-left swipe
+      if (diff > 0) {
+        e.preventDefault();
+        const translateX = Math.min(diff, 80);
+        currentCard.style.transform = `translateX(-${translateX}px)`;
+      }
+    });
 
-    static initSwipeGestures() {
-        let startX = 0;
-        let currentX = 0;
-        let isSwiping = false;
-        let currentCard = null;
+    document.addEventListener('touchend', () => {
+      if (!isSwiping || !currentCard) return;
 
-        document.addEventListener('touchstart', (e) => {
-            const card = e.target.closest('.project-card, .task-card');
-            if (card) {
-                startX = e.touches[0].clientX;
-                currentX = startX;
-                isSwiping = true;
-                currentCard = card;
+      const diff = startX - currentX;
+      const threshold = 50;
 
-                // Reset other swiped cards
-                document.querySelectorAll('.project-card.swiped, .task-card.swiped').forEach(c => {
-                    if (c !== card) c.classList.remove('swiped');
-                });
-            }
-        });
+      if (diff > threshold) {
+        currentCard.classList.add('swiped');
+        currentCard.style.transform = 'translateX(-80px)';
 
-        document.addEventListener('touchmove', (e) => {
-            if (!isSwiping || !currentCard) return;
+        // Auto-close after 3 seconds
+        setTimeout(() => {
+          currentCard.classList.remove('swiped');
+          currentCard.style.transform = '';
+        }, 3000);
+      } else {
+        currentCard.classList.remove('swiped');
+        currentCard.style.transform = '';
+      }
 
-            currentX = e.touches[0].clientX;
-            const diff = startX - currentX;
+      isSwiping = false;
+      currentCard = null;
+    });
+  }
 
-            // Only allow right-to-left swipe
-            if (diff > 0) {
-                e.preventDefault();
-                const translateX = Math.min(diff, 80);
-                currentCard.style.transform = `translateX(-${translateX}px)`;
-            }
-        });
+  static initPullToRefresh() {
+    let startY = 0;
+    let currentY = 0;
+    let isPulling = false;
+    const pullIndicator = document.createElement('div');
+    pullIndicator.className = 'pull-indicator';
+    pullIndicator.innerHTML = '<div class="spinner"></div> Обновление...';
 
-        document.addEventListener('touchend', () => {
-            if (!isSwiping || !currentCard) return;
+    document.querySelector('.main-content')?.prepend(pullIndicator);
 
-            const diff = startX - currentX;
-            const threshold = 50;
+    document.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    });
 
-            if (diff > threshold) {
-                currentCard.classList.add('swiped');
-                currentCard.style.transform = 'translateX(-80px)';
+    document.addEventListener('touchmove', (e) => {
+      if (!isPulling) return;
 
-                // Auto-close after 3 seconds
-                setTimeout(() => {
-                    currentCard.classList.remove('swiped');
-                    currentCard.style.transform = '';
-                }, 3000);
-            } else {
-                currentCard.classList.remove('swiped');
-                currentCard.style.transform = '';
-            }
+      currentY = e.touches[0].clientY;
+      const diff = currentY - startY;
 
-            isSwiping = false;
-            currentCard = null;
-        });
-    }
+      if (diff > 0) {
+        e.preventDefault();
+        pullIndicator.style.display = 'block';
+        pullIndicator.style.opacity = Math.min(diff / 100, 1);
+      }
+    });
 
-    static initPullToRefresh() {
-        let startY = 0;
-        let currentY = 0;
-        let isPulling = false;
-        const pullIndicator = document.createElement('div');
-        pullIndicator.className = 'pull-indicator';
-        pullIndicator.innerHTML = '<div class="spinner"></div> Обновление...';
+    document.addEventListener('touchend', async () => {
+      if (!isPulling) return;
 
-        document.querySelector('.main-content')?.prepend(pullIndicator);
+      const diff = currentY - startY;
 
-        document.addEventListener('touchstart', (e) => {
-            if (window.scrollY === 0) {
-                startY = e.touches[0].clientY;
-                isPulling = true;
-            }
-        });
+      if (diff > 80) {
+        pullIndicator.classList.add('refreshing');
 
-        document.addEventListener('touchmove', (e) => {
-            if (!isPulling) return;
-
-            currentY = e.touches[0].clientY;
-            const diff = currentY - startY;
-
-            if (diff > 0) {
-                e.preventDefault();
-                pullIndicator.style.display = 'block';
-                pullIndicator.style.opacity = Math.min(diff / 100, 1);
-            }
-        });
-
-        document.addEventListener('touchend', async () => {
-            if (!isPulling) return;
-
-            const diff = currentY - startY;
-
-            if (diff > 80) {
-                pullIndicator.classList.add('refreshing');
-
-                try {
-                    await App.loadData();
-                    App.showSuccess('Данные обновлены');
-                } catch (error) {
-                    App.showError('Ошибка обновления');
-                }
-
-                setTimeout(() => {
-                    pullIndicator.classList.remove('refreshing');
-                    pullIndicator.style.display = 'none';
-                    pullIndicator.style.opacity = '0';
-                }, 1000);
-            } else {
-                pullIndicator.style.display = 'none';
-            }
-
-            isPulling = false;
-        });
-    }
-
-    static updateNotificationBadge(count) {
-        const badge = document.querySelector('.nav-badge');
-        if (badge) {
-            if (count > 0) {
-                badge.textContent = count > 9 ? '9+' : count;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
+        try {
+          await App.loadData();
+          App.showSuccess('Данные обновлены');
+        } catch (error) {
+          App.showError('Ошибка обновления');
         }
+
+        setTimeout(() => {
+          pullIndicator.classList.remove('refreshing');
+          pullIndicator.style.display = 'none';
+          pullIndicator.style.opacity = '0';
+        }, 1000);
+      } else {
+        pullIndicator.style.display = 'none';
+      }
+
+      isPulling = false;
+    });
+  }
+
+  static updateNotificationBadge(count) {
+    const badge = document.querySelector('.nav-badge');
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count > 9 ? '9+' : count;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
     }
+  }
 }
 
 // Enhanced view transitions
 const originalShowView = App.showView;
 App.showView = function(viewId) {
-    const currentView = document.querySelector('.view[style*="display: block"]');
+  const currentView = document.querySelector('.view[style*="display: block"]');
 
-    if (currentView) {
-        currentView.style.animation = 'slideOutLeft 0.3s ease-out';
-        setTimeout(() => {
-            originalShowView.call(this, viewId);
-            document.getElementById(viewId).style.animation = 'slideInRight 0.3s ease-out';
-        }, 150);
-    } else {
-        originalShowView.call(this, viewId);
-    }
+  if (currentView) {
+    currentView.style.animation = 'slideOutLeft 0.3s ease-out';
+    setTimeout(() => {
+      originalShowView.call(this, viewId);
+      document.getElementById(viewId).style.animation = 'slideInRight 0.3s ease-out';
+    }, 150);
+  } else {
+    originalShowView.call(this, viewId);
+  }
 };
 
 // ИСПРАВЛЕНО: Добавляем функцию для инициализации искр
@@ -2955,7 +2412,7 @@ function showStartButton() {
     if (startButton) {
         // Плавно появляем кнопку
         setTimeout(() => {
-            startButton.style.display = 'inline-block';
+             startButton.style.display = 'inline-block';
         }, 300); // Небольшая задержка для завершения анимации прогресса
     }
 }
@@ -2977,13 +2434,12 @@ function attachStartButtonListener() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Инициализация искр
+// Инициализация приложения после загрузки DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Инициализируем искры
     initSparkAnimation();
-
-    // Инициализация приложения
-    await App.init();
-
-    // Показываем главную страницу по умолчанию
-    App.showDashboard();
+    // Инициализируем анимацию прогресса
+    initLoadingProgress();
+    // Инициализируем приложение
+    App.init();
 });

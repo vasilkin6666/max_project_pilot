@@ -1,0 +1,95 @@
+.settings-container {
+    padding: var(--space-4);
+}
+
+.settings-section {
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+.settings-section:last-child {
+    border-bottom: none;
+}
+
+.settings-section h3 {
+    margin-bottom: var(--space-4);
+    color: var(--neutral-800);
+}
+
+.profile-info {
+    display: flex;
+    gap: var(--space-6);
+    align-items: flex-start;
+}
+
+.avatar-section {
+    text-align: center;
+}
+
+.avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--neutral-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin-bottom: var(--space-3);
+}
+
+.profile-details {
+    flex: 1;
+}
+
+.detail-item {
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    background: var(--neutral-100);
+    border-radius: var(--radius-lg);
+}
+
+.toggle-group {
+    margin-bottom: var(--space-4);
+}
+
+.toggle-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background: var(--neutral-100);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+}
+
+.storage-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.storage-progress {
+    flex: 1;
+    margin-right: var(--space-4);
+}
+
+.help-links, .developers-links {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.help-link, .dev-link {
+    padding: var(--space-3);
+    background: var(--neutral-100);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--neutral-700);
+    transition: background-color 0.2s ease;
+}
+
+.help-link:hover, .dev-link:hover {
+    background: var(--neutral-200);
+}

@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Pilot Pro - Управление проектами</title>
+    <title>Project Pilot Pro - Премиум PWA для управления проектами</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://st.max.ru/js/max-web-app.js"></script>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2563eb">
     <style>
+        /* Стили для плавно затухающего текста (фонового) */
         .fading-text {
             animation: fade 2s ease-in-out infinite;
             margin-top: 20px;
@@ -23,10 +22,17 @@
             position: relative;
             z-index: 1;
         }
+
         @keyframes fade {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
+            0%, 100% {
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 0.8;
+            }
         }
+
+        /* Гарантируем, что заставка будет поверх всего */
         .loading-overlay {
             position: fixed !important;
             top: 0 !important;
@@ -37,28 +43,289 @@
             transition: opacity 0.8s ease-in-out !important;
             cursor: pointer;
         }
+
+        /* Скрываем заставку после клика */
         .loading-overlay.hidden {
             opacity: 0 !important;
             pointer-events: none !important;
         }
+
+        /* Скрываем прогресс бар */
+        .loading-bar-container {
+            display: none !important;
+        }
+
+        /* Скрываем кнопку "Начать" */
+        .start-button {
+            display: none !important;
+        }
+
+        /* Делаем весь контент заставки ненажимаемым, кроме самой заставки */
         .loading-content {
             pointer-events: none;
         }
+
+        /* Но сама заставка должна быть кликабельной */
         .loading-overlay {
             pointer-events: auto;
         }
-        .search-type-badge {
-            background: var(--max-primary);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
+
+        /* Стили для тумблеров */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--neutral-300);
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--max-primary);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        .toggle-group {
+            margin-bottom: var(--space-4);
+        }
+
+        .toggle-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-3);
+            background: var(--neutral-100);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+        }
+
+        /* Стили для настроек */
+        .settings-container {
+            padding: var(--space-4);
+        }
+
+        .settings-section {
+            margin-bottom: var(--space-8);
+            padding-bottom: var(--space-6);
+            border-bottom: 1px solid var(--neutral-200);
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+        }
+
+        .settings-section h3 {
+            margin-bottom: var(--space-4);
+            color: var(--neutral-800);
+        }
+
+        .profile-info {
+            display: flex;
+            gap: var(--space-6);
+            align-items: flex-start;
+        }
+
+        .avatar-section {
+            text-align: center;
+        }
+
+        .avatar-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--neutral-200);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: var(--space-3);
+        }
+
+        .profile-details {
+            flex: 1;
+        }
+
+        .detail-item {
+            margin-bottom: var(--space-3);
+            padding: var(--space-3);
+            background: var(--neutral-100);
+            border-radius: var(--radius-lg);
+        }
+
+        .storage-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .storage-progress {
+            flex: 1;
+            margin-right: var(--space-4);
+        }
+
+        .help-links, .developers-links {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .help-link, .dev-link {
+            padding: var(--space-3);
+            background: var(--neutral-100);
+            border-radius: var(--radius-lg);
+            text-decoration: none;
+            color: var(--neutral-700);
+            transition: background-color 0.2s ease;
+        }
+
+        .help-link:hover, .dev-link:hover {
+            background: var(--neutral-200);
+        }
+
+        /* Стили для улучшенных карточек проектов */
+        .project-card-enhanced {
+            background: white;
+            border: 1px solid var(--neutral-200);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card-header-enhanced {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-4);
+        }
+
+        .project-meta-info {
+            display: flex;
+            gap: var(--space-3);
+            flex-wrap: wrap;
+            margin-bottom: var(--space-3);
+            font-size: var(--text-sm);
+            color: var(--neutral-600);
+        }
+
+        .project-meta-badge {
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
             font-size: var(--text-xs);
             font-weight: var(--font-medium);
+        }
+
+        .badge-private {
+            background: var(--neutral-100);
+            color: var(--neutral-700);
+        }
+
+        .badge-approval {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-role {
+            background: var(--max-primary);
+            color: white;
+        }
+
+        .progress-section {
+            margin-top: var(--space-4);
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-2);
+            font-size: var(--text-sm);
+            color: var(--neutral-600);
+        }
+
+        /* Стили для фильтров задач */
+        .tasks-filters {
+            display: flex;
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .filter-group label {
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            color: var(--neutral-600);
+        }
+
+        /* Иконки для кнопок навигации */
+        .nav-icon-btn {
+            font-size: 1.2rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-lg);
+        }
+
+        [data-theme="dark"] .project-card-enhanced {
+            background: var(--neutral-700);
+            border-color: var(--neutral-600);
+        }
+
+        [data-theme="dark"] .detail-item,
+        [data-theme="dark"] .toggle-label,
+        [data-theme="dark"] .help-link,
+        [data-theme="dark"] .dev-link {
+            background: var(--neutral-600);
+        }
+
+        [data-theme="dark"] .settings-section {
+            border-bottom-color: var(--neutral-600);
         }
     </style>
 </head>
 <body class="safe-area">
-    <!-- Заставка -->
+    <!-- Заставка, которая всегда поверх всего -->
     <div id="loading" class="loading-overlay">
         <div class="loading-content">
             <div class="icon-container">
@@ -67,6 +334,11 @@
             </div>
             <h2 class="loading-text">Project Pilot Pro</h2>
             <p class="loading-subtitle">Система управления проектами</p>
+            <!-- Прогресс бар скрыт -->
+            <div class="loading-bar-container">
+                <div class="loading-bar-progress" id="loadingBarProgress"></div>
+            </div>
+            <!-- Фоновый текст "Нажми на экран" -->
             <div id="tapToStart" class="fading-text">
                 Нажми на экран
             </div>
@@ -87,197 +359,52 @@
                         <button class="nav-item" id="myTasksBtn">
                             <span class="nav-text">Мои задачи</span>
                         </button>
+                        <button class="nav-item nav-icon-btn" id="notificationsBtn" title="Уведомления">
+                            🔔
+                        </button>
+                        <button class="nav-item nav-icon-btn" id="searchProjectsBtn" title="Поиск проектов">
+                            🔍
+                        </button>
                         <button class="nav-item" id="settingsBtn">
                             <span class="nav-text">Настройки</span>
                         </button>
+                        <button class="btn btn-primary" id="createProjectBtn">Создать проект</button>
                     </nav>
                 </div>
             </div>
         </header>
 
-        <!-- Main Content -->
+        <!-- Main Content Area -->
         <main class="main-content">
             <div class="container">
-                <!-- Главная -->
-                <div id="dashboardView" class="view active">
+                <!-- Dashboard View -->
+                <div id="dashboardView" class="view">
                     <div class="dashboard-header">
                         <h2 class="dashboard-title">Главная</h2>
-                        <div class="dashboard-actions">
-                            <button class="btn btn-icon" id="notificationsBtn" title="Уведомления">
-                                <span class="icon">🔔</span>
-                            </button>
-                            <button class="btn btn-icon" id="searchProjectsBtn" title="Поиск проектов">
-                                <span class="icon">🔍</span>
-                            </button>
-                            <button class="btn btn-primary" id="createProjectBtn">Создать проект</button>
-                        </div>
+                    </div>
+                    <div class="dashboard-stats">
+                        <div class="stat-item">Проектов: <span id="projectsCount">0</span></div>
+                        <div class="stat-item">Задач: <span id="tasksCount">0</span></div>
+                        <div class="stat-item">Недавних задач: <span id="recentTasksCount">0</span></div>
                     </div>
                     <div id="projectsList" class="projects-grid">
                         <!-- Project cards will be loaded here -->
                     </div>
-                </div>
-
-                <!-- Мои задачи -->
-                <div id="myTasksView" class="view">
-                    <div class="my-tasks-header">
-                        <h2>Мои задачи</h2>
-                        <div class="task-filters">
-                            <div class="filter-group">
-                                <label>Фильтр по статусу</label>
-                                <select id="tasksFilterStatus">
-                                    <option value="">Все статусы</option>
-                                    <option value="todo">К выполнению</option>
-                                    <option value="in_progress">В работе</option>
-                                    <option value="done">Выполнено</option>
-                                </select>
-                            </div>
-                            <div class="filter-group">
-                                <label>Фильтр по приоритету</label>
-                                <select id="tasksFilterPriority">
-                                    <option value="">Все приоритеты</option>
-                                    <option value="urgent">Срочный</option>
-                                    <option value="high">Высокий</option>
-                                    <option value="medium">Средний</option>
-                                    <option value="low">Низкий</option>
-                                </select>
-                            </div>
-                            <div class="filter-group">
-                                <label>Назначение</label>
-                                <select id="tasksFilterAssignment">
-                                    <option value="">Все задачи</option>
-                                    <option value="assigned_to_me">Назначенные мне</option>
-                                    <option value="created_by_me">Созданные мной</option>
-                                </select>
-                            </div>
-                            <div class="filter-group">
-                                <label>Сортировка</label>
-                                <select id="tasksSortBy">
-                                    <option value="created_at">По дате создания</option>
-                                    <option value="due_date">По сроку</option>
-                                    <option value="title">По названию</option>
-                                    <option value="priority">По приоритету</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="myTasksList" class="tasks-list">
-                        <!-- User tasks will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Настройки -->
-                <div id="settingsView" class="view">
-                    <div class="settings-header">
-                        <h2>Настройки</h2>
-                    </div>
-                    <div class="settings-sections">
-                        <!-- Профиль -->
-                        <div class="settings-section">
-                            <h3>👤 Профиль</h3>
-                            <div class="profile-info">
-                                <div class="avatar-section">
-                                    <div class="avatar" id="userAvatar">👤</div>
-                                    <button class="btn btn-outline btn-sm" onclick="App.changeAvatar()">Сменить аватар</button>
-                                </div>
-                                <div class="profile-details">
-                                    <div class="form-group">
-                                        <label for="userFullName">Имя пользователя</label>
-                                        <input type="text" id="userFullName" placeholder="Введите ваше имя">
-                                    </div>
-                                    <div class="user-meta">
-                                        <div class="meta-item">
-                                            <strong>ID пользователя:</strong>
-                                            <span id="userIdDisplay">-</span>
-                                        </div>
-                                        <div class="meta-item">
-                                            <strong>IP адрес:</strong>
-                                            <span id="userIpDisplay">Загрузка...</span>
-                                        </div>
-                                        <div class="meta-item">
-                                            <strong>Зарегистрирован:</strong>
-                                            <span id="userRegisteredDisplay">-</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Оформление -->
-                        <div class="settings-section">
-                            <h3>🎨 Оформление</h3>
-                            <div class="form-group">
-                                <label for="themeSelect">Тема</label>
-                                <select id="themeSelect" class="theme-select">
-                                    <option value="auto">Системная (авто)</option>
-                                    <option value="light">Светлая</option>
-                                    <option value="dark">Тёмная</option>
-                                </select>
-                            </div>
-                            <div class="form-group checkbox-group">
-                                <label class="toggle">
-                                    <input type="checkbox" id="notificationsEnabled">
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Уведомления</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Данные -->
-                        <div class="settings-section">
-                            <h3>💾 Данные</h3>
-                            <div class="storage-info">
-                                <div class="storage-stats">
-                                    <div class="stat">
-                                        <span class="stat-label">Использовано памяти:</span>
-                                        <span class="stat-value" id="storageUsed">0 KB</span>
-                                    </div>
-                                    <div class="stat">
-                                        <span class="stat-label">Доступно:</span>
-                                        <span class="stat-value" id="storageAvailable">~5 MB</span>
-                                    </div>
-                                </div>
-                                <div class="storage-actions">
-                                    <button class="btn btn-outline" onclick="App.clearCache()">Очистить кэш</button>
-                                    <button class="btn btn-outline" onclick="App.exportData()">Экспорт данных</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- О приложении -->
-                        <div class="settings-section">
-                            <h3>ℹ️ О приложении</h3>
-                            <div class="about-info">
-                                <div class="app-version">
-                                    <strong>Версия:</strong> 1.0.0
-                                </div>
-                                <div class="developers">
-                                    <strong>Разработчики:</strong>
-                                    <div class="developer-links">
-                                        <a href="https://github.com/developer1" target="_blank" class="developer-link">
-                                            GitHub Developer 1
-                                        </a>
-                                        <a href="https://github.com/developer2" target="_blank" class="developer-link">
-                                            GitHub Developer 2
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="legal-links">
-                                    <a href="#" onclick="App.showPrivacyPolicy()" class="legal-link">Политика конфиденциальности</a>
-                                    <a href="#" onclick="App.showTermsOfService()" class="legal-link">Условия использования</a>
-                                    <a href="#" onclick="App.showFAQ()" class="legal-link">FAQ</a>
-                                </div>
-                            </div>
+                    <div id="recentTasksSection" class="section">
+                        <h3>Недавние задачи</h3>
+                        <div id="recentTasksList" class="tasks-list">
+                            <!-- Recent tasks will be loaded here -->
                         </div>
                     </div>
                 </div>
 
                 <!-- Project View -->
-                <div id="projectView" class="view">
+                <div id="projectView" class="view" style="display: none;">
                     <div class="project-header">
                         <div class="project-info">
                             <h2 id="projectTitleHeader">Название проекта</h2>
                             <p id="projectDescriptionText">Описание проекта</p>
-                            <div id="projectHashInfo" class="project-hash-info">
+                            <div id="projectHashInfo" class="project-hash-info" style="display: none;">
                                 Хэш проекта: <span id="projectHashValue"></span>
                             </div>
                         </div>
@@ -288,28 +415,36 @@
                             <span class="stat-item">В работе: <span id="projectInProgressTasks">0</span></span>
                         </div>
                         <div class="project-actions">
-                            <button class="btn btn-secondary" id="manageMembersBtn">Участники</button>
-                            <button class="btn btn-warning" id="joinRequestsBtn">Заявки</button>
-                            <button class="btn btn-primary" id="editProjectBtn">Редактировать</button>
-                            <button class="btn btn-danger" id="deleteProjectBtn">Удалить</button>
-                            <button class="btn btn-outline" onclick="App.backToDashboard()">Назад</button>
+                            <button class="btn btn-secondary" id="manageMembersBtn" style="display: none;">Участники</button>
+                            <button class="btn btn-warning" id="joinRequestsBtn" style="display: none;">Заявки</button>
+                            <button class="btn btn-primary" id="createTaskBtn">Создать задачу</button>
+                            <button class="btn btn-primary" id="editProjectBtn" style="display: none;">Редактировать</button>
+                            <button class="btn btn-danger" id="deleteProjectBtn" style="display: none;">Удалить</button>
+                            <button class="btn btn-outline" onclick="App.backToProject()">Назад</button>
                         </div>
                     </div>
+
                     <div class="project-content">
                         <div class="project-tasks-section">
                             <div class="section-header">
                                 <h3>Задачи проекта</h3>
-                                <button class="btn btn-primary" id="createTaskBtn">Создать задачу</button>
                             </div>
                             <div id="projectTasksList" class="tasks-list">
                                 <!-- Tasks will be loaded here -->
+                            </div>
+                        </div>
+
+                        <div class="project-members-section">
+                            <h3>Участники проекта</h3>
+                            <div id="projectMembersList" class="members-list">
+                                <!-- Members will be loaded here -->
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Task View -->
-                <div id="taskView" class="view">
+                <div id="taskView" class="view" style="display: none;">
                     <div class="task-header">
                         <div class="task-info">
                             <h2 id="taskTitleHeader">Название задачи</h2>
@@ -326,6 +461,7 @@
                             <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
                         </div>
                     </div>
+
                     <div class="task-content">
                         <div class="task-details">
                             <div class="detail-item">
@@ -341,15 +477,15 @@
                                 <strong>Исполнитель:</strong> <span id="taskAssignedToText">-</span>
                             </div>
                         </div>
+
                         <div id="subtasksSection">
-                            <div class="section-header">
-                                <h4>Подзадачи</h4>
-                                <button class="btn btn-sm btn-outline" id="createSubtaskBtn">Создать подзадачу</button>
-                            </div>
+                            <h4>Подзадачи</h4>
+                            <button class="btn btn-sm btn-outline" id="createSubtaskBtn" style="margin-bottom: var(--space-4);">Создать подзадачу</button>
                             <div id="subtasksList">
                                 <!-- Subtasks will be loaded here -->
                             </div>
                         </div>
+
                         <div class="comments-section">
                             <h4>Комментарии</h4>
                             <div id="taskCommentsList">
@@ -362,26 +498,112 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- My Tasks View -->
+                <div id="myTasksView" class="view" style="display: none;">
+                    <div class="my-tasks-header">
+                        <h2>Мои задачи</h2>
+                        <div class="tasks-filters">
+                            <div class="filter-group">
+                                <label for="tasksFilterStatus">Статус</label>
+                                <select id="tasksFilterStatus">
+                                    <option value="">Все статусы</option>
+                                    <option value="todo">К выполнению</option>
+                                    <option value="in_progress">В работе</option>
+                                    <option value="done">Выполнено</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="tasksFilterProject">Проект</label>
+                                <select id="tasksFilterProject">
+                                    <option value="">Все проекты</option>
+                                    <!-- Project options will be loaded dynamically -->
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="tasksFilterPriority">Приоритет</label>
+                                <select id="tasksFilterPriority">
+                                    <option value="">Все приоритеты</option>
+                                    <option value="low">Низкий</option>
+                                    <option value="medium">Средний</option>
+                                    <option value="high">Высокий</option>
+                                    <option value="urgent">Срочный</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="tasksFilterAssignment">Назначение</label>
+                                <select id="tasksFilterAssignment">
+                                    <option value="">Все задачи</option>
+                                    <option value="assigned_to_me">Назначенные мне</option>
+                                    <option value="created_by_me">Созданные мной</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="tasksSortBy">Сортировка</label>
+                                <select id="tasksSortBy">
+                                    <option value="created_at">По дате создания</option>
+                                    <option value="due_date">По сроку</option>
+                                    <option value="title">По названию</option>
+                                    <option value="priority">По приоритету</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="myTasksList" class="tasks-list">
+                        <!-- User tasks will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Notifications View -->
+                <div id="notificationsView" class="view" style="display: none;">
+                    <div class="notifications-header">
+                        <h2>Уведомления</h2>
+                        <button class="btn btn-outline" onclick="App.showDashboard()">Назад</button>
+                        <button class="btn btn-primary" onclick="App.markAllNotificationsRead()">Прочитать всё</button>
+                    </div>
+                    <div id="notificationsList">
+                        <!-- Notifications will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Search Projects View -->
+                <div id="searchProjectsView" class="view" style="display: none;">
+                    <div class="search-projects-header">
+                        <h2>Поиск проектов</h2>
+                        <button class="btn btn-outline" onclick="App.showDashboard()">Назад</button>
+                    </div>
+                    <div class="search-projects-form">
+                        <input type="text" id="searchProjectsInput" placeholder="Поиск по названию проекта или хэшу...">
+                        <button class="btn btn-primary" id="searchProjectsSubmitBtn">Искать</button>
+                    </div>
+                    <div id="searchResultsList">
+                        <!-- Search results will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Join Requests View -->
+                <div id="joinRequestsView" class="view" style="display: none;">
+                    <div class="join-requests-header">
+                        <h2>Заявки на вступление</h2>
+                        <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
+                    </div>
+                    <div id="joinRequestsList">
+                        <!-- Join requests will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Project Members Management View -->
+                <div id="projectMembersView" class="view" style="display: none;">
+                    <div class="members-management-header">
+                        <h2>Управление участниками</h2>
+                        <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
+                    </div>
+                    <div id="projectMembersManagementList">
+                        <!-- Members management will be loaded here -->
+                    </div>
+                </div>
             </div>
         </main>
-
-        <!-- Mobile Navigation -->
-        <nav class="mobile-nav">
-            <div class="mobile-nav-items">
-                <a href="#" class="mobile-nav-item active" data-view="dashboardView">
-                    <span class="nav-icon">🏠</span>
-                    <span>Главная</span>
-                </a>
-                <a href="#" class="mobile-nav-item" data-view="myTasksView">
-                    <span class="nav-icon">✅</span>
-                    <span>Задачи</span>
-                </a>
-                <a href="#" class="mobile-nav-item" data-view="settingsView">
-                    <span class="nav-icon">⚙️</span>
-                    <span>Настройки</span>
-                </a>
-            </div>
-        </nav>
     </div>
 
     <!-- Modals -->
@@ -402,18 +624,22 @@
                         <label for="projectDescription">Описание</label>
                         <textarea id="projectDescription" rows="3"></textarea>
                     </div>
-                    <div class="form-group checkbox-group">
-                        <label class="toggle">
-                            <input type="checkbox" id="projectIsPrivate" checked>
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Приватный проект</span>
+                    <div class="toggle-group">
+                        <label class="toggle-label">
+                            <span>Приватный проект</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="projectIsPrivate" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </label>
                     </div>
-                    <div class="form-group checkbox-group">
-                        <label class="toggle">
-                            <input type="checkbox" id="projectRequiresApproval">
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Требуется одобрение для вступления</span>
+                    <div class="toggle-group">
+                        <label class="toggle-label">
+                            <span>Требуется одобрение для вступления</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="projectRequiresApproval">
+                                <span class="toggle-slider"></span>
+                            </label>
                         </label>
                     </div>
                 </form>
@@ -421,6 +647,67 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="App.hideModal('createProjectModal')">Отмена</button>
                 <button class="btn btn-primary" id="submitCreateProjectBtn">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Project Modal -->
+    <div id="editProjectModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Редактировать проект</h3>
+                <button class="modal-close" onclick="App.hideModal('editProjectModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="editProjectForm">
+                    <div class="form-group">
+                        <label for="editProjectTitle">Название проекта *</label>
+                        <input type="text" id="editProjectTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editProjectDescription">Описание</label>
+                        <textarea id="editProjectDescription" rows="3"></textarea>
+                    </div>
+                    <div class="toggle-group">
+                        <label class="toggle-label">
+                            <span>Приватный проект</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editProjectIsPrivate">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="toggle-group">
+                        <label class="toggle-label">
+                            <span>Требуется одобрение для вступления</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editProjectRequiresApproval">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('editProjectModal')">Отмена</button>
+                <button class="btn btn-primary" id="submitEditProjectBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Project Modal -->
+    <div id="deleteProjectModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Удалить проект</h3>
+                <button class="modal-close" onclick="App.hideModal('deleteProjectModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить проект "<span id="deleteProjectName"></span>"? Это действие нельзя отменить.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('deleteProjectModal')">Отмена</button>
+                <button class="btn btn-danger" id="confirmDeleteProjectBtn">Удалить</button>
             </div>
         </div>
     </div>
@@ -470,192 +757,6 @@
         </div>
     </div>
 
-    <!-- Create Subtask Modal -->
-    <div id="createSubtaskModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Создать подзадачу</h3>
-                <button class="modal-close" onclick="App.hideModal('createSubtaskModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <form id="createSubtaskForm">
-                    <div class="form-group">
-                        <label for="subtaskTitle">Название подзадачи *</label>
-                        <input type="text" id="subtaskTitle" required>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="App.hideModal('createSubtaskModal')">Отмена</button>
-                <button class="btn btn-primary" id="submitCreateSubtaskBtn">Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notifications Modal -->
-    <div id="notificationsModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Уведомления</h3>
-                <button class="modal-close" onclick="App.hideModal('notificationsModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div id="notificationsList">
-                    <!-- Notifications will be loaded here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="App.markAllNotificationsRead()">Прочитать всё</button>
-                <button class="btn btn-outline" onclick="App.hideModal('notificationsModal')">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Search Projects Modal -->
-    <div id="searchProjectsModal" class="modal-overlay">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h3>Поиск проектов</h3>
-                <button class="modal-close" onclick="App.hideModal('searchProjectsModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="search-projects-form">
-                    <input type="text" id="searchProjectsInput" placeholder="Поиск по названию или хэшу проекта...">
-                    <button class="btn btn-primary" id="searchProjectsSubmitBtn">Искать</button>
-                </div>
-                <div id="searchResultsList">
-                    <!-- Search results will be loaded here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="App.hideModal('searchProjectsModal')">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Project Members Management Modal -->
-    <div id="projectMembersModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Участники проекта</h3>
-                <button class="modal-close" onclick="App.hideModal('projectMembersModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div id="projectMembersList">
-                    <!-- Members will be loaded here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="App.hideModal('projectMembersModal')">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Join Requests Modal -->
-    <div id="joinRequestsModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Заявки на вступление</h3>
-                <button class="modal-close" onclick="App.hideModal('joinRequestsModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <div id="joinRequestsList">
-                    <!-- Join requests will be loaded here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="App.hideModal('joinRequestsModal')">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Info Modal для политик и FAQ -->
-    <div id="infoModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Информация</h3>
-                <button class="modal-close" onclick="App.hideModal('infoModal')">×</button>
-            </div>
-            <div class="modal-body"></div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="App.hideModal('infoModal')">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Confirmation Modals -->
-    <div id="deleteProjectModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Удалить проект</h3>
-                <button class="modal-close" onclick="App.hideModal('deleteProjectModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <p>Вы уверены, что хотите удалить проект "<span id="deleteProjectName"></span>"? Это действие нельзя отменить.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="App.hideModal('deleteProjectModal')">Отмена</button>
-                <button class="btn btn-danger" id="confirmDeleteProjectBtn">Удалить</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="deleteTaskModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Удалить задачу</h3>
-                <button class="modal-close" onclick="App.hideModal('deleteTaskModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <p>Вы уверены, что хотите удалить задачу "<span id="deleteTaskName"></span>"? Это действие нельзя отменить.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="App.hideModal('deleteTaskModal')">Отмена</button>
-                <button class="btn btn-danger" id="confirmDeleteTaskBtn">Удалить</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Project Modal -->
-    <div id="editProjectModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Редактировать проект</h3>
-                <button class="modal-close" onclick="App.hideModal('editProjectModal')">×</button>
-            </div>
-            <div class="modal-body">
-                <form id="editProjectForm">
-                    <div class="form-group">
-                        <label for="editProjectTitle">Название проекта *</label>
-                        <input type="text" id="editProjectTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editProjectDescription">Описание</label>
-                        <textarea id="editProjectDescription" rows="3"></textarea>
-                    </div>
-                    <div class="form-group checkbox-group">
-                        <label class="toggle">
-                            <input type="checkbox" id="editProjectIsPrivate">
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Приватный проект</span>
-                        </label>
-                    </div>
-                    <div class="form-group checkbox-group">
-                        <label class="toggle">
-                            <input type="checkbox" id="editProjectRequiresApproval">
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Требуется одобрение для вступления</span>
-                        </label>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="App.hideModal('editProjectModal')">Отмена</button>
-                <button class="btn btn-primary" id="submitEditProjectBtn">Сохранить</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Edit Task Modal -->
     <div id="editTaskModal" class="modal-overlay">
         <div class="modal-content">
@@ -695,34 +796,166 @@
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="js/api.js"></script>
-    <script src="js/auth-enhanced.js"></script>
-    <script src="js/max-integration.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/main.js"></script>
-    <script src="js/animations.js"></script>
+    <!-- Delete Task Modal -->
+    <div id="deleteTaskModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Удалить задачу</h3>
+                <button class="modal-close" onclick="App.hideModal('deleteTaskModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить задачу "<span id="deleteTaskName"></span>"? Это действие нельзя отменить.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('deleteTaskModal')">Отмена</button>
+                <button class="btn btn-danger" id="confirmDeleteTaskBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- Create Subtask Modal -->
+    <div id="createSubtaskModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Создать подзадачу</h3>
+                <button class="modal-close" onclick="App.hideModal('createSubtaskModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="createSubtaskForm">
+                    <div class="form-group">
+                        <label for="subtaskTitle">Название подзадачи *</label>
+                        <input type="text" id="subtaskTitle" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('createSubtaskModal')">Отмена</button>
+                <button class="btn btn-primary" id="submitCreateSubtaskBtn">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Member Role Modal -->
+    <div id="updateMemberRoleModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Обновить роль участника</h3>
+                <button class="modal-close" onclick="App.hideModal('updateMemberRoleModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Изменить роль для: <strong id="memberName"></strong></p>
+                <select id="memberRoleSelect">
+                    <option value="member">Участник</option>
+                    <option value="admin">Администратор</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('updateMemberRoleModal')">Отмена</button>
+                <button class="btn btn-primary" id="submitUpdateMemberRoleBtn">Обновить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove Member Modal -->
+    <div id="removeMemberModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Удалить участника</h3>
+                <button class="modal-close" onclick="App.hideModal('removeMemberModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить этого участника?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('removeMemberModal')">Отмена</button>
+                <button class="btn btn-danger" id="confirmRemoveMemberBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Настройки</h3>
+                <button class="modal-close" onclick="App.hideModal('settingsModal')">×</button>
+            </div>
+            <div class="modal-body" id="settingsModalBody">
+                <!-- Settings content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-warning" onclick="App.resetUserPreferences()">Сбросить</button>
+                <button class="btn btn-outline" onclick="App.hideModal('settingsModal')">Отмена</button>
+                <button class="btn btn-primary" onclick="App.handleSaveSettings()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Preview Modal -->
+    <div id="projectPreviewModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Информация о проекте</h3>
+                <button class="modal-close" onclick="App.hideModal('projectPreviewModal')">×</button>
+            </div>
+            <div class="modal-body" id="projectPreviewBody">
+                <!-- Content loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('projectPreviewModal')">Закрыть</button>
+                <button class="btn btn-primary" id="joinProjectFromPreviewBtn" style="display: none;">Присоединиться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <div class="mobile-nav-items">
+            <a href="#" class="mobile-nav-item active" data-view="dashboardView">
+                <span class="nav-icon">📊</span>
+                <span>Главная</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="myTasksView">
+                <span class="nav-icon">✅</span>
+                <span>Задачи</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="searchProjectsView">
+                <span class="nav-icon">🔍</span>
+                <span>Поиск</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-view="notificationsView">
+                <span class="nav-icon">🔔</span>
+                <span>Уведомления</span>
+                <span class="nav-badge">3</span>
+            </a>
+            <a href="#" class="mobile-nav-item" id="mobileSettingsBtn">
+                <span class="nav-icon">⚙️</span>
+                <span>Настройки</span>
+            </a>
+        </div>
+    </nav>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
     <script>
+    // Упрощенная инициализация - заставка всегда видна до клика
     document.addEventListener('DOMContentLoaded', async () => {
         console.log('DOM fully loaded and parsed');
 
-        // Инициализация анимации искр
-        initSparkAnimation();
-
         try {
             console.log('Initializing App...');
+            // Инициализируем приложение в фоне
             await App.init();
             console.log('App initialized successfully');
 
-            // Показываем главную страницу по умолчанию
-            App.showDashboard();
-
+            // Initialize mobile features
             if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
                 MobileApp.init();
             }
+
         } catch (error) {
             console.error('Error during app initialization:', error);
+            // В случае ошибки показываем сообщение на заставке
             const loadingContent = document.querySelector('.loading-content');
             if (loadingContent) {
                 loadingContent.innerHTML = `
@@ -733,20 +966,28 @@
             }
         }
 
+        // Обработчик клика по заставке
         const loadingOverlay = document.getElementById('loading');
         if (loadingOverlay) {
             loadingOverlay.addEventListener('click', function() {
                 console.log('Loading overlay clicked, hiding splash screen');
+
+                // Добавляем класс для плавного скрытия
                 loadingOverlay.classList.add('hidden');
+
+                // Полностью скрываем через время анимации
                 setTimeout(() => {
                     loadingOverlay.style.display = 'none';
+                    // Показываем основное приложение
                     document.getElementById('app').style.display = 'block';
                     console.log('Splash screen hidden, app is ready');
 
+                    // Initialize mobile features if not already
                     if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
                         MobileApp.init();
                     }
 
+                    // Запускаем основное приложение
                     if (typeof App.showDashboard === 'function') {
                         App.showDashboard();
                     }
@@ -754,6 +995,7 @@
             });
         }
 
+        // Также можно скрывать по нажатию клавиши
         document.addEventListener('keydown', function(e) {
             if (e.code === 'Space' || e.code === 'Enter') {
                 const loadingOverlay = document.getElementById('loading');
@@ -761,13 +1003,17 @@
                     loadingOverlay.click();
                 }
             }
+
+            // Back button simulation with Escape key
             if (e.code === 'Escape') {
                 if (typeof App.backToPreviousView === 'function') {
                     App.backToPreviousView();
                 }
             }
         });
+    });
 
+    // Инициализация искр
     function initSparkAnimation() {
         const sparkContainer = document.getElementById('sparkContainer');
         if (!sparkContainer) return;
@@ -776,8 +1022,11 @@
             const spark = document.createElement('div');
             spark.classList.add('spark');
 
+            // Случайная стартовая позиция
             const startX = Math.random() * 100;
             const startY = Math.random() * 100;
+
+            // Случайная конечная позиция (используем CSS переменные)
             const endX = (Math.random() - 0.5) * 200;
             const endY = (Math.random() - 0.5) * 200;
 
@@ -788,13 +1037,18 @@
 
             sparkContainer.appendChild(spark);
 
+            // Удаляем искру после анимации
             setTimeout(() => {
                 spark.remove();
             }, 3000);
         };
 
+        // Создаем искры каждые 200-500мс
         setInterval(createSpark, Math.random() * 300 + 200);
     }
+
+    // Инициализация при загрузке
+    initSparkAnimation();
     </script>
 </body>
 </html>
