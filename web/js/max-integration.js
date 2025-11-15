@@ -8,7 +8,6 @@ class MaxIntegration {
     async init() {
         try {
             console.log('Initializing MAX Bridge integration...');
-
             if (!this.isMax) {
                 console.log('MAX environment not detected, running in standalone mode');
                 return;
@@ -18,7 +17,6 @@ class MaxIntegration {
             await this.setupBackButton();
             this.setupHapticFeedback();
             this.setupEventListeners();
-
             console.log('MAX Bridge initialized successfully');
         } catch (error) {
             console.error('MAX Bridge initialization failed:', error);
@@ -243,7 +241,6 @@ class MaxIntegration {
         return new Promise((resolve, reject) => {
             if (WebApp.openCodeReader) {
                 WebApp.openCodeReader(allowFileSelect);
-
                 // Обработчик результата сканирования
                 const messageHandler = (e) => {
                     if (e.data && e.data.type === 'QRCodeScanned') {
@@ -251,9 +248,7 @@ class MaxIntegration {
                         resolve(e.data.value);
                     }
                 };
-
                 window.addEventListener('message', messageHandler);
-
                 // Таймаут на случай ошибки
                 setTimeout(() => {
                     window.removeEventListener('message', messageHandler);
@@ -314,16 +309,13 @@ class MaxIntegration {
         return new Promise((resolve, reject) => {
             if (WebApp.requestContact) {
                 WebApp.requestContact();
-
                 const messageHandler = (e) => {
                     if (e.data && e.data.type === 'ContactReceived') {
                         window.removeEventListener('message', messageHandler);
                         resolve(e.data.contact);
                     }
                 };
-
                 window.addEventListener('message', messageHandler);
-
                 setTimeout(() => {
                     window.removeEventListener('message', messageHandler);
                     reject(new Error('Contact request timeout'));

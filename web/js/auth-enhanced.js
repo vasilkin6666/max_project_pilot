@@ -3,7 +3,6 @@ class EnhancedAuthManager {
     static async initialize() {
         try {
             console.log('Initializing enhanced authentication...');
-
             // Пробуем аутентификацию через MAX
             const maxUser = await this.tryMaxAuthentication();
             if (maxUser) {
@@ -21,7 +20,6 @@ class EnhancedAuthManager {
             // Создаем тестового пользователя для разработки
             console.log('Creating test user for development');
             return await this.createTestUser();
-
         } catch (error) {
             console.error('Enhanced authentication failed:', error);
             throw error;
@@ -32,7 +30,6 @@ class EnhancedAuthManager {
         if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user) {
             const userData = WebApp.initDataUnsafe.user;
             console.log('MAX user detected:', userData);
-
             const authData = {
                 max_id: userData.id.toString(),
                 full_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX',
@@ -56,7 +53,6 @@ class EnhancedAuthManager {
                         auth_method: 'max',
                         auth_date: new Date().toISOString()
                     }));
-
                     console.log('MAX authentication token received');
                     return tokenData.user;
                 }
@@ -75,17 +71,14 @@ class EnhancedAuthManager {
         if (savedToken && userDataStr) {
             try {
                 const userData = JSON.parse(userDataStr);
-
                 // Проверяем валидность токена
                 const userInfo = await ApiService.getCurrentUser();
                 console.log('Local authentication token valid');
-
                 // Обновляем данные пользователя
                 localStorage.setItem('user_data', JSON.stringify({
                     ...userData,
                     last_validation: new Date().toISOString()
                 }));
-
                 return userInfo;
             } catch (error) {
                 console.log('Local token invalid, clearing...');
@@ -105,7 +98,6 @@ class EnhancedAuthManager {
 
         try {
             const tokenData = await ApiService.getAuthToken(testId, fullName, username);
-
             if (tokenData?.access_token) {
                 localStorage.setItem('access_token', tokenData.access_token);
                 localStorage.setItem('user_data', JSON.stringify({
@@ -115,7 +107,6 @@ class EnhancedAuthManager {
                     auth_method: 'test',
                     created_at: new Date().toISOString()
                 }));
-
                 console.log('Test user authentication successful');
                 return tokenData.user;
             }
@@ -151,12 +142,10 @@ class EnhancedAuthManager {
 
     static async logout() {
         this.clearAuthData();
-
         // Тактильная обратная связь при выходе
         if (window.hapticFeedback) {
             window.hapticFeedback.selection();
         }
-
         // Перезагружаем приложение
         setTimeout(() => {
             window.location.reload();
@@ -212,7 +201,6 @@ class EnhancedAuthManager {
 
         } catch (error) {
             console.error('Session validation failed:', error);
-
             // Пробуем обновить токен для MAX пользователей
             if (this.isMaxUser()) {
                 try {
@@ -222,7 +210,6 @@ class EnhancedAuthManager {
                     console.error('Token refresh failed:', refreshError);
                 }
             }
-
             return { valid: false, reason: 'api_error' };
         }
     }

@@ -1,6 +1,4 @@
-/* css/components/max-enhanced.css */
 /* Специальные стили для MAX окружения */
-
 /* Безопасные зоны для разных платформ */
 .max-enhanced .header {
     padding-top: env(safe-area-inset-top);

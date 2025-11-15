@@ -1,4 +1,3 @@
-// js/api.js
 // Конфигурация
 const CONFIG = {
     API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
@@ -176,7 +175,14 @@ class ApiService {
     static async getUserTasks(filters = {}) {
         const params = new URLSearchParams();
         if (filters.status) params.append('status', filters.status);
+        if (filters.priority) params.append('priority', filters.priority);
         if (filters.project_hash) params.append('project_hash', filters.project_hash);
+        // Новые фильтры
+        if (filters.assignment === 'assigned_to_me') {
+            params.append('assigned_to_me', 'true');
+        } else if (filters.assignment === 'created_by_me') {
+            params.append('created_by_me', 'true');
+        }
 
         const query = params.toString();
         return this.get(`/tasks/${query ? `?${query}` : ''}`);
@@ -290,17 +296,7 @@ class ApiService {
 
     // Dashboard endpoints
     static async getDashboard() {
-        try {
-            const response = await this.get('/dashboard/');
-            return response;
-        } catch (error) {
-            console.error('Dashboard loading failed, returning fallback data');
-            return {
-                settings: {},
-                projects: [],
-                recent_tasks: []
-            };
-        }
+        return this.get('/dashboard/');
     }
 
     // Health endpoints
@@ -311,13 +307,23 @@ class ApiService {
     static async apiHealthCheck() {
         return this.get('/api/health');
     }
+
+    // Получение IP пользователя (дополнительный endpoint)
+    static async getUserIp() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            return await response.json();
+        } catch (error) {
+            return { ip: 'Не доступен' };
+        }
+    }
 }
 
-// Менеджер аутентификации
-class AuthManager {
+// Улучшенный менеджер аутентификации
+class EnhancedAuthManager {
     static async initialize() {
         try {
-            console.log('Initializing authentication...');
+            console.log('Initializing enhanced authentication...');
 
             // Проверяем MAX окружение
             if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user) {
@@ -373,6 +379,11 @@ class AuthManager {
 
     static isAuthenticated() {
         return !!this.getToken();
+    }
+
+    static logout() {
+        localStorage.removeItem('access_token');
+        console.log('User logged out');
     }
 }
 
