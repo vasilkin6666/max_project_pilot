@@ -6,6 +6,21 @@ class APIClient:
     def __init__(self):
         self.base_url = settings.BACKEND_API_URL
 
+    async def _get_auth_token(self, user_id: str, full_name: str):
+        """Вспомогательный метод для получения токена"""
+        token_url = f"{self.base_url}/auth/token"
+        token_data = {"max_id": user_id, "full_name": full_name}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(token_url, json=token_data) as response:
+                    if response.status == 200:
+                        token_response = await response.json()
+                        return token_response.get("access_token")
+        except Exception as e:
+            logger.error(f"Error getting auth token: {e}")
+        return None
+
     async def create_user(self, user_id: str, full_name: str, username: str = ""):
         url = f"{self.base_url}/auth/token"
         token_data = {"max_id": user_id, "full_name": full_name, "username": username or ""}
@@ -252,3 +267,57 @@ class APIClient:
         except Exception as e:
             logger.error(f"Error rejecting join request: {e}")
         return {"status": "error", "message": "Failed to reject"}
+
+    async def mark_notifications_read(self, user_id: str, full_name: str):
+        """Пометить все уведомления как прочитанные"""
+        token = await self._get_auth_token(user_id, full_name)
+        if not token:
+            return None
+
+        url = f"{self.base_url}/notifications/mark_all_read"
+        headers = {"Authorization": f"Bearer {token}"}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.put(url, headers=headers) as response:
+                    if response.status == 200:
+                        return await response.json()
+        except Exception as e:
+            logger.error(f"Error marking notifications as read: {e}")
+        return None
+
+    async def get_project_details(self, project_hash: str, user_id: str, full_name: str):
+        """Получить детальную информацию о проекте"""
+        token = await self._get_auth_token(user_id, full_name)
+        if not token:
+            return None
+
+        url = f"{self.base_url}/projects/{project_hash}"
+        headers = {"Authorization": f"Bearer {token}"}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        return await response.json()
+        except Exception as e:
+            logger.error(f"Error getting project details: {e}")
+        return None
+
+    async def get_user_dashboard(self, user_id: str, full_name: str):
+        """Получить данные дашборда пользователя"""
+        token = await self._get_auth_token(user_id, full_name)
+        if not token:
+            return None
+
+        url = f"{self.base_url}/dashboard/"
+        headers = {"Authorization": f"Bearer {token}"}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        return await response.json()
+        except Exception as e:
+            logger.error(f"Error getting user dashboard: {e}")
+        return None

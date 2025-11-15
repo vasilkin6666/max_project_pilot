@@ -10,6 +10,8 @@ let currentUser = null;
 let currentMemberToUpdate = null;
 let currentMemberToRemove = null;
 let userSettings = {};
+let currentView = 'dashboardView';
+let projectTeams = new Map();
 
 // Константы ролей проекта
 const ProjectRole = {
@@ -525,18 +527,23 @@ class App {
         return null;
     }
 
-    static async showInviteMemberModal() {
-        if (!currentProject) {
-            this.showError('Выберите проект для приглашения участников');
-            return;
-        }
-
+    static async showInviteMemberModal(projectHash = null) {
         try {
-            // Получаем инвайт-ссылку
-            const response = await ApiService.regenerateInvite(currentProject.hash);
-            const inviteLink = response.invite_url || `https://max.ru/t44_hakaton_bot?start=${currentProject.hash}`;
+            let targetProject = projectHash ? await ApiService.getProject(projectHash) : currentProject;
 
-            // Создаем модальное окно
+            if (!targetProject) {
+                // Показываем выбор проекта
+                await this.showProjectSelectionModal();
+                return;
+            }
+
+            const projectData = targetProject.project || targetProject;
+            const response = await ApiService.regenerateInvite(projectData.hash);
+            const inviteLink = response.invite_url || `https://max.ru/t44_hakaton_bot?start=${projectData.hash}`;
+
+            // Генерируем QR код
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(inviteLink)}`;
+
             const modalHtml = `
                 <div id="inviteMemberModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
                     <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
@@ -550,8 +557,13 @@ class App {
                         </div>
                         <div class="p-6">
                             <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Проект</label>
+                                <input type="text" value="${this.escapeHtml(projectData.title)}" readonly
+                                       class="premium-input w-full rounded-xl focus-premium bg-gray-50 dark:bg-gray-800">
+                            </div>
+                            <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ссылка для приглашения</label>
-                                <div class="flex space-x-2">
+                                <div class="flex space-x-2 mb-3">
                                     <input type="text" id="inviteLinkInput" readonly
                                            value="${inviteLink}"
                                            class="premium-input flex-1 rounded-xl focus-premium bg-gray-50 dark:bg-gray-800">
@@ -561,9 +573,14 @@ class App {
                                     </button>
                                 </div>
                             </div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">
-                                Отправьте эту ссылку пользователю, чтобы он мог присоединиться к проекту.
-                            </p>
+                            <div class="text-center">
+                                <div class="qr-code mb-3">
+                                    <img src="${qrCodeUrl}" alt="QR Code" class="w-full h-full">
+                                </div>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    Отсканируйте QR-код или отправьте ссылку
+                                </p>
+                            </div>
                         </div>
                         <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
                             <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
@@ -575,12 +592,59 @@ class App {
                 </div>
             `;
 
-            // Добавляем модальное окно в DOM
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         } catch (error) {
-            console.error('Error generating invite link:', error);
-            this.showError('Ошибка создания ссылки приглашения: ' + error.message);
+            console.error('Error generating invite:', error);
+            this.showError('Ошибка создания приглашения: ' + error.message);
         }
+    }
+
+    // Модальное окно выбора проекта
+    static async showProjectSelectionModal() {
+        try {
+            const response = await ApiService.getProjects();
+            const projects = response.projects || [];
+
+            const modalHtml = `
+                <div id="projectSelectionModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Выберите проект</h3>
+                        </div>
+                        <div class="p-6 max-h-96 overflow-y-auto">
+                            <div class="space-y-2">
+                                ${projects.map(project => {
+                                    const projectData = project.project || project;
+                                    return `
+                                        <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 cursor-pointer"
+                                             onclick="App.selectProjectForInvite('${projectData.hash}')">
+                                            <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(projectData.title)}</div>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">${this.escapeHtml(projectData.description || 'Без описания')}</div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('projectSelectionModal')">
+                                Отмена
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } catch (error) {
+            console.error('Error loading projects:', error);
+            this.showError('Ошибка загрузки проектов: ' + error.message);
+        }
+    }
+
+    static async selectProjectForInvite(projectHash) {
+        this.hideModal('projectSelectionModal');
+        await this.showInviteMemberModal(projectHash);
     }
 
     static copyInviteLink() {
@@ -2064,63 +2128,57 @@ static async resetSettings() {
         }
 
         container.innerHTML = projects.map(project => {
-            // ИСПРАВЛЕНО: Правильное получение данных проекта и статистики
             const projectData = project.project || project;
-            // Получаем статистику из разных возможных источников
             const stats = project.stats || projectData.stats || {};
-            // ИСПРАВЛЕНО: Правильные названия полей статистики
-            const membersCount = stats.members_count || stats.membersCount || 0;
-            const tasksCount = stats.tasks_count || stats.tasksCount || 0;
-            const doneTasks = stats.tasks_done || stats.done_tasks || stats.doneTasks || 0;
-            const inProgressTasks = stats.tasks_in_progress || stats.in_progress_tasks || stats.inProgressTasks || 0;
-            const todoTasks = stats.tasks_todo || stats.todo_tasks || stats.todoTasks || 0;
-
-            const progress = tasksCount > 0 ? (doneTasks / tasksCount) * 100 : 0;
-
-            let badgeClass = 'bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200';
-            let badgeText = 'Публичный';
-
-            if (projectData.is_private) {
-                badgeClass = projectData.requires_approval ?
-                    'bg-warning-100 dark:bg-warning-900 text-warning-800 dark:text-warning-200' :
-                    'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
-                badgeText = projectData.requires_approval ? 'Одобрение' : 'Приватный';
-            }
 
             return `
-                <div class="p-5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm transition-all cursor-pointer premium-card" onclick="App.openProject('${projectData.hash}')">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center space-x-3">
+                <div class="project-with-team premium-card p-5 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-3 cursor-pointer" onclick="App.openProject('${projectData.hash}')">
+                        <div class="flex items-center space-x-3 flex-1">
                             <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
                                 <i class="fas fa-folder text-primary-600 dark:text-primary-400"></i>
                             </div>
-                            <div>
+                            <div class="flex-1">
                                 <h3 class="font-bold text-gray-900 dark:text-gray-100">${this.escapeHtml(projectData.title)}</h3>
                                 <div class="flex items-center mt-1 space-x-2">
-                                    <span class="px-2 py-1 ${badgeClass} text-xs font-medium rounded-full">${badgeText}</span>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">${Math.round(progress)}% завершено</span>
+                                    <span class="px-2 py-1 ${this.getProjectBadgeClass(projectData)} text-xs font-medium rounded-full">${this.getProjectBadgeText(projectData)}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">${Math.round(this.getProjectProgress(stats))}% завершено</span>
                                 </div>
                             </div>
                         </div>
-                        <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors">
+                        <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors project-menu-btn"
+                                onclick="event.stopPropagation(); App.showProjectMenu('${projectData.hash}', this)">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                     </div>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">${this.escapeHtml(projectData.description || 'Без описания')}</p>
-                    <div class="flex items-center justify-between">
+
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 cursor-pointer" onclick="App.openProject('${projectData.hash}')">${this.escapeHtml(projectData.description || 'Без описания')}</p>
+
+                    <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                            <span><i class="fas fa-users mr-1"></i> ${membersCount} участников</span>
-                            <span><i class="fas fa-tasks mr-1"></i> ${tasksCount} задач</span>
+                            <span><i class="fas fa-users mr-1"></i> ${stats.members_count || 0} участников</span>
+                            <span><i class="fas fa-tasks mr-1"></i> ${stats.tasks_count || 0} задач</span>
                         </div>
-                        <div class="flex -space-x-2">
-                            <!-- Аватары участников будут добавлены здесь -->
-                        </div>
+                        <button class="text-sm text-primary-600 dark:text-primary-400 hover:underline team-toggle-btn"
+                                onclick="event.stopPropagation(); App.toggleTeamVisibility('${projectData.hash}')">
+                            <i class="fas fa-chevron-down mr-1"></i> Команда
+                        </button>
+                    </div>
+
+                    <div class="team-list" id="team-${projectData.hash}">
+                        <!-- Команда будет загружена здесь -->
                     </div>
                 </div>
             `;
         }).join('');
-    }
 
+        // Загружаем команды для всех проектов
+        projects.forEach(project => {
+            const projectData = project.project || project;
+            this.loadProjectTeam(projectData.hash);
+        });
+    }
+    
     static renderSidebarProjects(projects) {
         const container = document.getElementById('sidebarProjectsList');
         if (!projects || projects.length === 0) {
@@ -2186,30 +2244,31 @@ static async resetSettings() {
         `).join('');
     }
 
-    static updateStats(projects, recentTasks) {
-        // ИСПРАВЛЕНО: Правильный подсчет статистики
-        document.getElementById('projectsCount').textContent = projects.length;
-        const totalTasks = projects.reduce((sum, project) => {
-            const projectData = project.project || project;
-            const stats = project.stats || projectData.stats || {};
-            return sum + (stats.tasks_count || stats.tasksCount || 0);
-        }, 0);
-        document.getElementById('tasksCount').textContent = totalTasks;
-        document.getElementById('recentTasksCount').textContent = recentTasks ? recentTasks.length : 0;
+    static async updateStats(projects, recentTasks) {
+        try {
+            // Получаем все задачи пользователя для точного подсчета
+            const userTasksResponse = await ApiService.getUserTasks();
+            const allUserTasks = userTasksResponse.tasks || [];
 
-        const completed = projects.reduce((sum, project) => {
-            const projectData = project.project || project;
-            const stats = project.stats || projectData.stats || {};
-            return sum + (stats.tasks_done || stats.done_tasks || stats.doneTasks || 0);
-        }, 0);
-        document.getElementById('completedTasksCount').textContent = completed;
+            // Считаем только основные задачи (без родительских)
+            const mainTasks = allUserTasks.filter(task => !task.parent_task_id);
 
-        // Обновляем прогресс-бары
-        const totalProgress = projects.length > 0 ? (completed / totalTasks) * 100 : 0;
-        document.getElementById('projectsProgress').style.width = `${Math.min(100, (projects.length / 10) * 100)}%`;
-        document.getElementById('tasksProgress').style.width = `${Math.min(100, (totalTasks / 50) * 100)}%`;
-        document.getElementById('recentTasksProgress').style.width = `${Math.min(100, (recentTasks.length / 10) * 100)}%`;
-        document.getElementById('completedTasksProgress').style.width = `${Math.min(100, totalProgress)}%`;
+            document.getElementById('projectsCount').textContent = projects.length;
+            document.getElementById('tasksCount').textContent = mainTasks.length;
+            document.getElementById('recentTasksCount').textContent = recentTasks ? recentTasks.length : 0;
+
+            const completed = mainTasks.filter(task => task.status === 'done').length;
+            document.getElementById('completedTasksCount').textContent = completed;
+
+            // Обновляем прогресс-бары
+            const totalProgress = mainTasks.length > 0 ? (completed / mainTasks.length) * 100 : 0;
+            document.getElementById('projectsProgress').style.width = `${Math.min(100, (projects.length / 10) * 100)}%`;
+            document.getElementById('tasksProgress').style.width = `${Math.min(100, (mainTasks.length / 50) * 100)}%`;
+            document.getElementById('recentTasksProgress').style.width = `${Math.min(100, (recentTasks.length / 10) * 100)}%`;
+            document.getElementById('completedTasksProgress').style.width = `${Math.min(100, totalProgress)}%`;
+        } catch (error) {
+            console.error('Error updating stats:', error);
+        }
     }
 
     static async loadNotifications() {
@@ -2301,13 +2360,68 @@ static async resetSettings() {
 
     static showView(viewId) {
         // Скрываем все вью
-        document.getElementById('dashboardView').classList.add('hidden');
-        document.getElementById('projectView').classList.add('hidden');
-        document.getElementById('taskView').classList.add('hidden');
-        document.getElementById('myTasksView').classList.add('hidden');
+        const views = ['dashboardView', 'projectView', 'taskView', 'myTasksView', 'calendarView', 'reportsView', 'teamView', 'searchView'];
+        views.forEach(view => {
+            const element = document.getElementById(view);
+            if (element) {
+                element.classList.add('hidden');
+            }
+        });
 
         // Показываем нужную вью
-        document.getElementById(viewId).classList.remove('hidden');
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+            targetView.classList.remove('hidden');
+            currentView = viewId;
+
+            // Обновляем активное состояние в навигации
+            this.updateActiveNav();
+
+            // Добавляем отступ для нижней навигации
+            targetView.classList.add('fixed-bottom-nav');
+        } else {
+            console.error('View not found:', viewId);
+            this.showError('Элемент не найден: ' + viewId);
+        }
+    }
+
+    // Обновляем активную навигацию
+    static updateActiveNav() {
+        // Обновляем нижнюю навигацию
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active', 'text-primary-600', 'dark:text-primary-400');
+            item.classList.add('text-gray-500', 'dark:text-gray-400');
+        });
+
+        const activeNavItem = document.querySelector(`.nav-item[data-view="${currentView}"]`);
+        if (activeNavItem) {
+            activeNavItem.classList.add('active', 'text-primary-600', 'dark:text-primary-400');
+            activeNavItem.classList.remove('text-gray-500', 'dark:text-gray-400');
+        }
+
+        // Обновляем роль пользователя в зависимости от контекста
+        this.updateUserRole();
+    }
+
+    static updateUserRole() {
+        const roleElement = document.getElementById('userRole');
+        if (!roleElement) return;
+
+        if (currentProject && currentProject.members) {
+            // Находим текущего пользователя в участниках проекта
+            const userMember = currentProject.members.find(member =>
+                (member.user && member.user.id === currentUser?.id) ||
+                member.user_id === currentUser?.id
+            );
+
+            if (userMember) {
+                roleElement.textContent = this.getRoleText(userMember.role);
+                return;
+            }
+        }
+
+        // Роль по умолчанию
+        roleElement.textContent = 'Владелец';
     }
 
     static showDashboard() {
@@ -2830,10 +2944,57 @@ static async resetSettings() {
                 await this.loadTaskAssignees(currentProject.hash);
             }
 
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('taskDueDate').value = today;
+
             this.showModal('createTaskModal');
         } catch (error) {
-            console.error('Error loading projects for task creation:', error);
-            this.showError('Ошибка загрузки данных: ' + error.message);
+            console.error('Error loading create task modal:', error);
+            this.showError('Ошибка загрузки формы: ' + error.message);
+        }
+    }
+
+    static async loadProjectManagement(projectHash) {
+        try {
+            const [membersResponse, joinRequestsResponse] = await Promise.all([
+                ApiService.getProjectMembers(projectHash),
+                ApiService.getProjectJoinRequests(projectHash)
+            ]);
+
+            const members = membersResponse.members || [];
+            const joinRequests = joinRequestsResponse.requests || [];
+
+            // Сохраняем данные для использования в UI
+            currentProject.members = members;
+            currentProject.joinRequests = joinRequests;
+
+            this.renderProjectManagementUI(members, joinRequests);
+        } catch (error) {
+            console.error('Error loading project management data:', error);
+        }
+    }
+
+    static renderProjectManagementUI(members, joinRequests) {
+        // Добавляем кнопки управления в проектное view
+        const projectHeader = document.querySelector('#projectView .mb-8');
+        if (projectHeader) {
+            const managementHtml = `
+                <div class="flex space-x-2 mt-4">
+                    <button class="btn-premium bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-medium"
+                            onclick="App.showProjectMembersModal()">
+                        <i class="fas fa-users mr-2"></i>Участники
+                    </button>
+                    <button class="btn-premium bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-medium"
+                            onclick="App.showJoinRequestsModal()">
+                        <i class="fas fa-user-clock mr-2"></i>Заявки (${joinRequests.length})
+                    </button>
+                    <button class="btn-premium bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-medium"
+                            onclick="App.showDeleteProjectModal()">
+                        <i class="fas fa-trash mr-2"></i>Удалить
+                    </button>
+                </div>
+            `;
+            projectHeader.insertAdjacentHTML('beforeend', managementHtml);
         }
     }
 

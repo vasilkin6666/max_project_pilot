@@ -386,31 +386,51 @@
                     <div id="myTasksView" class="hidden animate-fade-in">
                         <!-- My tasks will be loaded here -->
                     </div>
+                    <!-- Добавить после существующих view в main -->
+                    <!-- Calendar View -->
+                    <div id="calendarView" class="hidden animate-fade-in">
+                        <!-- Calendar content will be loaded here -->
+                    </div>
+
+                    <!-- Reports View -->
+                    <div id="reportsView" class="hidden animate-fade-in">
+                        <!-- Reports content will be loaded here -->
+                    </div>
+
+                    <!-- Team View -->
+                    <div id="teamView" class="hidden animate-fade-in">
+                        <!-- Team content will be loaded here -->
+                    </div>
+
+                    <!-- Search View -->
+                    <div id="searchView" class="hidden animate-fade-in">
+                        <!-- Search results will be loaded here -->
+                    </div>
                 </div>
             </main>
         </div>
 
         <!-- Bottom Navigation (Mobile) -->
         <nav class="lg:hidden fixed bottom-0 left-0 right-0 glass-intense border-t border-white/20 dark:border-gray-800/50 flex justify-around py-3 z-40 backdrop-blur-lg">
-            <a href="#" class="flex flex-col items-center text-primary-600 dark:text-primary-400" onclick="App.showDashboard()">
+            <a href="#" class="flex flex-col items-center text-primary-600 dark:text-primary-400 nav-item" data-view="dashboardView" onclick="App.showDashboard()">
                 <i class="fas fa-home text-xl"></i>
                 <span class="text-xs mt-1">Главная</span>
             </a>
-            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400" onclick="App.showMyTasks()">
+            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400 nav-item" data-view="myTasksView" onclick="App.showMyTasks()">
                 <i class="fas fa-tasks text-xl"></i>
                 <span class="text-xs mt-1">Задачи</span>
             </a>
-            <button class="flex flex-col items-center text-gray-500 dark:text-gray-400" onclick="App.showCreateProjectModal()">
+            <button class="flex flex-col items-center text-gray-500 dark:text-gray-400" onclick="App.showCreateModal()">
                 <div class="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white -mt-6 shadow-lg">
                     <i class="fas fa-plus text-xl"></i>
                 </div>
                 <span class="text-xs mt-1">Создать</span>
             </button>
-            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400" onclick="App.showCalendar()">
+            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400 nav-item" data-view="calendarView" onclick="App.showCalendar()">
                 <i class="fas fa-calendar-alt text-xl"></i>
                 <span class="text-xs mt-1">Календарь</span>
             </a>
-            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400" onclick="App.showProfileModal()">
+            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400 nav-item" data-view="profileView" onclick="App.showProfileModal()">
                 <i class="fas fa-user text-xl"></i>
                 <span class="text-xs mt-1">Профиль</span>
             </a>

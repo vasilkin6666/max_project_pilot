@@ -164,17 +164,17 @@ tailwind.config = {
     --success: #22c55e;
     --warning: #f59e0b;
     --danger: #ef4444;
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
-    --gray-950: #030712;
+    --gray-50: #fafafa;
+    --gray-100: #f4f4f5;
+    --gray-200: #e4e4e7;
+    --gray-300: #d4d4d8;
+    --gray-400: #a1a1aa;
+    --gray-500: #71717a;
+    --gray-600: #52525b;
+    --gray-700: #3f3f46;
+    --gray-800: #27272a;
+    --gray-900: #18181b;
+    --gray-950: #09090b;
 }
 
 * {
@@ -645,4 +645,91 @@ input:checked + .toggle-slider:before {
     .no-print {
         display: none !important;
     }
+}
+
+/* Исправляем скос текста */
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* Улучшаем светлую тему */
+.light body {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: var(--gray-900);
+}
+
+.light .premium-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.light .glass-intense {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+/* Фиксируем нижнюю панель навигации */
+.fixed-bottom-nav {
+    padding-bottom: 80px; /* Высота навигационной панели */
+}
+
+/* Стили для активного элемента навигации */
+.nav-item.active {
+    color: var(--primary);
+}
+
+.nav-item.active .text-gray-500 {
+    color: var(--primary);
+}
+
+/* Убираем упоминания почты */
+.email-hidden {
+    display: none !important;
+}
+
+/* Исправляем отображение текста в профиле */
+.profile-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+/* Стили для QR кода */
+.qr-code {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+/* Стили для проектов с командами */
+.project-with-team {
+    margin-bottom: 1rem;
+}
+
+.team-list {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.team-list.expanded {
+    max-height: 500px;
+}
+
+.team-member {
+    padding: 0.5rem 1rem;
+    border-left: 2px solid var(--primary);
+    margin: 0.25rem 0;
+    background: var(--gray-50);
+}
+
+.dark .team-member {
+    background: var(--gray-800);
 }
