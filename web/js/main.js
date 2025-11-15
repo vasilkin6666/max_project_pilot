@@ -69,20 +69,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Service Worker регистрация для PWA
-if ('serviceWorker' in navigator) {
-    try {
-        navigator.serviceWorker.register('/sw.js', {
-            scope: '/'
-        }).then(function(registration) {
-            console.log('ServiceWorker registration successful with scope:', registration.scope);
-        }).catch(function(error) {
-            console.log('SW registration failed: ', error);
-        });
-    } catch (error) {
-        console.log('SW registration error: ', error);
-    }
-}
 
 // Обработчик клика по заставке
 document.getElementById('loading')?.addEventListener('click', function() {
