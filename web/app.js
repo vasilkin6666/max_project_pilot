@@ -3,6 +3,12 @@ const CONFIG = {
     API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
 };
 
+const FALLBACK_DATA = {
+    projects: [],
+    tasks: [],
+    notifications: []
+};
+
 // Глобальные переменные
 let currentProject = null;
 let currentTask = null;
@@ -217,34 +223,61 @@ class AuthManager {
 
 // API сервис
 class ApiService {
-    static async request(endpoint, options = {}) {
-        const token = AuthManager.getToken();
-        const url = `${CONFIG.API_BASE_URL}${endpoint}`;
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers
-        };
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-        console.log(`API Request: ${options.method || 'GET'} ${url}`);
-        try {
-            const response = await fetch(url, {
-                ...options,
-                headers
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-            const data = await response.json();
-            console.log(`API Response:`, data);
-            return data;
-        } catch (error) {
-            console.error('API request failed:', error);
-            throw error;
-        }
-    }
+  static async request(endpoint, options = {}) {
+      const token = AuthManager.getToken();
+      const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+      const headers = {
+          'Content-Type': 'application/json',
+          ...options.headers
+      };
+      if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      console.log(`API Request: ${options.method || 'GET'} ${url}`);
+
+      try {
+          const response = await fetch(url, {
+              ...options,
+              headers
+          });
+
+          if (!response.ok) {
+              let errorText = 'Unknown error';
+              try {
+                  errorText = await response.text();
+              } catch (e) {
+                  console.error('Error reading error response:', e);
+              }
+
+              const error = new Error(`HTTP ${response.status}: ${errorText}`);
+              error.status = response.status;
+              throw error;
+          }
+
+          const data = await response.json();
+          console.log(`API Response:`, data);
+          return data;
+      } catch (error) {
+          console.error('API request failed:', error);
+
+          // Показываем пользователю понятное сообщение об ошибке
+          if (error.status === 401) {
+              this.showError('Ошибка авторизации. Пожалуйста, войдите снова.');
+              this.handleLogout();
+          } else if (error.status === 403) {
+              this.showError('Доступ запрещен.');
+          } else if (error.status === 404) {
+              this.showError('Ресурс не найден.');
+          } else if (error.status >= 500) {
+              this.showError('Ошибка сервера. Пожалуйста, попробуйте позже.');
+          } else {
+              this.showError('Ошибка сети: ' + error.message);
+          }
+
+          throw error;
+      }
+  }
 
     static async get(endpoint) {
         return this.request(endpoint, { method: 'GET' });
@@ -358,11 +391,16 @@ class ApiService {
     }
 
     static async getUserTasks(filters = {}) {
-        const params = new URLSearchParams();
-        if (filters.status) params.append('status', filters.status);
-        if (filters.project_hash) params.append('project_hash', filters.project_hash);
-        const query = params.toString();
-        return this.get(`/tasks/${query ? `?${query}` : ''}`);
+        try {
+            const params = new URLSearchParams();
+            if (filters.status) params.append('status', filters.status);
+            if (filters.project_hash) params.append('project_hash', filters.project_hash);
+            const query = params.toString();
+            return await this.get(`/tasks/${query ? `?${query}` : ''}`);
+        } catch (error) {
+            console.error('Failed to load user tasks, using fallback data');
+            return { tasks: FALLBACK_DATA.tasks };
+        }
     }
 
     static async createTask(taskData) {
@@ -472,7 +510,12 @@ class ApiService {
 
     // Dashboard endpoints
     static async getDashboard() {
-        return this.get('/dashboard/');
+        try {
+            return await this.get('/dashboard/');
+        } catch (error) {
+            console.error('Failed to load dashboard, using fallback data');
+            return FALLBACK_DATA;
+        }
     }
 
     // Health endpoints
@@ -502,7 +545,7 @@ class App {
 
           // Обновляем информацию о пользователе в интерфейсе
           this.updateUserInfo();
-          this.updateUserAvatar(); // Добавляем эту строку
+          this.updateUserAvatar();
 
           // Загружаем данные
           await this.loadData();
@@ -514,6 +557,14 @@ class App {
       } catch (error) {
           console.error('App initialization failed:', error);
           this.showError('Ошибка инициализации приложения: ' + error.message);
+
+          // Показываем приложение даже при ошибке
+          setTimeout(() => {
+              const splashScreen = document.getElementById('splashScreen');
+              const appContainer = document.getElementById('appContainer');
+              if (splashScreen) splashScreen.style.display = 'none';
+              if (appContainer) appContainer.classList.remove('hidden');
+          }, 2000);
       }
   }
 
@@ -2099,19 +2150,31 @@ static async resetSettings() {
             this.applyUserSettings(settings);
 
             // Сохраняем все задачи для фильтрации
-            const userTasksResponse = await ApiService.getUserTasks();
-            allTasks = userTasksResponse.tasks || [];
+            try {
+                const userTasksResponse = await ApiService.getUserTasks();
+                allTasks = userTasksResponse.tasks || [];
+            } catch (taskError) {
+                console.error('Error loading tasks:', taskError);
+                allTasks = [];
+            }
 
             this.renderProjects(projects);
             this.updateStats(projects, recentTasks);
             this.renderRecentTasks(recentTasks);
             this.renderSidebarProjects(projects);
-            this.loadNotifications();
+
+            // Загружаем уведомления с обработкой ошибок
+            try {
+                await this.loadNotifications();
+            } catch (notifError) {
+                console.error('Error loading notifications:', notifError);
+            }
 
             console.log('Data loaded successfully');
         } catch (error) {
             console.error('Error loading data:', error);
             this.showError('Ошибка загрузки данных: ' + error.message);
+            throw error; // Пробрасываем ошибку дальше
         }
     }
 
@@ -2366,21 +2429,18 @@ static async resetSettings() {
             UIUtils.toggleSidebar();
         });
 
-        // Обработчики для кнопок фильтрации и сортировки
-        const filterBtn = document.querySelector('button:contains("Фильтр")');
-        const sortBtn = document.querySelector('button:contains("Сортировка")');
-
-        if (filterBtn) {
-            filterBtn.addEventListener('click', () => {
-                this.showFilterModal();
+        // Поиск
+        const searchInput = document.querySelector('input[placeholder*="Поиск"]');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.handleSearch(searchInput.value);
+                }
             });
         }
 
-        if (sortBtn) {
-            sortBtn.addEventListener('click', () => {
-                this.showSortModal();
-            });
-        }
+        // Обработчики для кнопок фильтрации и сортировки (исправленный вариант)
+        this.setupFilterAndSortButtons();
 
         // Закрываем меню проекта при нажатии Escape
         document.addEventListener('keydown', (e) => {
@@ -2390,6 +2450,26 @@ static async resetSettings() {
 
                 const createMenu = document.getElementById('createMenu');
                 if (createMenu) createMenu.remove();
+            }
+        });
+    }
+
+    // Новый метод для настройки кнопок фильтрации и сортировки
+    static setupFilterAndSortButtons() {
+        // Используем делегирование событий для динамически создаваемых кнопок
+        document.addEventListener('click', (e) => {
+            // Проверяем, была ли нажата кнопка фильтра
+            if (e.target.closest('[data-action="filter"]') ||
+                (e.target.closest('button') && e.target.closest('button').textContent.includes('Фильтр'))) {
+                e.preventDefault();
+                this.showFilterModal();
+            }
+
+            // Проверяем, была ли нажата кнопка сортировки
+            if (e.target.closest('[data-action="sort"]') ||
+                (e.target.closest('button') && e.target.closest('button').textContent.includes('Сортировка'))) {
+                e.preventDefault();
+                this.showSortModal();
             }
         });
     }
@@ -3916,7 +3996,7 @@ static async resetSettings() {
         currentFilters[key] = '';
         this.applyCurrentFilters();
     }
-    
+
     static renderMyTasksList(tasks) {
         if (!tasks || tasks.length === 0) {
             return `
