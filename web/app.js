@@ -21,6 +21,22 @@ const ProjectRole = {
     GUEST: 'guest'
 };
 
+let currentFilters = {
+    status: '',
+    priority: '',
+    project: '',
+    assignee: '',
+    dateRange: ''
+};
+
+let currentSort = {
+    field: 'created_at',
+    direction: 'desc'
+};
+
+let allTasks = [];
+let allProjects = [];
+
 // Утилиты для UI
 class UIUtils {
     // Показать уведомление
@@ -2073,7 +2089,6 @@ static async resetSettings() {
     static async loadData() {
         try {
             console.log('Loading data...');
-            // Загружаем дашборд с проектами
             const dashboardData = await ApiService.getDashboard();
             const projects = dashboardData.projects || [];
             const settings = dashboardData.settings || {};
@@ -2082,6 +2097,10 @@ static async resetSettings() {
             // Сохраняем настройки
             userSettings = settings;
             this.applyUserSettings(settings);
+
+            // Сохраняем все задачи для фильтрации
+            const userTasksResponse = await ApiService.getUserTasks();
+            allTasks = userTasksResponse.tasks || [];
 
             this.renderProjects(projects);
             this.updateStats(projects, recentTasks);
@@ -2178,7 +2197,7 @@ static async resetSettings() {
             this.loadProjectTeam(projectData.hash);
         });
     }
-    
+
     static renderSidebarProjects(projects) {
         const container = document.getElementById('sidebarProjectsList');
         if (!projects || projects.length === 0) {
@@ -2347,15 +2366,32 @@ static async resetSettings() {
             UIUtils.toggleSidebar();
         });
 
-        // Поиск
-        const searchInput = document.querySelector('input[placeholder*="Поиск"]');
-        if (searchInput) {
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.handleSearch(searchInput.value);
-                }
+        // Обработчики для кнопок фильтрации и сортировки
+        const filterBtn = document.querySelector('button:contains("Фильтр")');
+        const sortBtn = document.querySelector('button:contains("Сортировка")');
+
+        if (filterBtn) {
+            filterBtn.addEventListener('click', () => {
+                this.showFilterModal();
             });
         }
+
+        if (sortBtn) {
+            sortBtn.addEventListener('click', () => {
+                this.showSortModal();
+            });
+        }
+
+        // Закрываем меню проекта при нажатии Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const menus = document.querySelectorAll('[id^="projectMenu-"]');
+                menus.forEach(menu => menu.remove());
+
+                const createMenu = document.getElementById('createMenu');
+                if (createMenu) createMenu.remove();
+            }
+        });
     }
 
     static showView(viewId) {
@@ -2382,6 +2418,529 @@ static async resetSettings() {
         } else {
             console.error('View not found:', viewId);
             this.showError('Элемент не найден: ' + viewId);
+        }
+    }
+
+    static showFilterModal() {
+        const modalHtml = `
+            <div id="filterModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Фильтрация задач</h3>
+                            <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('filterModal')">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <form id="filterForm" class="space-y-6">
+                            <!-- Статус -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Статус</label>
+                                <select id="filterStatus" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="">Все статусы</option>
+                                    <option value="todo">К выполнению</option>
+                                    <option value="in_progress">В работе</option>
+                                    <option value="done">Выполнено</option>
+                                </select>
+                            </div>
+
+                            <!-- Приоритет -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Приоритет</label>
+                                <select id="filterPriority" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="">Все приоритеты</option>
+                                    <option value="low">Низкий</option>
+                                    <option value="medium">Средний</option>
+                                    <option value="high">Высокий</option>
+                                    <option value="urgent">Срочный</option>
+                                </select>
+                            </div>
+
+                            <!-- Проект -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Проект</label>
+                                <select id="filterProject" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="">Все проекты</option>
+                                </select>
+                            </div>
+
+                            <!-- Исполнитель -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Исполнитель</label>
+                                <select id="filterAssignee" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="">Все исполнители</option>
+                                    <option value="me">Назначенные на меня</option>
+                                    <option value="unassigned">Не назначенные</option>
+                                </select>
+                            </div>
+
+                            <!-- Срок выполнения -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Срок выполнения</label>
+                                <select id="filterDateRange" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="">Все сроки</option>
+                                    <option value="today">Сегодня</option>
+                                    <option value="tomorrow">Завтра</option>
+                                    <option value="week">На этой неделе</option>
+                                    <option value="overdue">Просроченные</option>
+                                    <option value="no_date">Без срока</option>
+                                </select>
+                            </div>
+
+                            <!-- Только мои задачи -->
+                            <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                <div class="flex items-center">
+                                    <i class="fas fa-user text-gray-500 mr-3"></i>
+                                    <span>Только мои задачи</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="filterMyTasks">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                        <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.resetFilters()">
+                            Сбросить
+                        </button>
+                        <div class="flex space-x-3">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('filterModal')">
+                                Отмена
+                            </button>
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.applyFilters()">
+                                Применить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        this.loadFilterOptions();
+        this.setCurrentFilterValues();
+    }
+
+    static showSortModal() {
+        const modalHtml = `
+            <div id="sortModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Сортировка задач</h3>
+                            <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('sortModal')">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <form id="sortForm" class="space-y-6">
+                            <!-- Поле сортировки -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Сортировать по</label>
+                                <select id="sortField" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="created_at">Дате создания</option>
+                                    <option value="due_date">Сроку выполнения</option>
+                                    <option value="title">Названию</option>
+                                    <option value="priority">Приоритету</option>
+                                    <option value="status">Статусу</option>
+                                </select>
+                            </div>
+
+                            <!-- Направление сортировки -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Направление</label>
+                                <select id="sortDirection" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="desc">По убыванию</option>
+                                    <option value="asc">По возрастанию</option>
+                                </select>
+                            </div>
+
+                            <!-- Группировка -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Группировать по</label>
+                                <select id="sortGroupBy" class="premium-input w-full rounded-xl focus-premium">
+                                    <option value="none">Нет группировки</option>
+                                    <option value="project">Проекту</option>
+                                    <option value="status">Статусу</option>
+                                    <option value="priority">Приоритету</option>
+                                    <option value="assignee">Исполнителю</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                        <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.resetSorting()">
+                            Сбросить
+                        </button>
+                        <div class="flex space-x-3">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('sortModal')">
+                                Отмена
+                            </button>
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.applySorting()">
+                                Применить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        this.setCurrentSortValues();
+    }
+
+    static async loadFilterOptions() {
+        try {
+            // Загружаем проекты для фильтра
+            const projectsResponse = await ApiService.getProjects();
+            const projects = projectsResponse.projects || [];
+            allProjects = projects;
+
+            const projectSelect = document.getElementById('filterProject');
+            projectSelect.innerHTML = '<option value="">Все проекты</option>';
+
+            projects.forEach(project => {
+                const projectData = project.project || project;
+                const option = document.createElement('option');
+                option.value = projectData.hash;
+                option.textContent = projectData.title;
+                projectSelect.appendChild(option);
+            });
+
+            // Устанавливаем текущие значения фильтров
+            this.setCurrentFilterValues();
+        } catch (error) {
+            console.error('Error loading filter options:', error);
+        }
+    }
+
+    static setCurrentFilterValues() {
+        document.getElementById('filterStatus').value = currentFilters.status;
+        document.getElementById('filterPriority').value = currentFilters.priority;
+        document.getElementById('filterProject').value = currentFilters.project;
+        document.getElementById('filterAssignee').value = currentFilters.assignee;
+        document.getElementById('filterDateRange').value = currentFilters.dateRange;
+
+        const myTasksCheckbox = document.getElementById('filterMyTasks');
+        if (myTasksCheckbox) {
+            myTasksCheckbox.checked = currentFilters.assignee === 'me';
+        }
+    }
+
+    static setCurrentSortValues() {
+        document.getElementById('sortField').value = currentSort.field;
+        document.getElementById('sortDirection').value = currentSort.direction;
+
+        const groupBySelect = document.getElementById('sortGroupBy');
+        if (groupBySelect) {
+            groupBySelect.value = currentSort.groupBy || 'none';
+        }
+    }
+
+    static async applyFilters() {
+        // Сохраняем фильтры
+        currentFilters = {
+            status: document.getElementById('filterStatus').value,
+            priority: document.getElementById('filterPriority').value,
+            project: document.getElementById('filterProject').value,
+            assignee: document.getElementById('filterAssignee').value,
+            dateRange: document.getElementById('filterDateRange').value
+        };
+
+        // Если выбрано "только мои задачи", устанавливаем соответствующий фильтр
+        const myTasksCheckbox = document.getElementById('filterMyTasks');
+        if (myTasksCheckbox && myTasksCheckbox.checked) {
+            currentFilters.assignee = 'me';
+        }
+
+        this.hideModal('filterModal');
+
+        // Применяем фильтры в зависимости от текущего view
+        await this.applyCurrentFilters();
+
+        this.showSuccess('Фильтры применены');
+    }
+
+    static async applySorting() {
+        // Сохраняем настройки сортировки
+        currentSort = {
+            field: document.getElementById('sortField').value,
+            direction: document.getElementById('sortDirection').value,
+            groupBy: document.getElementById('sortGroupBy').value
+        };
+
+        this.hideModal('sortModal');
+
+        // Применяем сортировку
+        await this.applyCurrentSorting();
+
+        this.showSuccess('Сортировка применена');
+    }
+
+    static resetFilters() {
+        currentFilters = {
+            status: '',
+            priority: '',
+            project: '',
+            assignee: '',
+            dateRange: ''
+        };
+
+        this.setCurrentFilterValues();
+        this.applyFilters();
+    }
+
+    static resetSorting() {
+        currentSort = {
+            field: 'created_at',
+            direction: 'desc',
+            groupBy: 'none'
+        };
+
+        this.setCurrentSortValues();
+        this.applySorting();
+    }
+
+    static async applyCurrentFilters() {
+        try {
+            // Получаем задачи в зависимости от текущего view
+            let tasks = [];
+
+            if (currentView === 'myTasksView' || currentView === 'dashboardView') {
+                const response = await ApiService.getUserTasks();
+                tasks = response.tasks || [];
+            } else if (currentView === 'projectView' && currentProject) {
+                const response = await ApiService.getTasks(currentProject.hash);
+                tasks = response.tasks || [];
+            } else if (currentView === 'calendarView') {
+                const response = await ApiService.getUserTasks();
+                tasks = response.tasks || [];
+            }
+
+            // Применяем фильтры
+            const filteredTasks = this.filterTasks(tasks);
+
+            // Обновляем отображение
+            this.updateTasksDisplay(filteredTasks);
+
+        } catch (error) {
+            console.error('Error applying filters:', error);
+            this.showError('Ошибка применения фильтров: ' + error.message);
+        }
+    }
+
+    static filterTasks(tasks) {
+        return tasks.filter(task => {
+            // Фильтр по статусу
+            if (currentFilters.status && task.status !== currentFilters.status) {
+                return false;
+            }
+
+            // Фильтр по приоритету
+            if (currentFilters.priority && task.priority !== currentFilters.priority) {
+                return false;
+            }
+
+            // Фильтр по проекту
+            if (currentFilters.project && task.project_hash !== currentFilters.project) {
+                return false;
+            }
+
+            // Фильтр по исполнителю
+            if (currentFilters.assignee === 'me' && (!task.assigned_to_id || task.assigned_to_id !== currentUser?.id)) {
+                return false;
+            }
+            if (currentFilters.assignee === 'unassigned' && task.assigned_to_id) {
+                return false;
+            }
+
+            // Фильтр по сроку выполнения
+            if (currentFilters.dateRange) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                const weekEnd = new Date(today);
+                weekEnd.setDate(weekEnd.getDate() + 7);
+
+                if (task.due_date) {
+                    const dueDate = new Date(task.due_date);
+                    dueDate.setHours(0, 0, 0, 0);
+
+                    switch (currentFilters.dateRange) {
+                        case 'today':
+                            if (dueDate.getTime() !== today.getTime()) return false;
+                            break;
+                        case 'tomorrow':
+                            if (dueDate.getTime() !== tomorrow.getTime()) return false;
+                            break;
+                        case 'week':
+                            if (dueDate < today || dueDate > weekEnd) return false;
+                            break;
+                        case 'overdue':
+                            if (dueDate >= today) return false;
+                            break;
+                        case 'no_date':
+                            if (task.due_date) return false;
+                            break;
+                    }
+                } else if (currentFilters.dateRange !== 'no_date') {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    static async applyCurrentSorting() {
+        try {
+            // Получаем текущие задачи
+            let tasks = [];
+
+            if (currentView === 'myTasksView' || currentView === 'dashboardView') {
+                const response = await ApiService.getUserTasks();
+                tasks = response.tasks || [];
+            } else if (currentView === 'projectView' && currentProject) {
+                const response = await ApiService.getTasks(currentProject.hash);
+                tasks = response.tasks || [];
+            }
+
+            // Применяем фильтры перед сортировкой
+            const filteredTasks = this.filterTasks(tasks);
+
+            // Сортируем задачи
+            const sortedTasks = this.sortTasks(filteredTasks);
+
+            // Обновляем отображение
+            this.updateTasksDisplay(sortedTasks);
+
+        } catch (error) {
+            console.error('Error applying sorting:', error);
+            this.showError('Ошибка применения сортировки: ' + error.message);
+        }
+    }
+
+    static sortTasks(tasks) {
+        return tasks.sort((a, b) => {
+            let aValue, bValue;
+
+            switch (currentSort.field) {
+                case 'title':
+                    aValue = a.title.toLowerCase();
+                    bValue = b.title.toLowerCase();
+                    break;
+                case 'due_date':
+                    aValue = a.due_date ? new Date(a.due_date) : new Date(0);
+                    bValue = b.due_date ? new Date(b.due_date) : new Date(0);
+                    break;
+                case 'priority':
+                    const priorityOrder = { 'urgent': 4, 'high': 3, 'medium': 2, 'low': 1 };
+                    aValue = priorityOrder[a.priority] || 0;
+                    bValue = priorityOrder[b.priority] || 0;
+                    break;
+                case 'status':
+                    const statusOrder = { 'todo': 1, 'in_progress': 2, 'done': 3 };
+                    aValue = statusOrder[a.status] || 0;
+                    bValue = statusOrder[b.status] || 0;
+                    break;
+                case 'created_at':
+                default:
+                    aValue = new Date(a.created_at);
+                    bValue = new Date(b.created_at);
+                    break;
+            }
+
+            if (currentSort.direction === 'asc') {
+                return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+            } else {
+                return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+            }
+        });
+    }
+
+    static updateTasksDisplay(tasks) {
+        // Обновляем отображение в зависимости от текущего view
+        switch (currentView) {
+            case 'myTasksView':
+                this.updateMyTasksView(tasks);
+                break;
+            case 'dashboardView':
+                this.updateDashboardTasks(tasks);
+                break;
+            case 'projectView':
+                this.updateProjectTasks(tasks);
+                break;
+            case 'calendarView':
+                this.updateCalendarView(tasks);
+                break;
+        }
+    }
+
+    static updateMyTasksView(tasks) {
+        const container = document.getElementById('myTasksList');
+        if (container) {
+            container.innerHTML = this.renderMyTasksList(tasks);
+        }
+    }
+
+    static updateDashboardTasks(tasks) {
+        const container = document.getElementById('recentTasksList');
+        if (container) {
+            container.innerHTML = this.renderRecentTasks(tasks.slice(0, 5)); // Показываем только 5 последних
+        }
+    }
+
+    static updateProjectTasks(tasks) {
+        const container = document.getElementById('projectTasksList');
+        if (container) {
+            container.innerHTML = tasks.map(task => `
+                <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer" onclick="App.openTask(${task.id})">
+                    <div class="custom-checkbox ${task.status === 'done' ? 'checked' : ''} mr-4"></div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(task.title)}</div>
+                        <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                            <span class="flex items-center"><span class="priority-indicator priority-${task.priority}"></span> ${this.getPriorityText(task.priority)}</span>
+                            <span><i class="fas fa-calendar-alt mr-1"></i> ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Без срока'}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    static updateCalendarView(tasks) {
+        // Группируем задачи по датам для календаря
+        const tasksByDate = {};
+        tasks.forEach(task => {
+            const dateKey = task.due_date ? task.due_date.split('T')[0] : 'без срока';
+            if (!tasksByDate[dateKey]) {
+                tasksByDate[dateKey] = [];
+            }
+            tasksByDate[dateKey].push(task);
+        });
+
+        const calendarView = document.getElementById('calendarView');
+        if (calendarView) {
+            const calendarContent = calendarView.querySelector('.premium-card .p-6');
+            if (calendarContent) {
+                calendarContent.innerHTML = this.renderCalendarTasks(tasksByDate);
+            }
         }
     }
 
@@ -3345,6 +3904,363 @@ static async resetSettings() {
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // Вспомогательные методы для проектов
+    static getProjectBadgeClass(projectData) {
+        if (projectData.is_private) {
+            return projectData.requires_approval ?
+                'bg-warning-100 dark:bg-warning-900 text-warning-800 dark:text-warning-200' :
+                'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+        }
+        return 'bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200';
+    }
+
+    static getProjectBadgeText(projectData) {
+        if (projectData.is_private) {
+            return projectData.requires_approval ? 'Одобрение' : 'Приватный';
+        }
+        return 'Публичный';
+    }
+
+    static getProjectProgress(stats) {
+        const tasksCount = stats.tasks_count || stats.tasksCount || 0;
+        const doneTasks = stats.tasks_done || stats.done_tasks || stats.doneTasks || 0;
+        return tasksCount > 0 ? (doneTasks / tasksCount) * 100 : 0;
+    }
+
+    static async loadProjectTeam(projectHash) {
+        try {
+            const response = await ApiService.getProjectMembers(projectHash);
+            const members = response.members || [];
+            const container = document.getElementById(`team-${projectHash}`);
+
+            if (!container) return;
+
+            if (members.length === 0) {
+                container.innerHTML = '<div class="text-center py-2 text-sm text-gray-500 dark:text-gray-400">Участников нет</div>';
+                return;
+            }
+
+            container.innerHTML = members.map(member => {
+                const memberData = member.user || member;
+                const displayName = (memberData.full_name && memberData.full_name.trim() !== '')
+                    ? memberData.full_name
+                    : `Участник #${member.user_id || memberData.id}`;
+
+                return `
+                    <div class="team-member flex items-center space-x-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                        <div class="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                            ${displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(displayName)}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${this.getRoleText(member.role)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error(`Error loading team for project ${projectHash}:`, error);
+            const container = document.getElementById(`team-${projectHash}`);
+            if (container) {
+                container.innerHTML = '<div class="text-center py-2 text-sm text-red-500">Ошибка загрузки команды</div>';
+            }
+        }
+    }
+
+    static async showProjectMenu(projectHash, element) {
+        try {
+            const projectResponse = await ApiService.getProject(projectHash);
+            const project = projectResponse.project || projectResponse;
+            const isOwner = project.role === 'owner' || project.current_user_role === 'owner';
+
+            // Создаем меню
+            const menuHtml = `
+                <div id="projectMenu-${projectHash}" class="absolute right-0 mt-2 w-48 glass-intense rounded-xl shadow-large border border-white/20 dark:border-gray-700/50 py-2 z-50">
+                    <a href="#" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.openProject('${projectHash}')">
+                        <i class="fas fa-eye mr-3 text-gray-500"></i>
+                        <span>Открыть</span>
+                    </a>
+                    ${isOwner ? `
+                        <a href="#" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showEditProjectModal('${projectHash}')">
+                            <i class="fas fa-edit mr-3 text-gray-500"></i>
+                            <span>Редактировать</span>
+                        </a>
+                        <a href="#" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showInviteMemberModal('${projectHash}')">
+                            <i class="fas fa-user-plus mr-3 text-gray-500"></i>
+                            <span>Пригласить</span>
+                        </a>
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                        <a href="#" class="flex items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" onclick="App.showDeleteProjectModal('${projectHash}')">
+                            <i class="fas fa-trash mr-3"></i>
+                            <span>Удалить</span>
+                        </a>
+                    ` : ''}
+                </div>
+            `;
+
+            // Удаляем существующее меню
+            const existingMenu = document.getElementById(`projectMenu-${projectHash}`);
+            if (existingMenu) {
+                existingMenu.remove();
+            }
+
+            // Добавляем меню в DOM
+            element.parentElement.style.position = 'relative';
+            element.parentElement.insertAdjacentHTML('beforeend', menuHtml);
+
+            // Закрываем меню при клике вне его
+            const closeMenu = (e) => {
+                if (!e.target.closest(`#projectMenu-${projectHash}`) && !e.target.closest('.project-menu-btn')) {
+                    const menu = document.getElementById(`projectMenu-${projectHash}`);
+                    if (menu) menu.remove();
+                    document.removeEventListener('click', closeMenu);
+                }
+            };
+
+            setTimeout(() => {
+                document.addEventListener('click', closeMenu);
+            }, 100);
+
+        } catch (error) {
+            console.error('Error showing project menu:', error);
+            this.showError('Ошибка загрузки меню проекта: ' + error.message);
+        }
+    }
+
+    static toggleTeamVisibility(projectHash) {
+        const teamList = document.getElementById(`team-${projectHash}`);
+        const toggleBtn = document.querySelector(`[onclick="App.toggleTeamVisibility('${projectHash}')"]`);
+
+        if (!teamList || !toggleBtn) return;
+
+        if (teamList.classList.contains('expanded')) {
+            teamList.classList.remove('expanded');
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-down mr-1"></i> Команда';
+        } else {
+            teamList.classList.add('expanded');
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-up mr-1"></i> Команда';
+        }
+    }
+
+    // Модальное окно редактирования проекта
+    static async showEditProjectModal(projectHash) {
+        try {
+            const projectResponse = await ApiService.getProject(projectHash);
+            const project = projectResponse.project || projectResponse;
+
+            const modalHtml = `
+                <div id="editProjectModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Редактировать проект</h3>
+                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('editProjectModal')">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <form id="editProjectForm">
+                                <div class="mb-5">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="editProjectTitle">Название проекта</label>
+                                    <input type="text" id="editProjectTitle" value="${this.escapeHtml(project.title)}"
+                                           class="premium-input w-full rounded-xl focus-premium" required>
+                                </div>
+                                <div class="mb-5">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="editProjectDescription">Описание</label>
+                                    <textarea id="editProjectDescription" class="premium-input w-full rounded-xl focus-premium" rows="3">${this.escapeHtml(project.description || '')}</textarea>
+                                </div>
+                                <div class="mb-5">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Настройки проекта</label>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-lock text-gray-500 mr-3"></i>
+                                                <span>Приватный проект</span>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="editProjectIsPrivate" ${project.is_private ? 'checked' : ''}>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-user-check text-gray-500 mr-3"></i>
+                                                <span>Требуется одобрение</span>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="editProjectRequiresApproval" ${project.requires_approval ? 'checked' : ''}>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('editProjectModal')">
+                                Отмена
+                            </button>
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.handleEditProject('${projectHash}')">
+                                Сохранить изменения
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } catch (error) {
+            console.error('Error loading edit project modal:', error);
+            this.showError('Ошибка загрузки формы редактирования: ' + error.message);
+        }
+    }
+
+    static async handleEditProject(projectHash) {
+        const title = document.getElementById('editProjectTitle').value.trim();
+        const description = document.getElementById('editProjectDescription').value.trim();
+        const isPrivate = document.getElementById('editProjectIsPrivate').checked;
+        const requiresApproval = document.getElementById('editProjectRequiresApproval').checked;
+
+        if (!title) {
+            this.showError('Введите название проекта');
+            return;
+        }
+
+        try {
+            await ApiService.updateProject(projectHash, {
+                title,
+                description,
+                is_private: isPrivate,
+                requires_approval: requiresApproval
+            });
+
+            this.hideModal('editProjectModal');
+
+            // Перезагружаем данные
+            await this.loadData();
+
+            this.showSuccess('Проект обновлен успешно!');
+        } catch (error) {
+            console.error('Error updating project:', error);
+            this.showError('Ошибка обновления проекта: ' + error.message);
+        }
+    }
+
+    // Модальное окно удаления проекта
+    static async showDeleteProjectModal(projectHash) {
+        try {
+            const projectResponse = await ApiService.getProject(projectHash);
+            const project = projectResponse.project || projectResponse;
+
+            const modalHtml = `
+                <div id="deleteProjectModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Удаление проекта</h3>
+                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('deleteProjectModal')">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-center">
+                                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center text-danger-600 dark:text-danger-400">
+                                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Вы уверены?</h3>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">
+                                    Проект "<span class="font-medium">${this.escapeHtml(project.title)}</span>" будет удален безвозвратно.
+                                </p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    Все задачи и данные проекта будут потеряны.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('deleteProjectModal')">
+                                Отмена
+                            </button>
+                            <button class="btn-premium bg-danger-500 hover:bg-danger-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.handleDeleteProject('${projectHash}')">
+                                Удалить проект
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } catch (error) {
+            console.error('Error loading delete project modal:', error);
+            this.showError('Ошибка загрузки формы удаления: ' + error.message);
+        }
+    }
+
+    static async handleDeleteProject(projectHash) {
+        try {
+            await ApiService.deleteProject(projectHash);
+
+            this.hideModal('deleteProjectModal');
+
+            // Возвращаемся к дашборду
+            this.showDashboard();
+
+            this.showSuccess('Проект удален успешно!');
+        } catch (error) {
+            console.error('Error deleting project:', error);
+            this.showError('Ошибка удаления проекта: ' + error.message);
+        }
+    }
+
+    // Функция для показа модального окна создания (общая)
+    static showCreateModal() {
+        // Показываем меню создания
+        const menuHtml = `
+            <div id="createMenu" class="fixed bottom-20 right-4 glass-intense rounded-xl shadow-large border border-white/20 dark:border-gray-700/50 py-2 z-50">
+                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showCreateProjectModal()">
+                    <i class="fas fa-folder-plus text-primary-500 mr-3"></i>
+                    <span>Новый проект</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showCreateTaskModal()">
+                    <i class="fas fa-tasks text-primary-500 mr-3"></i>
+                    <span>Новая задача</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showInviteMemberModal()">
+                    <i class="fas fa-user-plus text-primary-500 mr-3"></i>
+                    <span>Пригласить участника</span>
+                </a>
+            </div>
+        `;
+
+        // Удаляем существующее меню
+        const existingMenu = document.getElementById('createMenu');
+        if (existingMenu) {
+            existingMenu.remove();
+            return;
+        }
+
+        document.body.insertAdjacentHTML('beforeend', menuHtml);
+
+        // Закрываем меню при клике вне его
+        const closeMenu = (e) => {
+            if (!e.target.closest('#createMenu') && !e.target.closest('.fixed.bottom-0 .flex button:nth-child(3)')) {
+                const menu = document.getElementById('createMenu');
+                if (menu) menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 100);
+    }
+
 }
 
 // Инициализация приложения после загрузки DOM

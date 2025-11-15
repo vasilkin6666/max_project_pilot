@@ -733,3 +733,61 @@ body {
 .dark .team-member {
     background: var(--gray-800);
 }
+
+/* Стили для команд проектов */
+.team-list {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.team-list.expanded {
+    max-height: 500px;
+}
+
+.team-member {
+    padding: 0.5rem;
+    border-left: 2px solid var(--primary);
+    margin: 0.25rem 0;
+    background: var(--gray-50);
+    border-radius: 0.5rem;
+}
+
+.dark .team-member {
+    background: var(--gray-800);
+}
+
+.project-menu-btn {
+    position: relative;
+}
+
+.team-toggle-btn {
+    transition: color 0.2s ease;
+}
+
+.team-toggle-btn:hover {
+    color: var(--primary);
+}
+
+/* Стили для меню проектов */
+.project-with-team {
+    position: relative;
+}
+
+/* Улучшаем отображение кнопок фильтрации */
+.btn-premium:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Исправляем отступы для мобильной навигации */
+.fixed-bottom-nav {
+    padding-bottom: 5rem;
+}
+
+@media (max-width: 768px) {
+    .fixed-bottom-nav {
+        padding-bottom: 6rem;
+    }
+}
