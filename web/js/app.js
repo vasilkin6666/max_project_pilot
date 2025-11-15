@@ -229,17 +229,41 @@ class App {
     // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
 
     static setupEventListeners() {
-        this.removeEventListeners();
+      this.removeEventListeners();
 
-        // Основная навигация
-        this.addEventListener('dashboardBtn', 'click', () => this.showDashboard());
-        this.addEventListener('myTasksBtn', 'click', () => this.showMyTasks());
-        this.addEventListener('settingsBtn', 'click', () => this.showSettings());
+      // Основная навигация
+      this.addEventListener('dashboardBtn', 'click', () => this.showDashboard());
+      this.addEventListener('myTasksBtn', 'click', () => this.showMyTasks());
+      this.addEventListener('settingsBtn', 'click', () => this.showSettings());
 
-        // Действия на главной
-        this.addEventListener('notificationsBtn', 'click', () => this.showEnhancedNotifications());
-        this.addEventListener('searchProjectsBtn', 'click', () => this.showSearchProjects());
-        this.addEventListener('createProjectBtn', 'click', () => this.showCreateProjectModal());
+      // Действия на главной
+      this.addEventListener('notificationsBtn', 'click', () => this.showEnhancedNotifications());
+      this.addEventListener('searchProjectsBtn', 'click', () => this.showSearchProjects());
+      this.addEventListener('createProjectBtn', 'click', () => this.showCreateProjectModal());
+
+      // Мобильная навигация
+      const mobileNavItems = document.querySelectorAll('.mobile-nav-item[data-view]');
+      mobileNavItems.forEach(item => {
+          item.addEventListener('click', (e) => {
+              e.preventDefault();
+              const view = item.dataset.view;
+              if (view) {
+                  this.showView(view);
+                  // Загружаем данные для представления
+                  switch(view) {
+                      case 'dashboardView':
+                          this.loadData();
+                          break;
+                      case 'myTasksView':
+                          this.loadEnhancedMyTasks();
+                          break;
+                      case 'settingsView':
+                          this.loadUserSettings();
+                          break;
+                  }
+              }
+          });
+      });
 
         // Проекты
         this.addEventListener('manageMembersBtn', 'click', () => this.showProjectMembersManagement());
@@ -419,11 +443,6 @@ class App {
 
     // ==================== ГЛАВНАЯ СТРАНИЦА ====================
 
-    static showDashboard() {
-        this.showView('dashboardView');
-        this.loadData();
-    }
-
     static renderEnhancedProjects(projects) {
         const container = document.getElementById('projectsList');
         if (!projects || projects.length === 0) {
@@ -527,49 +546,11 @@ class App {
 
     // ==================== УВЕДОМЛЕНИЯ ====================
 
-    static async showEnhancedNotifications() {
-        try {
-            const response = await ApiService.getNotifications();
-            const notifications = response.notifications || [];
-            const container = document.getElementById('notificationsList');
-
-            if (!notifications || notifications.length === 0) {
-                container.innerHTML = '<p>Уведомлений нет</p>';
-                return;
-            }
-
-            let html = `
-            <div class="notifications-actions">
-                <h3>Уведомления</h3>
-                <button class="btn btn-primary" onclick="App.markAllNotificationsRead()">
-                    Прочитать всё
-                </button>
-            </div>`;
-
-            html += notifications.map(notification => {
-                const isRead = notification.is_read || false;
-                return `
-                <div class="notification-item ${isRead ? 'notification-read' : 'notification-unread'}">
-                    <div class="notification-content">
-                        ${this.escapeHtml(notification.content)}
-                    </div>
-                    <div class="notification-meta">
-                        <span class="notification-date">
-                            ${new Date(notification.created_at).toLocaleString()}
-                        </span>
-                        ${!isRead ? '<span class="notification-badge">Новое</span>' : ''}
-                    </div>
-                </div>`;
-            }).join('');
-
-            container.innerHTML = html;
-            this.showView('notificationsView');
-        } catch (error) {
-            console.error('Error loading notifications:', error);
-            this.showError('Ошибка загрузки уведомлений');
-        }
+    static showEnhancedNotifications() {
+        // Вместо показа отдельного представления, показываем модальное окно
+        this.showModal('notificationsModal');
+        this.loadNotifications();
     }
-
     static async markAllNotificationsRead() {
         try {
             await ApiService.markAllNotificationsRead();
@@ -584,8 +565,8 @@ class App {
     // ==================== ПОИСК ПРОЕКТОВ ====================
 
     static showSearchProjects() {
-        this.showView('searchProjectsView');
-        document.getElementById('searchProjectsInput').value = '';
+        // Вместо показа отдельного представления, показываем модальное окно
+        this.showModal('searchProjectsModal');
         this.loadRecentPublicProjects();
     }
 
@@ -1136,10 +1117,55 @@ class App {
     // ==================== СУЩЕСТВУЮЩИЕ МЕТОДЫ (сохранены для совместимости) ====================
 
     static showView(viewId) {
+        // Скрываем все представления
         document.querySelectorAll('.view').forEach(view => {
             view.style.display = 'none';
+            view.classList.remove('active');
         });
-        document.getElementById(viewId).style.display = 'block';
+
+        // Показываем нужное представление
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+            targetView.style.display = 'block';
+            targetView.classList.add('active');
+        }
+
+        // Обновляем активные кнопки навигации
+        this.updateNavigation(viewId);
+    }
+
+    static updateNavigation(activeView) {
+        // Обновляем десктопную навигацию
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.classList.remove('active');
+        });
+
+        switch(activeView) {
+            case 'dashboardView':
+                document.getElementById('dashboardBtn')?.classList.add('active');
+                break;
+            case 'myTasksView':
+                document.getElementById('myTasksBtn')?.classList.add('active');
+                break;
+            case 'settingsView':
+                document.getElementById('settingsBtn')?.classList.add('active');
+                break;
+        }
+
+        // Обновляем мобильную навигацию
+        const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+        mobileNavItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.view === activeView) {
+                item.classList.add('active');
+            }
+        });
+    }
+
+    static showDashboard() {
+        this.showView('dashboardView');
+        this.loadData();
     }
 
     static showMyTasks() {
@@ -1151,6 +1177,8 @@ class App {
         this.showView('settingsView');
         this.loadUserSettings();
     }
+
+
 
     static getStatusText(status) {
         const statusMap = {
@@ -1213,13 +1241,14 @@ class App {
     }
 
     static backToPreviousView() {
-        const currentView = document.querySelector('.view[style*="display: block"]');
-        if (currentView && currentView.id !== 'dashboardView') {
-            currentView.style.animation = 'slideOutRight 0.3s ease-out';
-            setTimeout(() => {
-                this.showDashboard();
-                document.getElementById('dashboardView').style.animation = 'slideInLeft 0.3s ease-out';
-            }, 150);
+        // Если мы в проекте или задаче, возвращаемся к проекту или главной
+        if (currentProject && document.getElementById('projectView').style.display === 'block') {
+            this.showDashboard();
+        } else if (currentTask && document.getElementById('taskView').style.display === 'block') {
+            this.backToProject();
+        } else {
+            // Иначе показываем главную
+            this.showDashboard();
         }
     }
 
@@ -2948,26 +2977,13 @@ function attachStartButtonListener() {
     }
 }
 
-// Обновленная инициализация
 document.addEventListener('DOMContentLoaded', async () => {
-    // Инициализируем искры
+    // Инициализация искр
     initSparkAnimation();
-    // Инициализируем анимацию прогресса
-    initLoadingProgress();
-    // Инициализируем приложение
-    App.init();
 
-    // Добавьте эти обработчики
-    App.addEventListener('themeSelect', 'change', () => App.saveUserSettings());
-    App.addEventListener('notificationsEnabled', 'change', () => App.saveUserSettings());
-    App.addEventListener('userFullName', 'change', () => App.saveUserSettings());
+    // Инициализация приложения
+    await App.init();
 
-    // Загрузка настроек при открытии вкладки
-    const originalShowView = App.showView;
-    App.showView = function(viewId) {
-        originalShowView.call(this, viewId);
-        if (viewId === 'settingsView') {
-            App.loadUserSettings();
-        }
-    };
+    // Показываем главную страницу по умолчанию
+    App.showDashboard();
 });

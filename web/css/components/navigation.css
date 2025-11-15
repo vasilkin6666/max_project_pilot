@@ -293,3 +293,12 @@
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+/* Скрываем все представления по умолчанию */
+.view {
+    display: none;
+}
+
+/* Показываем активное представление */
+.view.active {
+    display: block;
+}

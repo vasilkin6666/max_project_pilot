@@ -99,7 +99,7 @@
         <main class="main-content">
             <div class="container">
                 <!-- Главная -->
-                <div id="dashboardView" class="view">
+                <div id="dashboardView" class="view active">
                     <div class="dashboard-header">
                         <h2 class="dashboard-title">Главная</h2>
                         <div class="dashboard-actions">
@@ -112,14 +112,13 @@
                             <button class="btn btn-primary" id="createProjectBtn">Создать проект</button>
                         </div>
                     </div>
-
                     <div id="projectsList" class="projects-grid">
                         <!-- Project cards will be loaded here -->
                     </div>
                 </div>
 
                 <!-- Мои задачи -->
-                <div id="myTasksView" class="view" style="display: none;">
+                <div id="myTasksView" class="view">
                     <div class="my-tasks-header">
                         <h2>Мои задачи</h2>
                         <div class="task-filters">
@@ -167,11 +166,10 @@
                 </div>
 
                 <!-- Настройки -->
-                <div id="settingsView" class="view" style="display: none;">
+                <div id="settingsView" class="view">
                     <div class="settings-header">
                         <h2>Настройки</h2>
                     </div>
-
                     <div class="settings-sections">
                         <!-- Профиль -->
                         <div class="settings-section">
@@ -274,12 +272,12 @@
                 </div>
 
                 <!-- Project View -->
-                <div id="projectView" class="view" style="display: none;">
+                <div id="projectView" class="view">
                     <div class="project-header">
                         <div class="project-info">
                             <h2 id="projectTitleHeader">Название проекта</h2>
                             <p id="projectDescriptionText">Описание проекта</p>
-                            <div id="projectHashInfo" class="project-hash-info" style="display: none;">
+                            <div id="projectHashInfo" class="project-hash-info">
                                 Хэш проекта: <span id="projectHashValue"></span>
                             </div>
                         </div>
@@ -291,9 +289,9 @@
                         </div>
                         <div class="project-actions">
                             <button class="btn btn-secondary" id="manageMembersBtn">Участники</button>
-                            <button class="btn btn-warning" id="joinRequestsBtn" style="display: none;">Заявки</button>
-                            <button class="btn btn-primary" id="editProjectBtn" style="display: none;">Редактировать</button>
-                            <button class="btn btn-danger" id="deleteProjectBtn" style="display: none;">Удалить</button>
+                            <button class="btn btn-warning" id="joinRequestsBtn">Заявки</button>
+                            <button class="btn btn-primary" id="editProjectBtn">Редактировать</button>
+                            <button class="btn btn-danger" id="deleteProjectBtn">Удалить</button>
                             <button class="btn btn-outline" onclick="App.backToDashboard()">Назад</button>
                         </div>
                     </div>
@@ -311,7 +309,7 @@
                 </div>
 
                 <!-- Task View -->
-                <div id="taskView" class="view" style="display: none;">
+                <div id="taskView" class="view">
                     <div class="task-header">
                         <div class="task-info">
                             <h2 id="taskTitleHeader">Название задачи</h2>
@@ -323,8 +321,8 @@
                                 <option value="in_progress">В работе</option>
                                 <option value="done">Выполнено</option>
                             </select>
-                            <button class="btn btn-primary" id="editTaskBtn" style="display: none;">Редактировать</button>
-                            <button class="btn btn-danger" id="deleteTaskBtn" style="display: none;">Удалить</button>
+                            <button class="btn btn-primary" id="editTaskBtn">Редактировать</button>
+                            <button class="btn btn-danger" id="deleteTaskBtn">Удалить</button>
                             <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
                         </div>
                     </div>
@@ -346,7 +344,7 @@
                         <div id="subtasksSection">
                             <div class="section-header">
                                 <h4>Подзадачи</h4>
-                                <button class="btn btn-sm btn-outline" id="createSubtaskBtn" style="display: none;">Создать подзадачу</button>
+                                <button class="btn btn-sm btn-outline" id="createSubtaskBtn">Создать подзадачу</button>
                             </div>
                             <div id="subtasksList">
                                 <!-- Subtasks will be loaded here -->
@@ -362,57 +360,6 @@
                                 <button class="btn btn-primary" id="addCommentBtn">Добавить</button>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Notifications View -->
-                <div id="notificationsView" class="view" style="display: none;">
-                    <div class="notifications-header">
-                        <h2>Уведомления</h2>
-                        <div class="notifications-actions">
-                            <button class="btn btn-outline" onclick="App.showDashboard()">Назад</button>
-                            <button class="btn btn-primary" onclick="App.markAllNotificationsRead()">Прочитать всё</button>
-                        </div>
-                    </div>
-                    <div id="notificationsList">
-                        <!-- Notifications will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Search Projects View -->
-                <div id="searchProjectsView" class="view" style="display: none;">
-                    <div class="search-projects-header">
-                        <h2>Поиск проектов</h2>
-                        <button class="btn btn-outline" onclick="App.showDashboard()">Назад</button>
-                    </div>
-                    <div class="search-projects-form">
-                        <input type="text" id="searchProjectsInput" placeholder="Поиск по названию или хэшу проекта...">
-                        <button class="btn btn-primary" id="searchProjectsSubmitBtn">Искать</button>
-                    </div>
-                    <div id="searchResultsList">
-                        <!-- Search results will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Project Members Management View -->
-                <div id="projectMembersView" class="view" style="display: none;">
-                    <div class="members-management-header">
-                        <h2>Участники проекта</h2>
-                        <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
-                    </div>
-                    <div id="projectMembersManagementList">
-                        <!-- Members management will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Join Requests View -->
-                <div id="joinRequestsView" class="view" style="display: none;">
-                    <div class="join-requests-header">
-                        <h2>Заявки на вступление</h2>
-                        <button class="btn btn-outline" onclick="App.backToProject()">Назад к проекту</button>
-                    </div>
-                    <div id="joinRequestsList">
-                        <!-- Join requests will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -545,6 +492,83 @@
         </div>
     </div>
 
+    <!-- Notifications Modal -->
+    <div id="notificationsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Уведомления</h3>
+                <button class="modal-close" onclick="App.hideModal('notificationsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="notificationsList">
+                    <!-- Notifications will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="App.markAllNotificationsRead()">Прочитать всё</button>
+                <button class="btn btn-outline" onclick="App.hideModal('notificationsModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Projects Modal -->
+    <div id="searchProjectsModal" class="modal-overlay">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Поиск проектов</h3>
+                <button class="modal-close" onclick="App.hideModal('searchProjectsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-projects-form">
+                    <input type="text" id="searchProjectsInput" placeholder="Поиск по названию или хэшу проекта...">
+                    <button class="btn btn-primary" id="searchProjectsSubmitBtn">Искать</button>
+                </div>
+                <div id="searchResultsList">
+                    <!-- Search results will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('searchProjectsModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Members Management Modal -->
+    <div id="projectMembersModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Участники проекта</h3>
+                <button class="modal-close" onclick="App.hideModal('projectMembersModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="projectMembersList">
+                    <!-- Members will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('projectMembersModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Requests Modal -->
+    <div id="joinRequestsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Заявки на вступление</h3>
+                <button class="modal-close" onclick="App.hideModal('joinRequestsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="joinRequestsList">
+                    <!-- Join requests will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('joinRequestsModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Info Modal для политик и FAQ -->
     <div id="infoModal" class="modal-overlay">
         <div class="modal-content">
@@ -559,7 +583,40 @@
         </div>
     </div>
 
-    <!-- Остальные модальные окна (delete, edit и т.д.) -->
+    <!-- Delete Confirmation Modals -->
+    <div id="deleteProjectModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Удалить проект</h3>
+                <button class="modal-close" onclick="App.hideModal('deleteProjectModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить проект "<span id="deleteProjectName"></span>"? Это действие нельзя отменить.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('deleteProjectModal')">Отмена</button>
+                <button class="btn btn-danger" id="confirmDeleteProjectBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteTaskModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Удалить задачу</h3>
+                <button class="modal-close" onclick="App.hideModal('deleteTaskModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить задачу "<span id="deleteTaskName"></span>"? Это действие нельзя отменить.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal('deleteTaskModal')">Отмена</button>
+                <button class="btn btn-danger" id="confirmDeleteTaskBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Project Modal -->
     <div id="editProjectModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -599,6 +656,7 @@
         </div>
     </div>
 
+    <!-- Edit Task Modal -->
     <div id="editTaskModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -644,13 +702,21 @@
     <script src="js/app.js"></script>
     <script src="js/main.js"></script>
     <script src="js/animations.js"></script>
+
     <script>
     document.addEventListener('DOMContentLoaded', async () => {
         console.log('DOM fully loaded and parsed');
+
+        // Инициализация анимации искр
+        initSparkAnimation();
+
         try {
             console.log('Initializing App...');
             await App.init();
             console.log('App initialized successfully');
+
+            // Показываем главную страницу по умолчанию
+            App.showDashboard();
 
             if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
                 MobileApp.init();
@@ -676,9 +742,11 @@
                     loadingOverlay.style.display = 'none';
                     document.getElementById('app').style.display = 'block';
                     console.log('Splash screen hidden, app is ready');
+
                     if (typeof MobileApp !== 'undefined' && typeof MobileApp.init === 'function') {
                         MobileApp.init();
                     }
+
                     if (typeof App.showDashboard === 'function') {
                         App.showDashboard();
                     }
@@ -714,25 +782,30 @@
     function initSparkAnimation() {
         const sparkContainer = document.getElementById('sparkContainer');
         if (!sparkContainer) return;
+
         const createSpark = () => {
             const spark = document.createElement('div');
             spark.classList.add('spark');
+
             const startX = Math.random() * 100;
             const startY = Math.random() * 100;
             const endX = (Math.random() - 0.5) * 200;
             const endY = (Math.random() - 0.5) * 200;
+
             spark.style.setProperty('--end-x', `${endX}vw`);
             spark.style.setProperty('--end-y', `${endY}vh`);
             spark.style.left = `${startX}%`;
             spark.style.top = `${startY}%`;
+
             sparkContainer.appendChild(spark);
+
             setTimeout(() => {
                 spark.remove();
             }, 3000);
         };
+
         setInterval(createSpark, Math.random() * 300 + 200);
     }
-    initSparkAnimation();
     </script>
 </body>
 </html>
