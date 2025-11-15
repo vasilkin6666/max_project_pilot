@@ -469,32 +469,1484 @@ class ApiService {
 
 // Основное приложение
 class App {
-    static async init() {
+  static async init() {
+      try {
+          console.log('Initializing app...');
+
+          // Показываем заставку
+          this.showSplashScreen();
+
+          // Инициализируем тему
+          UIUtils.initTheme();
+
+          // Инициализируем аутентификацию
+          currentUser = await AuthManager.initialize();
+
+          // Обновляем информацию о пользователе в интерфейсе
+          this.updateUserInfo();
+          this.updateUserAvatar(); // Добавляем эту строку
+
+          // Загружаем данные
+          await this.loadData();
+
+          // Настраиваем обработчики событий
+          this.setupEventListeners();
+
+          console.log('App initialized successfully');
+      } catch (error) {
+          console.error('App initialization failed:', error);
+          this.showError('Ошибка инициализации приложения: ' + error.message);
+      }
+  }
+
+    static getUserPhotoUrl() {
         try {
-            console.log('Initializing app...');
+            // Пытаемся получить из MAX WebApp
+            if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user?.photo_url) {
+                return WebApp.initDataUnsafe.user.photo_url;
+            }
 
-            // Показываем заставку
-            this.showSplashScreen();
+            // Парсим из URL hash
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const webAppData = params.get('WebAppData');
 
-            // Инициализируем тему
-            UIUtils.initTheme();
-
-            // Инициализируем аутентификацию
-            currentUser = await AuthManager.initialize();
-
-            // Обновляем информацию о пользователе в интерфейсе
-            this.updateUserInfo();
-
-            // Загружаем данные
-            await this.loadData();
-
-            // Настраиваем обработчики событий
-            this.setupEventListeners();
-
-            console.log('App initialized successfully');
+            if (webAppData) {
+                const webAppParams = new URLSearchParams(webAppData);
+                const userJson = webAppParams.get('user');
+                if (userJson) {
+                    const userData = JSON.parse(decodeURIComponent(userJson));
+                    return userData.photo_url;
+                }
+            }
         } catch (error) {
-            console.error('App initialization failed:', error);
-            this.showError('Ошибка инициализации приложения: ' + error.message);
+            console.error('Error parsing user photo URL:', error);
+        }
+        return null;
+    }
+
+    static async showInviteMemberModal() {
+        if (!currentProject) {
+            this.showError('Выберите проект для приглашения участников');
+            return;
+        }
+
+        try {
+            // Получаем инвайт-ссылку
+            const response = await ApiService.regenerateInvite(currentProject.hash);
+            const inviteLink = response.invite_url || `https://max.ru/t44_hakaton_bot?start=${currentProject.hash}`;
+
+            // Создаем модальное окно
+            const modalHtml = `
+                <div id="inviteMemberModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Пригласить участника</h3>
+                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('inviteMemberModal')">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ссылка для приглашения</label>
+                                <div class="flex space-x-2">
+                                    <input type="text" id="inviteLinkInput" readonly
+                                           value="${inviteLink}"
+                                           class="premium-input flex-1 rounded-xl focus-premium bg-gray-50 dark:bg-gray-800">
+                                    <button onclick="App.copyInviteLink()"
+                                            class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                Отправьте эту ссылку пользователю, чтобы он мог присоединиться к проекту.
+                            </p>
+                        </div>
+                        <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('inviteMemberModal')">
+                                Готово
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Добавляем модальное окно в DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } catch (error) {
+            console.error('Error generating invite link:', error);
+            this.showError('Ошибка создания ссылки приглашения: ' + error.message);
+        }
+    }
+
+    static copyInviteLink() {
+        const input = document.getElementById('inviteLinkInput');
+        if (input) {
+            input.select();
+            document.execCommand('copy');
+            this.showSuccess('Ссылка скопирована в буфер обмена!');
+        }
+    }
+
+    static async showExportModal() {
+        try {
+            // Получаем данные для экспорта
+            const dashboardData = await ApiService.getDashboard();
+            const projects = dashboardData.projects || [];
+
+            const modalHtml = `
+                <div id="exportModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Экспорт данных</h3>
+                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('exportModal')">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Тип экспорта</label>
+                                    <select id="exportType" class="premium-input w-full rounded-xl focus-premium">
+                                        <option value="json">JSON</option>
+                                        <option value="csv">CSV</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Данные для экспорта</label>
+                                    <div class="space-y-2">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="exportProjects" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Проекты</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" id="exportTasks" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Задачи</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('exportModal')">
+                                Отмена
+                            </button>
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.handleExport()">
+                                Экспортировать
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } catch (error) {
+            console.error('Error loading export data:', error);
+            this.showError('Ошибка загрузки данных для экспорта: ' + error.message);
+        }
+    }
+
+    static async handleExport() {
+        try {
+            const exportType = document.getElementById('exportType').value;
+            const exportProjects = document.getElementById('exportProjects').checked;
+            const exportTasks = document.getElementById('exportTasks').checked;
+
+            const dashboardData = await ApiService.getDashboard();
+            let exportData = {};
+
+            if (exportProjects) {
+                exportData.projects = dashboardData.projects || [];
+            }
+
+            if (exportTasks) {
+                // Получаем задачи для всех проектов
+                const allTasks = [];
+                if (dashboardData.projects) {
+                    for (const project of dashboardData.projects) {
+                        const projectData = project.project || project;
+                        try {
+                            const tasksResponse = await ApiService.getTasks(projectData.hash);
+                            const tasks = tasksResponse.tasks || [];
+                            tasks.forEach(task => {
+                                task.project_title = projectData.title;
+                                allTasks.push(task);
+                            });
+                        } catch (error) {
+                            console.error(`Error loading tasks for project ${projectData.title}:`, error);
+                        }
+                    }
+                }
+                exportData.tasks = allTasks;
+            }
+
+            let content, mimeType, filename;
+
+            if (exportType === 'json') {
+                content = JSON.stringify(exportData, null, 2);
+                mimeType = 'application/json';
+                filename = `project_pilot_export_${new Date().toISOString().split('T')[0]}.json`;
+            } else {
+                // CSV экспорт
+                content = this.convertToCSV(exportData);
+                mimeType = 'text/csv';
+                filename = `project_pilot_export_${new Date().toISOString().split('T')[0]}.csv`;
+            }
+
+            // Создаем и скачиваем файл
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.hideModal('exportModal');
+            this.showSuccess('Данные успешно экспортированы!');
+
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            this.showError('Ошибка экспорта данных: ' + error.message);
+        }
+    }
+
+    static convertToCSV(data) {
+        // Простая реализация конвертации в CSV
+        let csv = '';
+
+        if (data.projects && data.projects.length > 0) {
+            csv += 'Проекты\n';
+            csv += 'Название,Описание,Участников,Задач,Выполнено,Тип\n';
+            data.projects.forEach(project => {
+                const projectData = project.project || project;
+                const stats = project.stats || projectData.stats || {};
+                csv += `"${projectData.title}","${projectData.description || ''}",${stats.members_count || 0},${stats.tasks_count || 0},${stats.tasks_done || 0},"${projectData.is_private ? 'Приватный' : 'Публичный'}"\n`;
+            });
+            csv += '\n';
+        }
+
+        if (data.tasks && data.tasks.length > 0) {
+            csv += 'Задачи\n';
+            csv += 'Проект,Название,Описание,Статус,Приоритет,Срок,Исполнитель\n';
+            data.tasks.forEach(task => {
+                csv += `"${task.project_title || ''}","${task.title}","${task.description || ''}","${this.getStatusText(task.status)}","${this.getPriorityText(task.priority)}","${task.due_date || ''}","${task.assigned_user ? task.assigned_user.full_name : ''}"\n`;
+            });
+        }
+
+        return csv;
+    }
+
+    static async showProfileModal() {
+        try {
+            const userData = await ApiService.getCurrentUser();
+            const photoUrl = this.getUserPhotoUrl();
+
+            const modalHtml = `
+                <div id="profileModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Профиль пользователя</h3>
+                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('profileModal')">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-center mb-6">
+                                <div class="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-2xl font-bold">
+                                    ${photoUrl ?
+                                        `<img src="${photoUrl}" class="w-full h-full object-cover" alt="Аватар">` :
+                                        (userData.full_name ? userData.full_name.charAt(0).toUpperCase() : 'U')
+                                    }
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">${userData.full_name || 'Пользователь'}</h3>
+                                <p class="text-gray-500 dark:text-gray-400">${userData.username || ''}</p>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Полное имя</label>
+                                    <input type="text" id="profileFullName" value="${userData.full_name || ''}"
+                                           class="premium-input w-full rounded-xl focus-premium">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                                    <input type="text" id="profileUsername" value="${userData.username || ''}"
+                                           class="premium-input w-full rounded-xl focus-premium">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID пользователя</label>
+                                    <input type="text" value="${userData.id || 'N/A'}" readonly
+                                           class="premium-input w-full rounded-xl focus-premium bg-gray-50 dark:bg-gray-800">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.hideModal('profileModal')">
+                                Отмена
+                            </button>
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                    onclick="App.handleProfileUpdate()">
+                                Сохранить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } catch (error) {
+            console.error('Error loading profile data:', error);
+            this.showError('Ошибка загрузки профиля: ' + error.message);
+        }
+    }
+
+    static async handleProfileUpdate() {
+        try {
+            const fullName = document.getElementById('profileFullName').value.trim();
+            const username = document.getElementById('profileUsername').value.trim();
+
+            await ApiService.updateCurrentUser({
+                full_name: fullName,
+                username: username
+            });
+
+            // Обновляем текущего пользователя
+            currentUser = await ApiService.getCurrentUser();
+            this.updateUserInfo();
+            this.updateUserAvatar();
+
+            this.hideModal('profileModal');
+            this.showSuccess('Профиль обновлен успешно!');
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            this.showError('Ошибка обновления профиля: ' + error.message);
+        }
+    }
+
+    static async showCalendar() {
+        try {
+            // Получаем задачи пользователя
+            const response = await ApiService.getUserTasks();
+            const tasks = response.tasks || [];
+
+            // Группируем задачи по датам
+            const tasksByDate = {};
+            tasks.forEach(task => {
+                const dateKey = task.due_date ? task.due_date.split('T')[0] : 'без срока';
+                if (!tasksByDate[dateKey]) {
+                    tasksByDate[dateKey] = [];
+                }
+                tasksByDate[dateKey].push(task);
+            });
+
+            // Создаем представление календаря
+            const calendarView = document.getElementById('calendarView');
+            if (!calendarView) {
+                this.showError('Элемент календаря не найден');
+                return;
+            }
+
+            calendarView.innerHTML = `
+                <div class="mb-8">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">Календарь задач</h1>
+                            <p class="text-gray-600 dark:text-gray-400">Задачи с установленными сроками выполнения</p>
+                        </div>
+                        <div class="mt-4 md:mt-0">
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2"
+                                    onclick="App.showCreateTaskModal()">
+                                <i class="fas fa-plus"></i>
+                                <span>Новая задача</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="premium-card rounded-2xl overflow-hidden">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Задачи по датам</h2>
+                    </div>
+                    <div class="p-6">
+                        ${this.renderCalendarTasks(tasksByDate)}
+                    </div>
+                </div>
+            `;
+
+            this.showView('calendarView');
+        } catch (error) {
+            console.error('Error loading calendar:', error);
+            this.showError('Ошибка загрузки календаря: ' + error.message);
+        }
+    }
+
+    static renderCalendarTasks(tasksByDate) {
+        const dateKeys = Object.keys(tasksByDate).sort((a, b) => {
+            if (a === 'без срока') return 1;
+            if (b === 'без срока') return -1;
+            return new Date(a) - new Date(b);
+        });
+
+        if (dateKeys.length === 0) {
+            return `
+                <div class="text-center py-8">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <i class="fas fa-calendar text-xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Нет задач с установленными сроками</h3>
+                    <p class="text-gray-600 dark:text-gray-400">Создайте задачу с указанием срока выполнения</p>
+                </div>
+            `;
+        }
+
+        return dateKeys.map(dateKey => `
+            <div class="mb-6 last:mb-0">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
+                    <i class="fas fa-calendar-day mr-2 text-primary-500"></i>
+                    ${dateKey === 'без срока' ? 'Без срока' : new Date(dateKey).toLocaleDateString('ru-RU')}
+                </h3>
+                <div class="space-y-2">
+                    ${tasksByDate[dateKey].map(task => `
+                        <div class="flex items-center p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                             onclick="App.openTask(${task.id})">
+                            <div class="custom-checkbox ${task.status === 'done' ? 'checked' : ''} mr-3"></div>
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(task.title)}</div>
+                                <div class="flex items-center mt-1 space-x-3 text-sm text-gray-500 dark:text-gray-400">
+                                    <span><i class="fas fa-project-diagram mr-1"></i> ${task.project_title || 'Проект'}</span>
+                                    <span class="flex items-center"><span class="priority-indicator priority-${task.priority}"></span> ${this.getPriorityText(task.priority)}</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-medium ${this.getStatusColor(task.status)}">${this.getStatusText(task.status)}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    static getStatusColor(status) {
+        const colors = {
+            'todo': 'text-gray-600 dark:text-gray-400',
+            'in_progress': 'text-warning-600 dark:text-warning-400',
+            'done': 'text-success-600 dark:text-success-400'
+        };
+        return colors[status] || colors.todo;
+    }
+
+    static async showReports() {
+        try {
+            const dashboardData = await ApiService.getDashboard();
+            const projects = dashboardData.projects || [];
+
+            // Собираем статистику
+            const stats = {
+                totalProjects: projects.length,
+                totalTasks: 0,
+                completedTasks: 0,
+                inProgressTasks: 0,
+                todoTasks: 0,
+                totalMembers: 0
+            };
+
+            projects.forEach(project => {
+                const projectData = project.project || project;
+                const projectStats = project.stats || projectData.stats || {};
+
+                stats.totalTasks += projectStats.tasks_count || 0;
+                stats.completedTasks += projectStats.tasks_done || 0;
+                stats.inProgressTasks += projectStats.tasks_in_progress || 0;
+                stats.todoTasks += projectStats.tasks_todo || 0;
+                stats.totalMembers += projectStats.members_count || 0;
+            });
+
+            const completionRate = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0;
+
+            const reportsView = document.getElementById('reportsView');
+            if (!reportsView) {
+                this.showError('Элемент отчетов не найден');
+                return;
+            }
+
+            reportsView.innerHTML = `
+                <div class="mb-8">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">Отчеты и аналитика</h1>
+                            <p class="text-gray-600 dark:text-gray-400">Статистика и аналитика ваших проектов</p>
+                        </div>
+                        <div class="mt-4 md:mt-0">
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2"
+                                    onclick="App.exportReports()">
+                                <i class="fas fa-file-export"></i>
+                                <span>Экспорт отчета</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Общая статистика -->
+                    <div class="premium-card rounded-2xl overflow-hidden">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Общая статистика</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="text-center p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
+                                    <div class="text-2xl font-black text-primary-600 dark:text-primary-400">${stats.totalProjects}</div>
+                                    <div class="text-sm text-primary-700 dark:text-primary-300">Проектов</div>
+                                </div>
+                                <div class="text-center p-4 bg-success-50 dark:bg-success-900/20 rounded-xl">
+                                    <div class="text-2xl font-black text-success-600 dark:text-success-400">${stats.totalTasks}</div>
+                                    <div class="text-sm text-success-700 dark:text-success-300">Всего задач</div>
+                                </div>
+                                <div class="text-center p-4 bg-warning-50 dark:bg-warning-900/20 rounded-xl">
+                                    <div class="text-2xl font-black text-warning-600 dark:text-warning-400">${stats.totalMembers}</div>
+                                    <div class="text-sm text-warning-700 dark:text-warning-300">Участников</div>
+                                </div>
+                                <div class="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                                    <div class="text-2xl font-black text-purple-600 dark:text-purple-400">${Math.round(completionRate)}%</div>
+                                    <div class="text-sm text-purple-700 dark:text-purple-300">Выполнено</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Статусы задач -->
+                    <div class="premium-card rounded-2xl overflow-hidden">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Статусы задач</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Выполнено</span>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${stats.completedTasks}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill bg-success-500" style="width: ${stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0}%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">В работе</span>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${stats.inProgressTasks}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill bg-warning-500" style="width: ${stats.totalTasks > 0 ? (stats.inProgressTasks / stats.totalTasks) * 100 : 0}%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">К выполнению</span>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${stats.todoTasks}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill bg-gray-500" style="width: ${stats.totalTasks > 0 ? (stats.todoTasks / stats.totalTasks) * 100 : 0}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Список проектов -->
+                    <div class="premium-card rounded-2xl overflow-hidden lg:col-span-2">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Статистика по проектам</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                                            <th class="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Проект</th>
+                                            <th class="text-center py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Задачи</th>
+                                            <th class="text-center py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Выполнено</th>
+                                            <th class="text-center py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Прогресс</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${projects.map(project => {
+                                            const projectData = project.project || project;
+                                            const projectStats = project.stats || projectData.stats || {};
+                                            const progress = projectStats.tasks_count > 0 ? (projectStats.tasks_done / projectStats.tasks_count) * 100 : 0;
+                                            return `
+                                                <tr class="border-b border-gray-200 dark:border-gray-700 last:border-0">
+                                                    <td class="py-3 px-4">
+                                                        <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(projectData.title)}</div>
+                                                        <div class="text-sm text-gray-500 dark:text-gray-400">${projectStats.members_count || 0} участников</div>
+                                                    </td>
+                                                    <td class="text-center py-3 px-4 text-sm text-gray-700 dark:text-gray-300">${projectStats.tasks_count || 0}</td>
+                                                    <td class="text-center py-3 px-4 text-sm text-gray-700 dark:text-gray-300">${projectStats.tasks_done || 0}</td>
+                                                    <td class="text-center py-3 px-4">
+                                                        <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${progress >= 70 ? 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200' : progress >= 30 ? 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}">
+                                                            ${Math.round(progress)}%
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            this.showView('reportsView');
+        } catch (error) {
+            console.error('Error loading reports:', error);
+            this.showError('Ошибка загрузки отчетов: ' + error.message);
+        }
+    }
+
+    static exportReports() {
+        this.showExportModal();
+    }
+
+    static async showTeam() {
+    try {
+        const dashboardData = await ApiService.getDashboard();
+        const projects = dashboardData.projects || [];
+
+        // Собираем всех участников из всех проектов
+        const allMembers = new Map();
+
+        for (const project of projects) {
+            const projectData = project.project || project;
+            try {
+                const membersResponse = await ApiService.getProjectMembers(projectData.hash);
+                const members = membersResponse.members || [];
+
+                members.forEach(member => {
+                    const memberData = member.user || member;
+                    const memberId = member.user_id || memberData.id;
+
+                    if (!allMembers.has(memberId)) {
+                        allMembers.set(memberId, {
+                            ...memberData,
+                            projects: [],
+                            roles: []
+                        });
+                    }
+
+                    const existingMember = allMembers.get(memberId);
+                    existingMember.projects.push(projectData.title);
+                    existingMember.roles.push({
+                        project: projectData.title,
+                        role: member.role
+                    });
+                });
+            } catch (error) {
+                console.error(`Error loading members for project ${projectData.title}:`, error);
+            }
+        }
+
+        const teamView = document.getElementById('teamView');
+        if (!teamView) {
+            this.showError('Элемент команды не найден');
+            return;
+        }
+
+        teamView.innerHTML = `
+            <div class="mb-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">Управление командой</h1>
+                        <p class="text-gray-600 dark:text-gray-400">Все участники ваших проектов</p>
+                    </div>
+                    <div class="mt-4 md:mt-0">
+                        <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2"
+                                onclick="App.showInviteMemberModal()">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Пригласить</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="premium-card rounded-2xl overflow-hidden">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Участники команды</h2>
+                </div>
+                <div class="p-6">
+                    ${this.renderTeamMembers(Array.from(allMembers.values()))}
+                </div>
+            </div>
+        `;
+
+        this.showView('teamView');
+    } catch (error) {
+        console.error('Error loading team:', error);
+        this.showError('Ошибка загрузки команды: ' + error.message);
+    }
+}
+
+static renderTeamMembers(members) {
+    if (members.length === 0) {
+        return `
+            <div class="text-center py-8">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <i class="fas fa-users text-xl text-gray-400"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Участников нет</h3>
+                <p class="text-gray-600 dark:text-gray-400">Пригласите участников в свои проекты</p>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${members.map(member => {
+                const photoUrl = this.getUserPhotoUrl();
+                const displayName = member.full_name || `Участник #${member.id}`;
+                const isCurrentUser = currentUser && member.id === currentUser.id;
+
+                return `
+                    <div class="premium-card p-6 rounded-2xl text-center">
+                        <div class="w-16 h-16 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-xl font-bold">
+                            ${photoUrl ?
+                                `<img src="${photoUrl}" class="w-full h-full object-cover" alt="Аватар">` :
+                                displayName.charAt(0).toUpperCase()
+                            }
+                        </div>
+                        <h3 class="font-bold text-gray-900 dark:text-gray-100 mb-1">${this.escapeHtml(displayName)}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">${member.username || ''}</p>
+
+                        <div class="text-left space-y-2">
+                            <div class="text-sm">
+                                <span class="font-medium">Проекты:</span>
+                                <span class="text-gray-600 dark:text-gray-400"> ${member.projects.join(', ')}</span>
+                            </div>
+                            <div class="text-sm">
+                                <span class="font-medium">Роли:</span>
+                                ${member.roles.map(role => `
+                                    <span class="inline-block px-2 py-1 text-xs rounded-full ml-1 ${
+                                        role.role === 'owner' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                                        role.role === 'admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                                    }">
+                                        ${this.getRoleText(role.role)} (${role.project})
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        ${!isCurrentUser ? `
+                            <div class="mt-4 flex space-x-2">
+                                <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium flex-1"
+                                        onclick="App.showMemberProjects('${member.id}')">
+                                    <i class="fas fa-eye mr-1"></i> Проекты
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="mt-4">
+                                <span class="inline-block px-3 py-1 bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 rounded-full text-sm">
+                                    Это вы
+                                </span>
+                            </div>
+                        `}
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+static async handleSearch(query) {
+    if (!query.trim()) {
+        this.showDashboard();
+        return;
+    }
+
+    try {
+        // Ищем проекты по названию
+        const projectsResponse = await ApiService.searchPublicProjects(query);
+        const projects = projectsResponse.projects || [];
+
+        // Ищем задачи пользователя
+        const tasksResponse = await ApiService.getUserTasks();
+        const allTasks = tasksResponse.tasks || [];
+        const filteredTasks = allTasks.filter(task =>
+            task.title.toLowerCase().includes(query.toLowerCase()) ||
+            (task.description && task.description.toLowerCase().includes(query.toLowerCase()))
+        );
+
+        // Создаем представление поиска
+        const searchView = document.getElementById('searchView');
+        if (!searchView) {
+            // Создаем элемент для поиска если его нет
+            const mainContent = document.querySelector('main .p-6');
+            const searchHtml = `
+                <div id="searchView" class="animate-fade-in">
+                    <div class="mb-8">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">Результаты поиска</h1>
+                                <p class="text-gray-600 dark:text-gray-400">По запросу: "${this.escapeHtml(query)}"</p>
+                            </div>
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2 mt-4 md:mt-0"
+                                    onclick="App.showDashboard()">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Назад</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        ${projects.length > 0 ? `
+                            <div class="premium-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Найденные проекты</h2>
+                                </div>
+                                <div class="p-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        ${this.renderSearchProjects(projects)}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${filteredTasks.length > 0 ? `
+                            <div class="premium-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Найденные задачи</h2>
+                                </div>
+                                <div class="p-6">
+                                    <div class="space-y-3">
+                                        ${this.renderSearchTasks(filteredTasks)}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${projects.length === 0 && filteredTasks.length === 0 ? `
+                            <div class="text-center py-12">
+                                <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                    <i class="fas fa-search text-3xl text-gray-400"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Ничего не найдено</h3>
+                                <p class="text-gray-600 dark:text-gray-400">Попробуйте изменить поисковый запрос</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            mainContent.innerHTML = searchHtml;
+        } else {
+            searchView.innerHTML = `
+                <!-- Тот же HTML что выше, но для обновления существующего view -->
+            `;
+        }
+
+        this.showView('searchView');
+    } catch (error) {
+        console.error('Error searching:', error);
+        this.showError('Ошибка поиска: ' + error.message);
+    }
+}
+
+static renderSearchProjects(projects) {
+    return projects.map(project => {
+        const projectData = project.project || project;
+        const stats = project.stats || projectData.stats || {};
+        const progress = stats.tasks_count > 0 ? (stats.tasks_done / stats.tasks_count) * 100 : 0;
+
+        return `
+            <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm transition-all cursor-pointer"
+                 onclick="App.openProject('${projectData.hash}')">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-folder text-primary-600 dark:text-primary-400"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-900 dark:text-gray-100">${this.escapeHtml(projectData.title)}</h3>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${Math.round(progress)}% завершено</div>
+                    </div>
+                </div>
+                <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">${this.escapeHtml(projectData.description || 'Без описания')}</p>
+                <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                    <span><i class="fas fa-users mr-1"></i> ${stats.members_count || 0}</span>
+                    <span><i class="fas fa-tasks mr-1"></i> ${stats.tasks_count || 0}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+static renderSearchTasks(tasks) {
+    return tasks.map(task => `
+        <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer"
+             onclick="App.openTask(${task.id})">
+            <div class="custom-checkbox ${task.status === 'done' ? 'checked' : ''} mr-4"></div>
+            <div class="flex-1">
+                <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(task.title)}</div>
+                <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                    <span><i class="fas fa-project-diagram mr-1"></i> ${task.project_title || 'Проект'}</span>
+                    <span class="flex items-center"><span class="priority-indicator priority-${task.priority}"></span> ${this.getPriorityText(task.priority)}</span>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Без срока'}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${this.getStatusText(task.status)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+static filterProjectTasks(status) {
+    const taskElements = document.querySelectorAll('#projectTasksList > div');
+
+    taskElements.forEach(element => {
+        const taskStatus = element.querySelector('.custom-checkbox').classList.contains('checked') ? 'done' : 'todo';
+        // Предполагаем, что если не done, то in_progress или todo
+        const displayStatus = taskStatus === 'done' ? 'done' :
+                            element.textContent.includes('В работе') ? 'in_progress' : 'todo';
+
+        if (!status || displayStatus === status) {
+            element.style.display = 'flex';
+        } else {
+            element.style.display = 'none';
+        }
+    });
+}
+
+static filterProjectTasksByPriority(priority) {
+    const taskElements = document.querySelectorAll('#projectTasksList > div');
+
+    taskElements.forEach(element => {
+        const priorityElement = element.querySelector('.priority-indicator');
+        if (priorityElement) {
+            const taskPriority = priorityElement.className.split('priority-')[1];
+            if (!priority || taskPriority === priority) {
+                element.style.display = 'flex';
+            } else {
+                element.style.display = 'none';
+            }
+        }
+    });
+}
+
+static async filterMyTasks(status) {
+    try {
+        const filters = status ? { status } : {};
+        const response = await ApiService.getUserTasks(filters);
+        const tasks = response.tasks || [];
+
+        const container = document.getElementById('myTasksList');
+        if (container) {
+            container.innerHTML = this.renderMyTasksList(tasks);
+        }
+    } catch (error) {
+        console.error('Error filtering tasks:', error);
+        this.showError('Ошибка фильтрации задач: ' + error.message);
+    }
+}
+
+static async showCreateSubtaskModal() {
+    if (!currentTask) {
+        this.showError('Выберите задачу для создания подзадачи');
+        return;
+    }
+
+    try {
+        const modalHtml = `
+            <div id="createSubtaskModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Создать подзадачу</h3>
+                            <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('createSubtaskModal')">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <form id="createSubtaskForm">
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Родительская задача</label>
+                                <input type="text" value="${this.escapeHtml(currentTask.title)}" readonly
+                                       class="premium-input w-full rounded-xl focus-premium bg-gray-50 dark:bg-gray-800">
+                            </div>
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="subtaskTitle">Название подзадачи</label>
+                                <input type="text" id="subtaskTitle" class="premium-input w-full rounded-xl focus-premium" placeholder="Введите название подзадачи" required>
+                            </div>
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="subtaskDescription">Описание</label>
+                                <textarea id="subtaskDescription" class="premium-input w-full rounded-xl focus-premium" rows="3" placeholder="Опишите подзадачу"></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-5">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="subtaskPriority">Приоритет</label>
+                                    <select id="subtaskPriority" class="premium-input w-full rounded-xl focus-premium">
+                                        <option value="low">Низкий</option>
+                                        <option value="medium" selected>Средний</option>
+                                        <option value="high">Высокий</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="subtaskDueDate">Срок выполнения</label>
+                                    <input type="date" id="subtaskDueDate" class="premium-input w-full rounded-xl focus-premium">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                        <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.hideModal('createSubtaskModal')">
+                            Отмена
+                        </button>
+                        <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.handleCreateSubtask()">
+                            Создать подзадачу
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch (error) {
+        console.error('Error creating subtask modal:', error);
+        this.showError('Ошибка создания подзадачи: ' + error.message);
+    }
+}
+
+static async handleCreateSubtask() {
+    if (!currentTask || !currentProject) {
+        this.showError('Ошибка: задача или проект не выбраны');
+        return;
+    }
+
+    const title = document.getElementById('subtaskTitle').value.trim();
+    const description = document.getElementById('subtaskDescription').value.trim();
+    const priority = document.getElementById('subtaskPriority').value;
+    const dueDate = document.getElementById('subtaskDueDate').value;
+
+    if (!title) {
+        this.showError('Введите название подзадачи');
+        return;
+    }
+
+    try {
+        const taskData = {
+            title,
+            description,
+            project_hash: currentProject.hash,
+            priority,
+            status: 'todo',
+            parent_task_id: currentTask.id
+        };
+
+        if (dueDate) taskData.due_date = dueDate;
+
+        await ApiService.createTask(taskData);
+
+        this.hideModal('createSubtaskModal');
+
+        // Перезагружаем подзадачи
+        await this.loadSubtasks(currentTask.id);
+
+        this.showSuccess('Подзадача создана успешно!');
+    } catch (error) {
+        console.error('Error creating subtask:', error);
+        this.showError('Ошибка создания подзадачи: ' + error.message);
+    }
+}
+
+static async showEditTaskModal() {
+    if (!currentTask) {
+        this.showError('Выберите задачу для редактирования');
+        return;
+    }
+
+    try {
+        // Загружаем участников проекта для выбора исполнителя
+        let assigneeOptions = '<option value="">Не назначена</option>';
+        if (currentProject) {
+            const membersResponse = await ApiService.getProjectMembers(currentProject.hash);
+            const members = membersResponse.members || [];
+
+            members.forEach(member => {
+                const memberData = member.user || member;
+                const displayName = (memberData.full_name && memberData.full_name.trim() !== '')
+                    ? memberData.full_name
+                    : `Участник #${member.user_id || memberData.id}`;
+
+                const selected = currentTask.assigned_to_id === (member.user_id || memberData.id) ? 'selected' : '';
+                assigneeOptions += `<option value="${member.user_id || memberData.id}" ${selected}>${this.escapeHtml(displayName)}</option>`;
+            });
+        }
+
+        const modalHtml = `
+            <div id="editTaskModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                <div class="modal premium-card rounded-2xl w-full max-w-lg transform transition-transform duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Редактировать задачу</h3>
+                            <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('editTaskModal')">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <form id="editTaskForm">
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="editTaskTitle">Название задачи</label>
+                                <input type="text" id="editTaskTitle" value="${this.escapeHtml(currentTask.title)}"
+                                       class="premium-input w-full rounded-xl focus-premium" required>
+                            </div>
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="editTaskDescription">Описание</label>
+                                <textarea id="editTaskDescription" class="premium-input w-full rounded-xl focus-premium" rows="3">${this.escapeHtml(currentTask.description || '')}</textarea>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="editTaskPriority">Приоритет</label>
+                                    <select id="editTaskPriority" class="premium-input w-full rounded-xl focus-premium">
+                                        <option value="low" ${currentTask.priority === 'low' ? 'selected' : ''}>Низкий</option>
+                                        <option value="medium" ${currentTask.priority === 'medium' ? 'selected' : ''}>Средний</option>
+                                        <option value="high" ${currentTask.priority === 'high' ? 'selected' : ''}>Высокий</option>
+                                        <option value="urgent" ${currentTask.priority === 'urgent' ? 'selected' : ''}>Срочный</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="editTaskDueDate">Срок выполнения</label>
+                                    <input type="date" id="editTaskDueDate" value="${currentTask.due_date ? currentTask.due_date.split('T')[0] : ''}"
+                                           class="premium-input w-full rounded-xl focus-premium">
+                                </div>
+                            </div>
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="editTaskAssignedTo">Исполнитель</label>
+                                <select id="editTaskAssignedTo" class="premium-input w-full rounded-xl focus-premium">
+                                    ${assigneeOptions}
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                        <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.hideModal('editTaskModal')">
+                            Отмена
+                        </button>
+                        <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.handleEditTask()">
+                            Сохранить изменения
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch (error) {
+        console.error('Error loading edit task modal:', error);
+        this.showError('Ошибка загрузки формы редактирования: ' + error.message);
+    }
+}
+
+static async handleEditTask() {
+    if (!currentTask) {
+        this.showError('Ошибка: задача не выбрана');
+        return;
+    }
+
+    const title = document.getElementById('editTaskTitle').value.trim();
+    const description = document.getElementById('editTaskDescription').value.trim();
+    const priority = document.getElementById('editTaskPriority').value;
+    const dueDate = document.getElementById('editTaskDueDate').value;
+    const assignedTo = document.getElementById('editTaskAssignedTo').value;
+
+    if (!title) {
+        this.showError('Введите название задачи');
+        return;
+    }
+
+    try {
+        const taskData = {
+            title,
+            description,
+            priority
+        };
+
+        if (dueDate) {
+            taskData.due_date = dueDate;
+        } else {
+            taskData.due_date = null;
+        }
+
+        if (assignedTo) {
+            taskData.assigned_to_id = parseInt(assignedTo);
+        } else {
+            taskData.assigned_to_id = null;
+        }
+
+        await ApiService.updateTask(currentTask.id, taskData);
+
+        this.hideModal('editTaskModal');
+
+        // Перезагружаем задачу
+        await this.openTask(currentTask.id);
+
+        this.showSuccess('Задача обновлена успешно!');
+    } catch (error) {
+        console.error('Error updating task:', error);
+        this.showError('Ошибка обновления задачи: ' + error.message);
+    }
+}
+
+static async showDeleteTaskModal() {
+    if (!currentTask) {
+        this.showError('Выберите задачу для удаления');
+        return;
+    }
+
+    const modalHtml = `
+        <div id="deleteTaskModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+            <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Удаление задачи</h3>
+                        <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('deleteTaskModal')">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="text-center">
+                        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center text-danger-600 dark:text-danger-400">
+                            <i class="fas fa-exclamation-triangle text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Вы уверены?</h3>
+                        <p class="text-gray-600 dark:text-gray-400">
+                            Задача "<span class="font-medium">${this.escapeHtml(currentTask.title)}</span>" будет удалена безвозвратно.
+                        </p>
+                    </div>
+                </div>
+                <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                    <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                            onclick="App.hideModal('deleteTaskModal')">
+                        Отмена
+                    </button>
+                    <button class="btn-premium bg-danger-500 hover:bg-danger-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                            onclick="App.handleDeleteTask()">
+                        Удалить задачу
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+static async handleDeleteTask() {
+    if (!currentTask) {
+        this.showError('Ошибка: задача не выбрана');
+        return;
+    }
+
+    try {
+        await ApiService.deleteTask(currentTask.id);
+
+        this.hideModal('deleteTaskModal');
+
+        // Возвращаемся к проекту или дашборду
+        if (currentProject) {
+            await this.openProject(currentProject.hash);
+        } else {
+            this.showDashboard();
+        }
+
+        this.showSuccess('Задача удалена успешно!');
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        this.showError('Ошибка удаления задачи: ' + error.message);
+    }
+}
+
+static async showSettings() {
+    try {
+        const preferences = await ApiService.getUserPreferences();
+
+        const modalHtml = `
+            <div id="settingsModal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Настройки</h3>
+                            <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors" onclick="App.hideModal('settingsModal')">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-6">
+                            <!-- Тема -->
+                            <div>
+                                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Внешний вид</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-palette text-gray-500 mr-3"></i>
+                                            <span>Темная тема</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="darkThemeToggle" ${document.documentElement.classList.contains('dark') ? 'checked' : ''}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Уведомления -->
+                            <div>
+                                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Уведомления</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-bell text-gray-500 mr-3"></i>
+                                            <span>Email уведомления</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="emailNotifications" ${preferences.email_notifications ? 'checked' : ''}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-mobile-alt text-gray-500 mr-3"></i>
+                                            <span>Push уведомления</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="pushNotifications" ${preferences.push_notifications ? 'checked' : ''}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Настройки задач -->
+                            <div>
+                                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Задачи</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-tasks text-gray-500 mr-3"></i>
+                                            <span>Автоматическое обновление</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="autoRefresh" ${preferences.auto_refresh ? 'checked' : ''}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Напоминание о deadline</label>
+                                        <select id="deadlineReminder" class="premium-input w-full rounded-xl focus-premium">
+                                            <option value="1" ${preferences.deadline_reminder === 1 ? 'selected' : ''}>За 1 день</option>
+                                            <option value="3" ${preferences.deadline_reminder === 3 ? 'selected' : ''}>За 3 дня</option>
+                                            <option value="7" ${preferences.deadline_reminder === 7 ? 'selected' : ''}>За неделю</option>
+                                            <option value="0" ${!preferences.deadline_reminder ? 'selected' : ''}>Не напоминать</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                        <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.resetSettings()">
+                            Сбросить
+                        </button>
+                        <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium"
+                                onclick="App.handleSaveSettings()">
+                            Сохранить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Настраиваем обработчик темы
+        document.getElementById('darkThemeToggle').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        this.showError('Ошибка загрузки настроек: ' + error.message);
+    }
+}
+
+static async handleSaveSettings() {
+    try {
+        const preferences = {
+            email_notifications: document.getElementById('emailNotifications').checked,
+            push_notifications: document.getElementById('pushNotifications').checked,
+            auto_refresh: document.getElementById('autoRefresh').checked,
+            deadline_reminder: parseInt(document.getElementById('deadlineReminder').value)
+        };
+
+        await ApiService.updateUserPreferences(preferences);
+
+        this.hideModal('settingsModal');
+        this.showSuccess('Настройки сохранены успешно!');
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        this.showError('Ошибка сохранения настроек: ' + error.message);
+    }
+}
+
+static async resetSettings() {
+    try {
+        if (confirm('Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?')) {
+            await ApiService.resetUserPreferences();
+            this.hideModal('settingsModal');
+            this.showSuccess('Настройки сброшены к значениям по умолчанию!');
+        }
+    } catch (error) {
+        console.error('Error resetting settings:', error);
+        this.showError('Ошибка сброса настроек: ' + error.message);
+    }
+}
+
+    static updateUserAvatar() {
+        const photoUrl = this.getUserPhotoUrl();
+        const avatar = document.getElementById('userAvatar');
+
+        if (photoUrl && avatar) {
+            avatar.innerHTML = `<img src="${photoUrl}" class="w-full h-full rounded-full object-cover" alt="Аватар">`;
+        } else if (currentUser && avatar) {
+            // Используем первую букву имени как fallback
+            const initial = currentUser.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U';
+            avatar.innerHTML = `<span>${initial}</span>`;
         }
     }
 
@@ -1461,32 +2913,6 @@ class App {
         }
     }
 
-    static showCreateSubtaskModal() {
-        this.showInfo('Функция создания подзадачи будет реализована в ближайшее время!');
-    }
-
-    static showEditTaskModal() {
-        if (!currentTask || !currentTask.id) {
-            console.error('No current task for editing:', currentTask);
-            this.showError('Ошибка: задача не выбрана');
-            return;
-        }
-
-        this.showInfo('Функция редактирования задачи будет реализована в ближайшее время!');
-    }
-
-    static showDeleteTaskModal() {
-        if (!currentTask || !currentTask.id) {
-            console.error('No current task for deletion:', currentTask);
-            this.showError('Ошибка: задача не выбрана');
-            return;
-        }
-
-        if (confirm(`Вы уверены, что хотите удалить задачу "${currentTask.title}"?`)) {
-            this.showInfo('Функция удаления задачи будет реализована в ближайшее время!');
-        }
-    }
-
     static async updateTaskStatus() {
         if (!currentTask || !currentTask.id) {
             console.error('No current task or task ID:', currentTask);
@@ -1605,10 +3031,6 @@ class App {
         }
     }
 
-    static showSettings() {
-        this.showInfo('Настройки будут доступны в ближайшее время!');
-    }
-
     static async showMyTasks() {
         try {
             const response = await ApiService.getUserTasks();
@@ -1697,47 +3119,6 @@ class App {
             console.log('No current project, showing dashboard');
             this.showDashboard();
         }
-    }
-
-    // Функции, требующие заглушек
-    static showInviteMemberModal() {
-        this.showInfo('Функция приглашения участников будет реализована в ближайшее время!');
-    }
-
-    static showExportModal() {
-        this.showInfo('Функция экспорта данных будет реализована в ближайшее время!');
-    }
-
-    static showProfileModal() {
-        this.showInfo('Функция профиля пользователя будет реализована в ближайшее время!');
-    }
-
-    static showCalendar() {
-        this.showInfo('Функция календаря будет реализована в ближайшее время!');
-    }
-
-    static showReports() {
-        this.showInfo('Функция отчетов будет реализована в ближайшее время!');
-    }
-
-    static showTeam() {
-        this.showInfo('Функция управления командой будет реализована в ближайшее время!');
-    }
-
-    static handleSearch(query) {
-        this.showInfo(`Поиск по запросу "${query}" будет реализован в ближайшее время!`);
-    }
-
-    static filterProjectTasks(status) {
-        this.showInfo(`Фильтрация задач по статусу "${status}" будет реализована в ближайшее время!`);
-    }
-
-    static filterProjectTasksByPriority(priority) {
-        this.showInfo(`Фильтрация задач по приоритету "${priority}" будет реализована в ближайшее время!`);
-    }
-
-    static filterMyTasks(status) {
-        this.showInfo(`Фильтрация моих задач по статусу "${status}" будет реализована в ближайшее время!`);
     }
 
     static handleLogout() {
