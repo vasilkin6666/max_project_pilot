@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Pilot Pro | Управление проектами</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.0/cdn.js" defer></script>
     <script src="https://st.max.ru/js/max-web-app.js"></script>
     <script>
         tailwind.config = {
@@ -14,7 +15,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
                     },
                     colors: {
                         primary: {
@@ -28,24 +29,43 @@
                             700: '#4338ca',
                             800: '#3730a3',
                             900: '#312e81',
+                            950: '#1e1b4b',
                         },
                         success: {
                             50: '#f0fdf4',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
                         },
                         warning: {
                             50: '#fffbeb',
+                            100: '#fef3c7',
+                            200: '#fde68a',
+                            300: '#fcd34d',
+                            400: '#fbbf24',
                             500: '#f59e0b',
                             600: '#d97706',
                             700: '#b45309',
+                            800: '#92400e',
+                            900: '#78350f',
                         },
                         danger: {
                             50: '#fef2f2',
+                            100: '#fee2e2',
+                            200: '#fecaca',
+                            300: '#fca5a5',
+                            400: '#f87171',
                             500: '#ef4444',
                             600: '#dc2626',
                             700: '#b91c1c',
+                            800: '#991b1b',
+                            900: '#7f1d1d',
                         },
                         gray: {
                             50: '#f9fafb',
@@ -58,22 +78,31 @@
                             700: '#374151',
                             800: '#1f2937',
                             900: '#111827',
+                            950: '#030712',
                         }
                     },
                     animation: {
-                        'fade-in': 'fadeIn 0.5s ease-in-out',
-                        'slide-up': 'slideUp 0.3s ease-out',
-                        'slide-down': 'slideDown 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.6s ease-in-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'slide-down': 'slideDown 0.5s ease-out',
+                        'scale-in': 'scaleIn 0.3s ease-out',
                         'pulse-soft': 'pulseSoft 2s infinite',
                         'bounce-soft': 'bounceSoft 2s infinite',
                         'float': 'float 3s ease-in-out infinite',
                         'shimmer': 'shimmer 2s infinite',
+                        'gradient': 'gradient 3s ease infinite',
+                        'blob': 'blob 7s infinite',
                     },
                     boxShadow: {
-                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                        'medium': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                        'large': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                        'glow': '0 0 20px rgba(99, 102, 241, 0.15)',
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+                        'medium': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        'large': '0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 5px 10px -5px rgba(0, 0, 0, 0.05)',
+                        'xl-soft': '0 20px 50px -12px rgba(0, 0, 0, 0.1)',
+                        'glow': '0 0 25px rgba(99, 102, 241, 0.15)',
+                        'glow-lg': '0 0 50px rgba(99, 102, 241, 0.2)',
+                    },
+                    backdropBlur: {
+                        xs: '2px',
                     },
                     keyframes: {
                         fadeIn: {
@@ -81,12 +110,16 @@
                             '100%': { opacity: '1' },
                         },
                         slideUp: {
-                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
                             '100%': { transform: 'translateY(0)', opacity: '1' },
                         },
                         slideDown: {
-                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '0%': { transform: 'translateY(-20px)', opacity: '0' },
                             '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.9)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
                         },
                         pulseSoft: {
                             '0%, 100%': { opacity: '1' },
@@ -94,19 +127,45 @@
                         },
                         bounceSoft: {
                             '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-5px)' },
+                            '50%': { transform: 'translateY(-8px)' },
                         },
                         float: {
                             '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-10px)' },
+                            '50%': { transform: 'translateY(-12px)' },
                         },
                         shimmer: {
                             '0%': { backgroundPosition: '-1000px 0' },
                             '100%': { backgroundPosition: '1000px 0' },
+                        },
+                        gradient: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                        },
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
                         }
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
                     }
                 },
             },
+            plugins: [
+                function({ addUtilities }) {
+                    addUtilities({
+                        '.text-shadow': {
+                            'text-shadow': '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        },
+                        '.text-shadow-lg': {
+                            'text-shadow': '0 4px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08)',
+                        },
+                    })
+                }
+            ],
         }
     </script>
     <style>
@@ -114,7 +173,7 @@
             --primary: #6366f1;
             --primary-light: #818cf8;
             --primary-dark: #4f46e5;
-            --success: #10b981;
+            --success: #22c55e;
             --warning: #f59e0b;
             --danger: #ef4444;
             --gray-50: #f9fafb;
@@ -127,6 +186,7 @@
             --gray-700: #374151;
             --gray-800: #1f2937;
             --gray-900: #111827;
+            --gray-950: #030712;
         }
 
         * {
@@ -135,25 +195,31 @@
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--gray-50);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
             color: var(--gray-900);
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-x: hidden;
         }
 
         .dark body {
-            background-color: var(--gray-900);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: var(--gray-100);
         }
 
         /* Custom scrollbar */
         ::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
 
         ::-webkit-scrollbar-track {
             background: var(--gray-100);
+            border-radius: 10px;
         }
 
         .dark ::-webkit-scrollbar-track {
@@ -162,7 +228,7 @@
 
         ::-webkit-scrollbar-thumb {
             background: var(--gray-300);
-            border-radius: 3px;
+            border-radius: 10px;
         }
 
         .dark ::-webkit-scrollbar-thumb {
@@ -177,662 +243,315 @@
             background: var(--gray-500);
         }
 
-        /* Splash Screen */
-        .splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.8s ease, visibility 0.8s ease;
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
 
-        .splash-screen.hidden {
-            opacity: 0;
-            visibility: hidden;
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .splash-logo {
-            width: 120px;
-            height: 120px;
-            margin-bottom: 2rem;
+        .glass-intense {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .dark .glass-intense {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Premium card hover effects */
+        .premium-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .dark .premium-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .premium-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 25px rgba(99, 102, 241, 0.15);
+        }
+
+        .dark .premium-card:hover {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 25px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Animated gradient background */
+        .gradient-bg {
+            background: linear-gradient(-45deg, #6366f1, #8b5cf6, #06b6d4, #10b981);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        /* Premium button styles */
+        .btn-premium {
             position: relative;
-            animation: bounceSoft 2s infinite;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(0);
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.1), 0 2px 8px -2px rgba(0, 0, 0, 0.05);
         }
 
-        .splash-logo-inner {
+        .btn-premium::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
             width: 100%;
             height: 100%;
-            background: white;
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s ease;
         }
 
-        .splash-logo-icon {
-            font-size: 3rem;
-            color: var(--primary);
+        .btn-premium:hover::before {
+            left: 100%;
         }
 
-        .splash-text {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: white;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 4px 10px -4px rgba(0, 0, 0, 0.1);
         }
 
-        .splash-subtitle {
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 3rem;
+        .btn-premium:active {
+            transform: translateY(0);
         }
 
-        .splash-progress {
-            width: 200px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(99, 102, 241, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #6366f1;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Floating elements */
+        .float-element {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Shimmer effect for loading */
+        .shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        .dark .shimmer {
+            background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+            background-size: 200% 100%;
+        }
+
+        /* Text gradient */
+        .text-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Premium input styles */
+        .premium-input {
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .dark .premium-input {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .premium-input:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 4px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #6366f1;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .dark .premium-input:focus {
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background-color: var(--success);
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+        }
+
+        .status-offline {
+            background-color: var(--gray-400);
+            box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.3);
+        }
+
+        .status-busy {
+            background-color: var(--danger);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Progress bars */
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: var(--gray-200);
             overflow: hidden;
         }
 
-        .splash-progress-bar {
+        .dark .progress-bar {
+            background-color: var(--gray-700);
+        }
+
+        .progress-fill {
             height: 100%;
-            background: white;
-            border-radius: 3px;
-            width: 0%;
+            border-radius: 4px;
             transition: width 0.5s ease;
         }
 
-        /* App Styles */
-        .app-container {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            opacity: 0;
-            animation: fadeIn 0.5s ease 0.3s forwards;
-        }
-
-        .app-header {
-            background: white;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            transition: all 0.3s ease;
-        }
-
-        .dark .app-header {
-            background: var(--gray-800);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
-        .app-main {
-            flex: 1;
-            padding: 1.5rem;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .app-sidebar {
-            width: 280px;
-            background: white;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-            z-index: 90;
-        }
-
-        .dark .app-sidebar {
-            background: var(--gray-800);
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        }
-
-        .app-content {
-            flex: 1;
-            transition: all 0.3s ease;
-        }
-
-        /* Cards */
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-
-        .dark .card {
-            background: var(--gray-800);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
-        .card:hover {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-        }
-
-        .dark .card:hover {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .card-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .dark .card-header {
-            border-bottom: 1px solid var(--gray-700);
-        }
-
-        .card-body {
-            padding: 1.5rem;
-        }
-
-        .card-footer {
-            padding: 1.5rem;
-            border-top: 1px solid var(--gray-200);
-        }
-
-        .dark .card-footer {
-            border-top: 1px solid var(--gray-700);
-        }
-
-        /* Stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .dark .stat-card {
-            background: var(--gray-800);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
-        .stat-card:hover {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-        }
-
-        .dark .stat-card:hover {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
+        /* Notification badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 1rem;
-            font-size: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4);
+            animation: pulseSoft 2s infinite;
         }
 
-        .stat-icon-projects {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary);
+        /* Avatar styles */
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
         }
 
-        .stat-icon-tasks {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
+        /* Task priority indicators */
+        .priority-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
         }
 
-        .stat-icon-recent {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
+        .priority-low { background-color: var(--success); }
+        .priority-medium { background-color: var(--warning); }
+        .priority-high { background-color: var(--danger); }
+        .priority-urgent {
+            background-color: var(--danger);
+            animation: pulseSoft 1.5s infinite;
         }
 
-        .stat-icon-completed {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: var(--gray-500);
-        }
-
-        .dark .stat-label {
-            color: var(--gray-400);
-        }
-
-        /* Project Cards */
-        .project-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .project-card {
-            background: white;
+        /* Kanban column styles */
+        .kanban-column {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
             border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
             transition: all 0.3s ease;
-            cursor: pointer;
         }
 
-        .dark .project-card {
-            background: var(--gray-800);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        .dark .kanban-column {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .project-card:hover {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        .kanban-column:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
             transform: translateY(-5px);
         }
 
-        .dark .project-card:hover {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        /* Focus states for accessibility */
+        .focus-premium:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
         }
 
-        .project-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--gray-200);
+        /* Selection styles */
+        ::selection {
+            background-color: rgba(99, 102, 241, 0.2);
         }
 
-        .dark .project-header {
-            border-bottom: 1px solid var(--gray-700);
-        }
-
-        .project-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .project-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-weight: 500;
-        }
-
-        .badge-private {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-        }
-
-        .badge-public {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-        }
-
-        .badge-approval {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
-        }
-
-        .project-description {
-            color: var(--gray-500);
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
-
-        .dark .project-description {
-            color: var(--gray-400);
-        }
-
-        .project-body {
-            padding: 1.5rem;
-        }
-
-        .project-meta {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .project-meta-item {
-            display: flex;
-            align-items: center;
-            color: var(--gray-500);
-        }
-
-        .dark .project-meta-item {
-            color: var(--gray-400);
-        }
-
-        .project-meta-icon {
-            margin-right: 0.5rem;
-        }
-
-        .project-progress {
-            margin-top: 1rem;
-        }
-
-        .project-progress-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--gray-500);
-        }
-
-        .dark .project-progress-label {
-            color: var(--gray-400);
-        }
-
-        .project-progress-bar {
-            height: 6px;
-            background: var(--gray-200);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .dark .project-progress-bar {
-            background: var(--gray-700);
-        }
-
-        .project-progress-fill {
-            height: 100%;
-            background: var(--primary);
-            border-radius: 3px;
-            transition: width 0.5s ease;
-        }
-
-        /* Task Items */
-        .task-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .task-item {
-            background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        .dark .task-item {
-            background: var(--gray-800);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-
-        .task-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .dark .task-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .task-checkbox {
+        /* Custom checkbox */
+        .custom-checkbox {
+            position: relative;
             width: 20px;
             height: 20px;
+            border-radius: 6px;
             border: 2px solid var(--gray-300);
-            border-radius: 50%;
-            margin-right: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
             transition: all 0.2s ease;
+            cursor: pointer;
         }
 
-        .dark .task-checkbox {
+        .dark .custom-checkbox {
             border-color: var(--gray-600);
         }
 
-        .task-checkbox.checked {
-            background: var(--primary);
+        .custom-checkbox.checked {
+            background-color: var(--primary);
             border-color: var(--primary);
         }
 
-        .task-checkbox.checked::after {
+        .custom-checkbox.checked::after {
             content: '✓';
+            position: absolute;
             color: white;
             font-size: 12px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
-        .task-content {
-            flex: 1;
-        }
-
-        .task-title {
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-
-        .task-meta {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.75rem;
-            color: var(--gray-500);
-        }
-
-        .dark .task-meta {
-            color: var(--gray-400);
-        }
-
-        .task-priority {
-            padding: 0.125rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 500;
-        }
-
-        .priority-low {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-        }
-
-        .priority-medium {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
-        }
-
-        .priority-high {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-        }
-
-        .priority-urgent {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-            font-weight: 600;
-        }
-
-        /* Buttons */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: none;
-            outline: none;
-        }
-
-        .btn:focus {
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .btn-warning {
-            background: var(--warning);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-
-        .btn-secondary {
-            background: var(--gray-200);
-            color: var(--gray-700);
-        }
-
-        .dark .btn-secondary {
-            background: var(--gray-700);
-            color: var(--gray-200);
-        }
-
-        .btn-secondary:hover {
-            background: var(--gray-300);
-        }
-
-        .dark .btn-secondary:hover {
-            background: var(--gray-600);
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--gray-300);
-            color: var(--gray-700);
-        }
-
-        .dark .btn-outline {
-            border: 1px solid var(--gray-600);
-            color: var(--gray-300);
-        }
-
-        .btn-outline:hover {
-            background: var(--gray-50);
-        }
-
-        .dark .btn-outline:hover {
-            background: var(--gray-700);
-        }
-
-        .btn-sm {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.75rem;
-        }
-
-        .btn-lg {
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-        }
-
-        .btn-icon {
-            width: 2.5rem;
-            height: 2.5rem;
-            padding: 0;
-            border-radius: 50%;
-        }
-
-        /* Forms */
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--gray-700);
-        }
-
-        .dark .form-label {
-            color: var(--gray-300);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 1px solid var(--gray-300);
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.2s ease;
-            background: white;
-            color: var(--gray-900);
-        }
-
-        .dark .form-control {
-            background: var(--gray-800);
-            border-color: var(--gray-600);
-            color: var(--gray-100);
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-        }
-
-        .form-select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.75rem center;
-            background-repeat: no-repeat;
-            background-size: 1rem;
-            padding-right: 2.5rem;
-        }
-
-        /* Toggle Switch */
+        /* Toggle switch */
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 3rem;
-            height: 1.5rem;
+            width: 50px;
+            height: 26px;
         }
 
         .toggle-switch input {
@@ -850,7 +569,7 @@
             bottom: 0;
             background-color: var(--gray-300);
             transition: .4s;
-            border-radius: 1.5rem;
+            border-radius: 34px;
         }
 
         .dark .toggle-slider {
@@ -860,13 +579,14 @@
         .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 1rem;
-            width: 1rem;
-            left: 0.25rem;
-            bottom: 0.25rem;
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
             background-color: white;
             transition: .4s;
             border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
         input:checked + .toggle-slider {
@@ -874,232 +594,275 @@
         }
 
         input:checked + .toggle-slider:before {
-            transform: translateX(1.5rem);
+            transform: translateX(24px);
         }
 
-        /* Empty States */
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1rem;
-            color: var(--gray-500);
+        /* Pulse animation for notifications */
+        @keyframes pulse-glow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+            }
         }
 
-        .dark .empty-state {
-            color: var(--gray-400);
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
         }
 
-        .empty-state-icon {
-            font-size: 4rem;
-            margin-bottom: 1.5rem;
-            opacity: 0.5;
+        /* Blob background element */
+        .blob {
+            position: absolute;
+            opacity: 0.3;
+            filter: blur(40px);
+            border-radius: 50%;
+            z-index: -1;
         }
 
-        .empty-state-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        .blob-1 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            top: 10%;
+            left: 10%;
+            animation: blob 15s infinite linear;
         }
 
-        .empty-state-description {
-            margin-bottom: 1.5rem;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
+        .blob-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
+            top: 60%;
+            right: 10%;
+            animation: blob 18s infinite linear reverse;
         }
 
-        /* Modals */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 1rem;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            width: 100%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: scale(0.9);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-
-        .dark .modal {
-            background: var(--gray-800);
-        }
-
-        .modal-overlay.active .modal {
-            transform: scale(1);
-            opacity: 1;
-        }
-
-        .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--gray-200);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .dark .modal-header {
-            border-bottom: 1px solid var(--gray-700);
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--gray-500);
-            transition: color 0.2s ease;
-        }
-
-        .modal-close:hover {
-            color: var(--gray-700);
-        }
-
-        .dark .modal-close:hover {
-            color: var(--gray-300);
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-        }
-
-        .modal-footer {
-            padding: 1.5rem;
-            border-top: 1px solid var(--gray-200);
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-        }
-
-        .dark .modal-footer {
-            border-top: 1px solid var(--gray-700);
-        }
-
-        /* Responsive */
+        /* Responsive improvements */
         @media (max-width: 768px) {
-            .app-main {
-                padding: 1rem;
+            .premium-card:hover {
+                transform: none;
             }
 
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .project-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .modal {
-                max-width: 100%;
+            .kanban-column:hover {
+                transform: none;
             }
         }
 
-        @media (max-width: 480px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
+        /* Print styles */
+        @media print {
+            .no-print {
+                display: none !important;
             }
         }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+<body class="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-500 min-h-screen">
+    <!-- Animated background elements -->
+    <div class="fixed inset-0 -z-10 overflow-hidden">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="absolute inset-0 bg-gradient-to-br from-white/50 to-gray-100/30 dark:from-gray-950/50 dark:to-gray-900/30"></div>
+    </div>
+
     <!-- Splash Screen -->
-    <div id="splashScreen" class="splash-screen">
-        <div class="splash-logo">
-            <div class="splash-logo-inner">
-                <i class="splash-logo-icon fas fa-rocket"></i>
+    <div id="splashScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 transition-opacity duration-1000">
+        <div class="text-center text-white">
+            <div class="w-24 h-24 mx-auto mb-8 rounded-2xl glass-intense flex items-center justify-center shadow-xl animate-bounce-soft">
+                <i class="fas fa-rocket text-4xl text-white"></i>
             </div>
-        </div>
-        <h1 class="splash-text">Project Pilot Pro</h1>
-        <p class="splash-subtitle">Система управления проектами</p>
-        <div class="splash-progress">
-            <div id="splashProgressBar" class="splash-progress-bar"></div>
+            <h1 class="text-5xl font-black mb-4 text-shadow-lg">Project Pilot Pro</h1>
+            <p class="text-xl opacity-90 mb-8 text-shadow">Премиум управление проектами</p>
+            <div class="w-64 h-2 bg-white/30 rounded-full overflow-hidden mx-auto">
+                <div id="splashProgressBar" class="h-full bg-white rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
         </div>
     </div>
 
     <!-- App Container -->
-    <div id="appContainer" class="app-container hidden">
+    <div id="appContainer" class="min-h-screen hidden animate-fade-in">
         <!-- Header -->
-        <header class="app-header">
-            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center text-white">
-                        <i class="fas fa-rocket"></i>
-                    </div>
-                    <h1 class="text-xl font-bold">Project Pilot</h1>
-                </div>
-
-                <div class="flex items-center space-x-2">
-                    <!-- Search Button -->
-                    <button id="searchBtn" class="btn btn-icon btn-secondary">
-                        <i class="fas fa-search"></i>
-                    </button>
-
-                    <!-- Notifications Button -->
-                    <button id="notificationsBtn" class="btn btn-icon btn-secondary relative">
-                        <i class="fas fa-bell"></i>
-                        <span class="absolute -top-1 -right-1 bg-danger-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                    </button>
-
-                    <!-- Theme Toggle -->
-                    <button id="themeToggle" class="btn btn-icon btn-secondary">
-                        <i class="fas fa-moon"></i>
-                    </button>
-
-                    <!-- User Menu -->
-                    <div class="relative">
-                        <button id="userMenuBtn" class="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2">
-                            <div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white text-sm font-medium">U</div>
-                            <span class="hidden md:block font-medium">Пользователь</span>
-                            <i class="fas fa-chevron-down text-gray-500 text-xs"></i>
+        <header class="sticky top-0 z-40 glass-intense border-b border-white/20 dark:border-gray-800/50 shadow-soft backdrop-blur-lg">
+            <div class="container mx-auto px-4 py-3">
+                <div class="flex items-center justify-between">
+                    <!-- Logo and navigation toggle -->
+                    <div class="flex items-center space-x-4">
+                        <button id="sidebarToggle" class="lg:hidden p-2 rounded-lg bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors focus-premium">
+                            <i class="fas fa-bars text-gray-700 dark:text-gray-300"></i>
                         </button>
 
-                        <!-- User Dropdown -->
-                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-1 z-10 hidden">
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                <i class="fas fa-user mr-2"></i>Профиль
-                            </a>
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                <i class="fas fa-cog mr-2"></i>Настройки
-                            </a>
-                            <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                <i class="fas fa-sign-out-alt mr-2"></i>Выйти
-                            </a>
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-xl font-black bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent">Project Pilot</h1>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Профессиональное управление</p>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Create Project Button -->
-                    <button id="createProjectBtn" class="btn btn-primary hidden md:flex items-center space-x-2">
-                        <i class="fas fa-plus"></i>
-                        <span>Проект</span>
-                    </button>
+                    <!-- Search Bar -->
+                    <div class="flex-1 max-w-2xl mx-4 hidden md:block">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-gray-400"></i>
+                            </div>
+                            <input type="text" class="w-full premium-input pl-10 pr-4 py-2.5 rounded-xl focus-premium" placeholder="Поиск проектов, задач, участников...">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <kbd class="px-2 py-1 text-xs font-semibold text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg">⌘K</kbd>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right side actions -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Search Button (Mobile) -->
+                        <button class="md:hidden p-2.5 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors focus-premium">
+                            <i class="fas fa-search text-gray-700 dark:text-gray-300"></i>
+                        </button>
+
+                        <!-- Create Button -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2 focus-premium">
+                                <i class="fas fa-plus"></i>
+                                <span class="hidden sm:block">Создать</span>
+                                <i class="fas fa-chevron-down text-xs ml-1"></i>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-95"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                class="absolute right-0 mt-2 w-56 glass-intense rounded-xl shadow-large border border-white/20 dark:border-gray-700/50 py-2 z-50">
+                                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showCreateProjectModal()">
+                                    <i class="fas fa-folder-plus text-primary-500 mr-3"></i>
+                                    <span>Новый проект</span>
+                                </a>
+                                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showCreateTaskModal()">
+                                    <i class="fas fa-tasks text-primary-500 mr-3"></i>
+                                    <span>Новая задача</span>
+                                </a>
+                                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                                    <i class="fas fa-user-plus text-primary-500 mr-3"></i>
+                                    <span>Пригласить участника</span>
+                                </a>
+                                <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                                    <i class="fas fa-file-export text-primary-500 mr-3"></i>
+                                    <span>Экспорт данных</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Notifications -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="p-2.5 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors relative focus-premium">
+                                <i class="fas fa-bell text-gray-700 dark:text-gray-300"></i>
+                                <span class="notification-badge">3</span>
+                            </button>
+
+                            <!-- Notifications Dropdown -->
+                            <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-95"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                class="absolute right-0 mt-2 w-80 glass-intense rounded-xl shadow-large border border-white/20 dark:border-gray-700/50 py-2 z-50 max-h-96 overflow-y-auto">
+                                <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                                    <h3 class="font-semibold text-gray-800 dark:text-gray-200">Уведомления</h3>
+                                </div>
+                                <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- Notification items would go here -->
+                                    <div class="p-4 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer">
+                                        <div class="flex space-x-3">
+                                            <div class="w-10 h-10 bg-success-100 dark:bg-success-900/30 rounded-full flex items-center justify-center text-success-600 dark:text-success-400">
+                                                <i class="fas fa-check-circle"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Задача выполнена</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Мария завершила задачу "Протестировать API"</p>
+                                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">2 часа назад</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-4 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer">
+                                        <div class="flex space-x-3">
+                                            <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400">
+                                                <i class="fas fa-user-plus"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Новый участник</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Алексей присоединился к проекту "Веб-сайт"</p>
+                                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">5 часов назад</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-4 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer">
+                                        <div class="flex space-x-3">
+                                            <div class="w-10 h-10 bg-warning-100 dark:bg-warning-900/30 rounded-full flex items-center justify-center text-warning-600 dark:text-warning-400">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Срок истекает</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Задача "Разработать главную страницу" должна быть завершена завтра</p>
+                                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Вчера</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+                                    <button class="w-full text-center text-sm text-primary-600 dark:text-primary-400 font-medium py-2 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors">
+                                        Показать все уведомления
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Theme Toggle -->
+                        <button id="themeToggle" class="p-2.5 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors focus-premium">
+                            <i class="fas fa-moon text-gray-700 dark:text-gray-300"></i>
+                        </button>
+
+                        <!-- User Menu -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-2 bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-700/50 rounded-xl px-3 py-2 transition-colors focus-premium">
+                                <div class="avatar">
+                                    <span>U</span>
+                                </div>
+                                <div class="hidden md:block text-left">
+                                    <div class="font-medium text-gray-900 dark:text-gray-100 text-sm">Пользователь</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Владелец</div>
+                                </div>
+                                <i class="fas fa-chevron-down text-gray-500 text-xs ml-1"></i>
+                            </button>
+
+                            <!-- User Dropdown -->
+                            <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-95"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                class="absolute right-0 mt-2 w-56 glass-intense rounded-xl shadow-large border border-white/20 dark:border-gray-700/50 py-2 z-50">
+                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="font-medium text-gray-900 dark:text-gray-100">Пользователь</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">user@example.com</div>
+                                </div>
+                                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                                    <i class="fas fa-user mr-3 text-gray-500"></i>
+                                    <span>Профиль</span>
+                                </a>
+                                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" onclick="App.showSettings()">
+                                    <i class="fas fa-cog mr-3 text-gray-500"></i>
+                                    <span>Настройки</span>
+                                </a>
+                                <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                                <a href="#" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                                    <i class="fas fa-sign-out-alt mr-3 text-gray-500"></i>
+                                    <span>Выйти</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -1107,234 +870,338 @@
         <!-- Main Content -->
         <div class="flex flex-1">
             <!-- Sidebar -->
-            <aside class="app-sidebar hidden lg:block">
-                <div class="p-4">
-                    <nav class="space-y-1">
-                        <a href="#" class="flex items-center px-4 py-3 text-primary-500 bg-primary-50 dark:bg-primary-900/20 rounded-lg font-medium">
-                            <i class="fas fa-home mr-3"></i>
-                            <span>Главная</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-tasks mr-3"></i>
-                            <span>Мои задачи</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-calendar-alt mr-3"></i>
-                            <span>Календарь</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-chart-bar mr-3"></i>
-                            <span>Отчеты</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-users mr-3"></i>
-                            <span>Команда</span>
-                        </a>
-                    </nav>
+            <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white/70 dark:bg-gray-900/70 backdrop-blur-lg border-r border-gray-200 dark:border-gray-800 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+                <div class="flex flex-col h-full">
+                    <!-- Sidebar Header -->
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-800">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Навигация</h2>
+                    </div>
 
-                    <div class="mt-8">
-                        <h3 class="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Мои проекты</h3>
-                        <nav class="mt-2 space-y-1">
-                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
-                                <div class="w-2 h-2 bg-primary-500 rounded-full mr-3"></div>
-                                <span>Веб-сайт компании</span>
+                    <!-- Sidebar Content -->
+                    <div class="flex-1 overflow-y-auto p-4">
+                        <nav class="space-y-1">
+                            <a href="#" class="flex items-center px-4 py-3 text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-xl font-medium transition-colors">
+                                <i class="fas fa-home mr-3"></i>
+                                <span>Главная</span>
                             </a>
-                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
-                                <div class="w-2 h-2 bg-success-500 rounded-full mr-3"></div>
-                                <span>Мобильное приложение</span>
+                            <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors" onclick="App.showMyTasks()">
+                                <i class="fas fa-tasks mr-3"></i>
+                                <span>Мои задачи</span>
                             </a>
-                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
-                                <div class="w-2 h-2 bg-warning-500 rounded-full mr-3"></div>
-                                <span>Маркетинг кампания</span>
+                            <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                                <i class="fas fa-calendar-alt mr-3"></i>
+                                <span>Календарь</span>
                             </a>
-                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
-                                <div class="w-2 h-2 bg-danger-500 rounded-full mr-3"></div>
-                                <span>Анализ данных</span>
+                            <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                                <i class="fas fa-chart-bar mr-3"></i>
+                                <span>Отчеты</span>
+                            </a>
+                            <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                                <i class="fas fa-users mr-3"></i>
+                                <span>Команда</span>
                             </a>
                         </nav>
+
+                        <div class="mt-8">
+                            <h3 class="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Мои проекты</h3>
+                            <nav class="mt-2 space-y-1">
+                                <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors group">
+                                    <div class="w-2 h-2 bg-primary-500 rounded-full mr-3"></div>
+                                    <span>Веб-сайт компании</span>
+                                    <span class="ml-auto text-xs bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 px-2 py-0.5 rounded-full">5</span>
+                                </a>
+                                <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors group">
+                                    <div class="w-2 h-2 bg-success-500 rounded-full mr-3"></div>
+                                    <span>Мобильное приложение</span>
+                                    <span class="ml-auto text-xs bg-success-100 dark:bg-success-900 text-success-800 dark:text-success-200 px-2 py-0.5 rounded-full">3</span>
+                                </a>
+                                <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors group">
+                                    <div class="w-2 h-2 bg-warning-500 rounded-full mr-3"></div>
+                                    <span>Маркетинг кампания</span>
+                                    <span class="ml-auto text-xs bg-warning-100 dark:bg-warning-900 text-warning-800 dark:text-warning-200 px-2 py-0.5 rounded-full">7</span>
+                                </a>
+                                <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors group">
+                                    <div class="w-2 h-2 bg-danger-500 rounded-full mr-3"></div>
+                                    <span>Анализ данных</span>
+                                    <span class="ml-auto text-xs bg-danger-100 dark:bg-danger-900 text-danger-800 dark:text-danger-200 px-2 py-0.5 rounded-full">2</span>
+                                </a>
+                            </nav>
+                        </div>
+
+                        <!-- Team Members -->
+                        <div class="mt-8">
+                            <h3 class="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Команда</h3>
+                            <div class="mt-2 space-y-2">
+                                <div class="flex items-center px-4 py-2">
+                                    <div class="relative">
+                                        <div class="avatar bg-gradient-to-br from-purple-500 to-pink-500">A</div>
+                                        <div class="status-indicator status-online absolute bottom-0 right-0"></div>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Алексей</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Разработчик</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center px-4 py-2">
+                                    <div class="relative">
+                                        <div class="avatar bg-gradient-to-br from-green-500 to-teal-500">M</div>
+                                        <div class="status-indicator status-busy absolute bottom-0 right-0"></div>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Мария</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Дизайнер</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center px-4 py-2">
+                                    <div class="relative">
+                                        <div class="avatar bg-gradient-to-br from-blue-500 to-cyan-500">I</div>
+                                        <div class="status-indicator status-offline absolute bottom-0 right-0"></div>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Иван</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Менеджер</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Footer -->
+                    <div class="p-4 border-t border-gray-200 dark:border-gray-800">
+                        <div class="bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-xl p-4 text-center">
+                            <i class="fas fa-rocket text-primary-500 text-xl mb-2"></i>
+                            <p class="text-sm font-medium text-primary-800 dark:text-primary-200">Project Pilot Pro</p>
+                            <p class="text-xs text-primary-600 dark:text-primary-400 mt-1">Премиум версия</p>
+                        </div>
                     </div>
                 </div>
             </aside>
 
             <!-- Main Content Area -->
-            <main class="app-content flex-1">
-                <div class="app-main">
+            <main class="flex-1 lg:ml-0 transition-all duration-300">
+                <!-- Mobile sidebar backdrop -->
+                <div id="sidebarBackdrop" class="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden hidden" onclick="App.toggleSidebar()"></div>
+
+                <div class="p-6">
                     <!-- Dashboard View -->
-                    <div id="dashboardView">
+                    <div id="dashboardView" class="animate-fade-in">
+                        <!-- Welcome Header -->
+                        <div class="mb-8">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">Добро пожаловать!</h1>
+                                    <p class="text-gray-600 dark:text-gray-400">Вот обзор ваших проектов и задач на сегодня.</p>
+                                </div>
+                                <div class="mt-4 md:mt-0 flex space-x-3">
+                                    <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2">
+                                        <i class="fas fa-filter"></i>
+                                        <span>Фильтр</span>
+                                    </button>
+                                    <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2">
+                                        <i class="fas fa-sort"></i>
+                                        <span>Сортировка</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Stats -->
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-icon stat-icon-projects">
-                                    <i class="fas fa-folder"></i>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="premium-card p-6 rounded-2xl">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-folder text-primary-600 dark:text-primary-400 text-xl"></i>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-black text-gray-900 dark:text-gray-100" id="projectsCount">12</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">Проектов</div>
+                                    </div>
                                 </div>
-                                <div class="stat-value" id="projectsCount">12</div>
-                                <div class="stat-label">Проектов</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon stat-icon-tasks">
-                                    <i class="fas fa-tasks"></i>
+                                <div class="progress-bar">
+                                    <div class="progress-fill bg-primary-500" style="width: 75%"></div>
                                 </div>
-                                <div class="stat-value" id="tasksCount">47</div>
-                                <div class="stat-label">Задач</div>
                             </div>
-                            <div class="stat-card">
-                                <div class="stat-icon stat-icon-recent">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <div class="stat-value" id="recentTasksCount">8</div>
-                                <div class="stat-label">Недавние</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon stat-icon-completed">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="stat-value" id="completedTasksCount">23</div>
-                                <div class="stat-label">Выполнено</div>
-                            </div>
-                        </div>
 
-                        <!-- Recent Tasks -->
-                        <div class="card mb-6">
-                            <div class="card-header">
-                                <h2 class="text-xl font-semibold">Недавние задачи</h2>
+                            <div class="premium-card p-6 rounded-2xl">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-success-100 dark:bg-success-900/30 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-tasks text-success-600 dark:text-success-400 text-xl"></i>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-black text-gray-900 dark:text-gray-100" id="tasksCount">47</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">Задач</div>
+                                    </div>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill bg-success-500" style="width: 60%"></div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="task-list" id="recentTasksList">
-                                    <!-- Recent tasks will be loaded here -->
-                                    <div class="task-item">
-                                        <div class="task-checkbox checked"></div>
-                                        <div class="task-content">
-                                            <div class="task-title">Разработать главную страницу</div>
-                                            <div class="task-meta">
-                                                <span class="task-priority priority-high">Высокий</span>
-                                                <span><i class="fas fa-calendar-alt mr-1"></i> 15 мая</span>
-                                                <span><i class="fas fa-user mr-1"></i> Алексей</span>
-                                            </div>
-                                        </div>
+
+                            <div class="premium-card p-6 rounded-2xl">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-warning-100 dark:bg-warning-900/30 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-clock text-warning-600 dark:text-warning-400 text-xl"></i>
                                     </div>
-                                    <div class="task-item">
-                                        <div class="task-checkbox"></div>
-                                        <div class="task-content">
-                                            <div class="task-title">Протестировать API</div>
-                                            <div class="task-meta">
-                                                <span class="task-priority priority-medium">Средний</span>
-                                                <span><i class="fas fa-calendar-alt mr-1"></i> 18 мая</span>
-                                                <span><i class="fas fa-user mr-1"></i> Мария</span>
-                                            </div>
-                                        </div>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-black text-gray-900 dark:text-gray-100" id="recentTasksCount">8</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">Недавние</div>
                                     </div>
-                                    <div class="task-item">
-                                        <div class="task-checkbox"></div>
-                                        <div class="task-content">
-                                            <div class="task-title">Подготовить документацию</div>
-                                            <div class="task-meta">
-                                                <span class="task-priority priority-low">Низкий</span>
-                                                <span><i class="fas fa-calendar-alt mr-1"></i> 20 мая</span>
-                                                <span><i class="fas fa-user mr-1"></i> Иван</span>
-                                            </div>
-                                        </div>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill bg-warning-500" style="width: 40%"></div>
+                                </div>
+                            </div>
+
+                            <div class="premium-card p-6 rounded-2xl">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-danger-100 dark:bg-danger-900/30 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-check-circle text-danger-600 dark:text-danger-400 text-xl"></i>
                                     </div>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-black text-gray-900 dark:text-gray-100" id="completedTasksCount">23</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">Выполнено</div>
+                                    </div>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill bg-danger-500" style="width: 85%"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- My Projects -->
-                        <div class="card">
-                            <div class="card-header flex justify-between items-center">
-                                <h2 class="text-xl font-semibold">Мои проекты</h2>
-                                <button class="btn btn-primary btn-sm" onclick="App.showCreateProjectModal()">
-                                    <i class="fas fa-plus mr-1"></i> Новый проект
-                                </button>
+                        <!-- Recent Tasks and Projects -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Recent Tasks -->
+                            <div class="premium-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center justify-between">
+                                        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Недавние задачи</h2>
+                                        <a href="#" class="text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline">Все задачи</a>
+                                    </div>
+                                </div>
+                                <div class="p-6">
+                                    <div class="task-list space-y-4" id="recentTasksList">
+                                        <!-- Recent tasks will be loaded here -->
+                                        <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                                            <div class="custom-checkbox checked mr-4"></div>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100">Разработать главную страницу</div>
+                                                <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    <span><i class="fas fa-project-diagram mr-1"></i> Веб-сайт компании</span>
+                                                    <span class="flex items-center"><span class="priority-indicator priority-high"></span> Высокий</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">15 мая</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Алексей</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                                            <div class="custom-checkbox mr-4"></div>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100">Протестировать API</div>
+                                                <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    <span><i class="fas fa-project-diagram mr-1"></i> Мобильное приложение</span>
+                                                    <span class="flex items-center"><span class="priority-indicator priority-medium"></span> Средний</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">18 мая</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Мария</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                                            <div class="custom-checkbox mr-4"></div>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100">Подготовить документацию</div>
+                                                <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    <span><i class="fas fa-project-diagram mr-1"></i> Анализ данных</span>
+                                                    <span class="flex items-center"><span class="priority-indicator priority-low"></span> Низкий</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">20 мая</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Иван</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="project-grid" id="projectsList">
-                                    <!-- Projects will be loaded here -->
-                                    <div class="project-card" onclick="App.openProject('project1')">
-                                        <div class="project-header">
-                                            <div class="project-title">
-                                                <span>Веб-сайт компании</span>
-                                                <span class="project-badge badge-public">Публичный</span>
-                                            </div>
-                                            <p class="project-description">Разработка корпоративного сайта с современным дизайном</p>
-                                        </div>
-                                        <div class="project-body">
-                                            <div class="project-meta">
-                                                <div class="project-meta-item">
-                                                    <i class="fas fa-users project-meta-icon"></i>
-                                                    <span>5 участников</span>
-                                                </div>
-                                                <div class="project-meta-item">
-                                                    <i class="fas fa-tasks project-meta-icon"></i>
-                                                    <span>12 задач</span>
-                                                </div>
-                                            </div>
-                                            <div class="project-progress">
-                                                <div class="project-progress-label">
-                                                    <span>Прогресс</span>
-                                                    <span>65%</span>
-                                                </div>
-                                                <div class="project-progress-bar">
-                                                    <div class="project-progress-fill" style="width: 65%"></div>
-                                                </div>
-                                            </div>
-                                        </div>
+
+                            <!-- My Projects -->
+                            <div class="premium-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center justify-between">
+                                        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Мои проекты</h2>
+                                        <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl font-medium flex items-center space-x-2" onclick="App.showCreateProjectModal()">
+                                            <i class="fas fa-plus"></i>
+                                            <span>Новый проект</span>
+                                        </button>
                                     </div>
-                                    <div class="project-card" onclick="App.openProject('project2')">
-                                        <div class="project-header">
-                                            <div class="project-title">
-                                                <span>Мобильное приложение</span>
-                                                <span class="project-badge badge-private">Приватный</span>
+                                </div>
+                                <div class="p-6">
+                                    <div class="project-grid space-y-4" id="projectsList">
+                                        <!-- Projects will be loaded here -->
+                                        <div class="p-5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm transition-all cursor-pointer" onclick="App.openProject('project1')">
+                                            <div class="flex items-start justify-between mb-3">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                                                        <i class="fas fa-globe text-primary-600 dark:text-primary-400"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h3 class="font-bold text-gray-900 dark:text-gray-100">Веб-сайт компании</h3>
+                                                        <div class="flex items-center mt-1 space-x-2">
+                                                            <span class="px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 text-xs font-medium rounded-full">Публичный</span>
+                                                            <span class="text-xs text-gray-500 dark:text-gray-400">65% завершено</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
                                             </div>
-                                            <p class="project-description">Разработка кроссплатформенного мобильного приложения</p>
+                                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">Разработка корпоративного сайта с современным дизайном и адаптивной версткой</p>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    <span><i class="fas fa-users mr-1"></i> 5 участников</span>
+                                                    <span><i class="fas fa-tasks mr-1"></i> 12 задач</span>
+                                                </div>
+                                                <div class="flex -space-x-2">
+                                                    <div class="avatar bg-gradient-to-br from-purple-500 to-pink-500 w-8 h-8 text-xs">A</div>
+                                                    <div class="avatar bg-gradient-to-br from-green-500 to-teal-500 w-8 h-8 text-xs">M</div>
+                                                    <div class="avatar bg-gradient-to-br from-blue-500 to-cyan-500 w-8 h-8 text-xs">I</div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="project-body">
-                                            <div class="project-meta">
-                                                <div class="project-meta-item">
-                                                    <i class="fas fa-users project-meta-icon"></i>
-                                                    <span>3 участника</span>
+
+                                        <div class="p-5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm transition-all cursor-pointer" onclick="App.openProject('project2')">
+                                            <div class="flex items-start justify-between mb-3">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-10 h-10 bg-success-100 dark:bg-success-900/30 rounded-lg flex items-center justify-center">
+                                                        <i class="fas fa-mobile-alt text-success-600 dark:text-success-400"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h3 class="font-bold text-gray-900 dark:text-gray-100">Мобильное приложение</h3>
+                                                        <div class="flex items-center mt-1 space-x-2">
+                                                            <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs font-medium rounded-full">Приватный</span>
+                                                            <span class="text-xs text-gray-500 dark:text-gray-400">40% завершено</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="project-meta-item">
-                                                    <i class="fas fa-tasks project-meta-icon"></i>
-                                                    <span>8 задач</span>
-                                                </div>
+                                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
                                             </div>
-                                            <div class="project-progress">
-                                                <div class="project-progress-label">
-                                                    <span>Прогресс</span>
-                                                    <span>40%</span>
+                                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">Разработка кроссплатформенного мобильного приложения для iOS и Android</p>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    <span><i class="fas fa-users mr-1"></i> 3 участника</span>
+                                                    <span><i class="fas fa-tasks mr-1"></i> 8 задач</span>
                                                 </div>
-                                                <div class="project-progress-bar">
-                                                    <div class="project-progress-fill" style="width: 40%"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="project-card" onclick="App.openProject('project3')">
-                                        <div class="project-header">
-                                            <div class="project-title">
-                                                <span>Маркетинг кампания</span>
-                                                <span class="project-badge badge-approval">Одобрение</span>
-                                            </div>
-                                            <p class="project-description">Планирование и реализация маркетинговой кампании</p>
-                                        </div>
-                                        <div class="project-body">
-                                            <div class="project-meta">
-                                                <div class="project-meta-item">
-                                                    <i class="fas fa-users project-meta-icon"></i>
-                                                    <span>7 участников</span>
-                                                </div>
-                                                <div class="project-meta-item">
-                                                    <i class="fas fa-tasks project-meta-icon"></i>
-                                                    <span>15 задач</span>
-                                                </div>
-                                            </div>
-                                            <div class="project-progress">
-                                                <div class="project-progress-label">
-                                                    <span>Прогресс</span>
-                                                    <span>25%</span>
-                                                </div>
-                                                <div class="project-progress-bar">
-                                                    <div class="project-progress-fill" style="width: 25%"></div>
+                                                <div class="flex -space-x-2">
+                                                    <div class="avatar bg-gradient-to-br from-purple-500 to-pink-500 w-8 h-8 text-xs">A</div>
+                                                    <div class="avatar bg-gradient-to-br from-green-500 to-teal-500 w-8 h-8 text-xs">M</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1345,12 +1212,12 @@
                     </div>
 
                     <!-- Project View (hidden by default) -->
-                    <div id="projectView" class="hidden">
+                    <div id="projectView" class="hidden animate-fade-in">
                         <!-- Project details will be loaded here -->
                     </div>
 
                     <!-- Task View (hidden by default) -->
-                    <div id="taskView" class="hidden">
+                    <div id="taskView" class="hidden animate-fade-in">
                         <!-- Task details will be loaded here -->
                     </div>
                 </div>
@@ -1358,8 +1225,8 @@
         </div>
 
         <!-- Bottom Navigation (Mobile) -->
-        <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-around py-3 z-50">
-            <a href="#" class="flex flex-col items-center text-primary-500">
+        <nav class="lg:hidden fixed bottom-0 left-0 right-0 glass-intense border-t border-white/20 dark:border-gray-800/50 flex justify-around py-3 z-40 backdrop-blur-lg">
+            <a href="#" class="flex flex-col items-center text-primary-600 dark:text-primary-400">
                 <i class="fas fa-home text-xl"></i>
                 <span class="text-xs mt-1">Главная</span>
             </a>
@@ -1367,10 +1234,12 @@
                 <i class="fas fa-tasks text-xl"></i>
                 <span class="text-xs mt-1">Задачи</span>
             </a>
-            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400">
-                <i class="fas fa-plus-circle text-xl"></i>
+            <button class="flex flex-col items-center text-gray-500 dark:text-gray-400" onclick="App.showCreateProjectModal()">
+                <div class="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white -mt-6 shadow-lg">
+                    <i class="fas fa-plus text-xl"></i>
+                </div>
                 <span class="text-xs mt-1">Создать</span>
-            </a>
+            </button>
             <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400">
                 <i class="fas fa-calendar-alt text-xl"></i>
                 <span class="text-xs mt-1">Календарь</span>
@@ -1384,143 +1253,219 @@
 
     <!-- Modals -->
     <!-- Create Project Modal -->
-    <div id="createProjectModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Создать проект</h3>
-                <button class="modal-close" onclick="App.hideModal('createProjectModal')">&times;</button>
+    <div id="createProjectModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300">
+        <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-95 opacity-0">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Создать проект</h3>
+                    <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors focus-premium" onclick="App.hideModal('createProjectModal')">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
             </div>
-            <div class="modal-body">
+            <div class="p-6">
                 <form id="createProjectForm">
-                    <div class="form-group">
-                        <label class="form-label" for="projectTitle">Название проекта</label>
-                        <input type="text" id="projectTitle" class="form-control" placeholder="Введите название проекта" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="projectDescription">Описание</label>
-                        <textarea id="projectDescription" class="form-control" rows="3" placeholder="Опишите ваш проект"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Настройки проекта</label>
-                        <div class="flex items-center justify-between py-2">
-                            <span>Приватный проект</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="projectIsPrivate" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="projectTitle">Название проекта</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-heading text-gray-400"></i>
+                            </div>
+                            <input type="text" id="projectTitle" class="premium-input w-full pl-10 pr-4 py-3 rounded-xl focus-premium" placeholder="Введите название проекта" required>
                         </div>
-                        <div class="flex items-center justify-between py-2">
-                            <span>Требуется одобрение для вступления</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="projectRequiresApproval">
-                                <span class="toggle-slider"></span>
-                            </label>
+                    </div>
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="projectDescription">Описание</label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-3 pointer-events-none">
+                                <i class="fas fa-align-left text-gray-400"></i>
+                            </div>
+                            <textarea id="projectDescription" class="premium-input w-full pl-10 pr-4 py-3 rounded-xl focus-premium" rows="3" placeholder="Опишите ваш проект"></textarea>
+                        </div>
+                    </div>
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Настройки проекта</label>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                <div class="flex items-center">
+                                    <i class="fas fa-lock text-gray-500 mr-3"></i>
+                                    <span>Приватный проект</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="projectIsPrivate" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                <div class="flex items-center">
+                                    <i class="fas fa-user-check text-gray-500 mr-3"></i>
+                                    <span>Требуется одобрение</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="projectRequiresApproval">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="App.hideModal('createProjectModal')">Отмена</button>
-                <button class="btn btn-primary" onclick="App.handleCreateProject()">Создать проект</button>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium transition-colors" onclick="App.hideModal('createProjectModal')">
+                    Отмена
+                </button>
+                <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium" onclick="App.handleCreateProject()">
+                    Создать проект
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Create Task Modal -->
-    <div id="createTaskModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Создать задачу</h3>
-                <button class="modal-close" onclick="App.hideModal('createTaskModal')">&times;</button>
+    <div id="createTaskModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300">
+        <div class="modal premium-card rounded-2xl w-full max-w-lg transform transition-transform duration-300 scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Создать задачу</h3>
+                    <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors focus-premium" onclick="App.hideModal('createTaskModal')">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
             </div>
-            <div class="modal-body">
+            <div class="p-6">
                 <form id="createTaskForm">
-                    <div class="form-group">
-                        <label class="form-label" for="taskTitle">Название задачи</label>
-                        <input type="text" id="taskTitle" class="form-control" placeholder="Введите название задачи" required>
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="taskTitle">Название задачи</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-heading text-gray-400"></i>
+                            </div>
+                            <input type="text" id="taskTitle" class="premium-input w-full pl-10 pr-4 py-3 rounded-xl focus-premium" placeholder="Введите название задачи" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="taskDescription">Описание</label>
-                        <textarea id="taskDescription" class="form-control" rows="3" placeholder="Опишите задачу"></textarea>
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="taskDescription">Описание</label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-3 pointer-events-none">
+                                <i class="fas fa-align-left text-gray-400"></i>
+                            </div>
+                            <textarea id="taskDescription" class="premium-input w-full pl-10 pr-4 py-3 rounded-xl focus-premium" rows="3" placeholder="Опишите задачу"></textarea>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="taskPriority">Приоритет</label>
-                        <select id="taskPriority" class="form-control form-select">
-                            <option value="low">Низкий</option>
-                            <option value="medium" selected>Средний</option>
-                            <option value="high">Высокий</option>
-                            <option value="urgent">Срочный</option>
-                        </select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="taskPriority">Приоритет</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-flag text-gray-400"></i>
+                                </div>
+                                <select id="taskPriority" class="premium-input w-full pl-10 pr-4 py-3 rounded-xl focus-premium appearance-none">
+                                    <option value="low">Низкий</option>
+                                    <option value="medium" selected>Средний</option>
+                                    <option value="high">Высокий</option>
+                                    <option value="urgent">Срочный</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-chevron-down text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="taskDueDate">Срок выполнения</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-calendar-alt text-gray-400"></i>
+                                </div>
+                                <input type="date" id="taskDueDate" class="premium-input w-full pl-10 pr-4 py-3 rounded-xl focus-premium">
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="taskDueDate">Срок выполнения</label>
-                        <input type="date" id="taskDueDate" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="taskAssignedTo">Исполнитель</label>
-                        <select id="taskAssignedTo" class="form-control form-select">
-                            <option value="">Не назначена</option>
-                            <option value="user1">Алексей</option>
-                            <option value="user2">Мария</option>
-                            <option value="user3">Иван</option>
-                        </select>
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="taskAssignedTo">Исполнитель</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <select id="taskAssignedTo" class="premium-input w-full pl-10 pr-4 py-3 rounded-xl focus-premium appearance-none">
+                                <option value="">Не назначена</option>
+                                <option value="user1">Алексей</option>
+                                <option value="user2">Мария</option>
+                                <option value="user3">Иван</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <i class="fas fa-chevron-down text-gray-400"></i>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="App.hideModal('createTaskModal')">Отмена</button>
-                <button class="btn btn-primary" onclick="App.handleCreateTask()">Создать задачу</button>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-5 py-2.5 rounded-xl font-medium transition-colors" onclick="App.hideModal('createTaskModal')">
+                    Отмена
+                </button>
+                <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium" onclick="App.handleCreateTask()">
+                    Создать задачу
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Notifications Modal -->
-    <div id="notificationsModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Уведомления</h3>
-                <button class="modal-close" onclick="App.hideModal('notificationsModal')">&times;</button>
+    <div id="notificationsModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300">
+        <div class="modal premium-card rounded-2xl w-full max-w-md transform transition-transform duration-300 scale-95 opacity-0 max-h-[80vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Уведомления</h3>
+                    <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors focus-premium" onclick="App.hideModal('notificationsModal')">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
             </div>
-            <div class="modal-body">
+            <div class="p-6">
                 <div class="space-y-4" id="notificationsList">
                     <!-- Notifications will be loaded here -->
-                    <div class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400">
+                    <div class="flex items-start space-x-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400">
                             <i class="fas fa-user-plus"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-medium">Новый участник</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Алексей присоединился к проекту "Веб-сайт компании"</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">2 часа назад</p>
+                            <p class="font-medium text-gray-900 dark:text-gray-100">Новый участник</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Алексей присоединился к проекту "Веб-сайт компании"</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">2 часа назад</p>
                         </div>
                     </div>
-                    <div class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div class="w-10 h-10 bg-success-100 dark:bg-success-900 rounded-full flex items-center justify-center text-success-600 dark:text-success-400">
+                    <div class="flex items-start space-x-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                        <div class="w-10 h-10 bg-success-100 dark:bg-success-900/30 rounded-full flex items-center justify-center text-success-600 dark:text-success-400">
                             <i class="fas fa-check-circle"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-medium">Задача выполнена</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Мария завершила задачу "Протестировать API"</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">5 часов назад</p>
+                            <p class="font-medium text-gray-900 dark:text-gray-100">Задача выполнена</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Мария завершила задачу "Протестировать API"</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">5 часов назад</p>
                         </div>
                     </div>
-                    <div class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div class="w-10 h-10 bg-warning-100 dark:bg-warning-900 rounded-full flex items-center justify-center text-warning-600 dark:text-warning-400">
+                    <div class="flex items-start space-x-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                        <div class="w-10 h-10 bg-warning-100 dark:bg-warning-900/30 rounded-full flex items-center justify-center text-warning-600 dark:text-warning-400">
                             <i class="fas fa-exclamation-triangle"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="font-medium">Срок истекает</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Задача "Разработать главную страницу" должна быть завершена завтра</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Вчера</p>
+                            <p class="font-medium text-gray-900 dark:text-gray-100">Срок истекает</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Задача "Разработать главную страницу" должна быть завершена завтра</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Вчера</p>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="App.markAllNotificationsRead()">Отметить все как прочитанные</button>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+                <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white w-full py-2.5 rounded-xl font-medium" onclick="App.markAllNotificationsRead()">
+                    Отметить все как прочитанные
+                </button>
             </div>
         </div>
     </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-sm"></div>
 
     <script>
         // Конфигурация
@@ -1543,6 +1488,130 @@
             MEMBER: 'member',
             GUEST: 'guest'
         };
+
+        // Утилиты для UI
+        class UIUtils {
+            // Показать уведомление
+            static showToast(message, type = 'info') {
+                const toastContainer = document.getElementById('toastContainer');
+                const toastId = 'toast-' + Date.now();
+
+                const typeConfig = {
+                    success: { bg: 'bg-success-500', icon: 'fa-check-circle' },
+                    error: { bg: 'bg-danger-500', icon: 'fa-exclamation-circle' },
+                    warning: { bg: 'bg-warning-500', icon: 'fa-exclamation-triangle' },
+                    info: { bg: 'bg-primary-500', icon: 'fa-info-circle' }
+                };
+
+                const config = typeConfig[type] || typeConfig.info;
+
+                const toast = document.createElement('div');
+                toast.id = toastId;
+                toast.className = `p-4 rounded-xl text-white shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${config.bg}`;
+                toast.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fas ${config.icon} mr-3"></i>
+                        <div class="flex-1">${message}</div>
+                        <button class="ml-4" onclick="document.getElementById('${toastId}').remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+
+                toastContainer.appendChild(toast);
+
+                // Анимация появления
+                setTimeout(() => {
+                    toast.classList.remove('translate-x-full', 'opacity-0');
+                    toast.classList.add('translate-x-0', 'opacity-100');
+                }, 10);
+
+                // Автоматическое скрытие
+                setTimeout(() => {
+                    toast.classList.add('translate-x-full', 'opacity-0');
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.parentNode.removeChild(toast);
+                        }
+                    }, 300);
+                }, 5000);
+            }
+
+            // Показать модальное окно
+            static showModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    setTimeout(() => {
+                        const modalContent = modal.querySelector('.modal');
+                        if (modalContent) {
+                            modalContent.classList.remove('scale-95', 'opacity-0');
+                            modalContent.classList.add('scale-100', 'opacity-100');
+                        }
+                    }, 10);
+                }
+            }
+
+            // Скрыть модальное окно
+            static hideModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    const modalContent = modal.querySelector('.modal');
+                    if (modalContent) {
+                        modalContent.classList.remove('scale-100', 'opacity-100');
+                        modalContent.classList.add('scale-95', 'opacity-0');
+                    }
+
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                    }, 300);
+                }
+            }
+
+            // Переключение сайдбара на мобильных устройствах
+            static toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const backdrop = document.getElementById('sidebarBackdrop');
+
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.remove('-translate-x-full');
+                    backdrop.classList.remove('hidden');
+                } else {
+                    sidebar.classList.add('-translate-x-full');
+                    backdrop.classList.add('hidden');
+                }
+            }
+
+            // Переключение темы
+            static toggleTheme() {
+                const themeToggle = document.getElementById('themeToggle');
+                const isDark = document.documentElement.classList.contains('dark');
+
+                if (isDark) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                    themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                }
+            }
+
+            // Инициализация темы из localStorage
+            static initTheme() {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                const themeToggle = document.getElementById('themeToggle');
+
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                }
+            }
+        }
 
         // Менеджер аутентификации
         class AuthManager {
@@ -1877,6 +1946,9 @@
                     // Показываем заставку
                     this.showSplashScreen();
 
+                    // Инициализируем тему
+                    UIUtils.initTheme();
+
                     // Инициализируем аутентификацию
                     currentUser = await AuthManager.initialize();
 
@@ -1896,6 +1968,7 @@
             static showSplashScreen() {
                 const splashScreen = document.getElementById('splashScreen');
                 const progressBar = document.getElementById('splashProgressBar');
+                const appContainer = document.getElementById('appContainer');
 
                 // Анимируем прогресс-бар
                 let progress = 0;
@@ -1907,8 +1980,11 @@
 
                         // Скрываем заставку и показываем приложение
                         setTimeout(() => {
-                            splashScreen.classList.add('hidden');
-                            document.getElementById('appContainer').classList.remove('hidden');
+                            splashScreen.style.opacity = '0';
+                            setTimeout(() => {
+                                splashScreen.style.display = 'none';
+                                appContainer.classList.remove('hidden');
+                            }, 1000);
                         }, 500);
                     }
                     progressBar.style.width = `${progress}%`;
@@ -1956,11 +2032,13 @@
                 const container = document.getElementById('projectsList');
                 if (!projects || projects.length === 0) {
                     container.innerHTML = `
-                        <div class="empty-state col-span-full">
-                            <i class="empty-state-icon fas fa-folder-open"></i>
-                            <h3 class="empty-state-title">Проектов пока нет</h3>
-                            <p class="empty-state-description">Создайте свой первый проект, чтобы начать работу</p>
-                            <button class="btn btn-primary" onclick="App.showCreateProjectModal()">
+                        <div class="col-span-full text-center py-12">
+                            <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                <i class="fas fa-folder-open text-3xl text-gray-400"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Проектов пока нет</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">Создайте свой первый проект, чтобы начать работу</p>
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-xl font-medium" onclick="App.showCreateProjectModal()">
                                 <i class="fas fa-plus mr-2"></i> Создать проект
                             </button>
                         </div>
@@ -1982,42 +2060,43 @@
 
                     const progress = tasksCount > 0 ? (doneTasks / tasksCount) * 100 : 0;
 
-                    let badgeClass = 'badge-public';
+                    let badgeClass = 'bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200';
                     let badgeText = 'Публичный';
 
                     if (projectData.is_private) {
-                        badgeClass = projectData.requires_approval ? 'badge-approval' : 'badge-private';
+                        badgeClass = projectData.requires_approval ?
+                            'bg-warning-100 dark:bg-warning-900 text-warning-800 dark:text-warning-200' :
+                            'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
                         badgeText = projectData.requires_approval ? 'Одобрение' : 'Приватный';
                     }
 
                     return `
-                        <div class="project-card" onclick="App.openProject('${projectData.hash}')">
-                            <div class="project-header">
-                                <div class="project-title">
-                                    <span>${this.escapeHtml(projectData.title)}</span>
-                                    <span class="project-badge ${badgeClass}">${badgeText}</span>
+                        <div class="p-5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm transition-all cursor-pointer premium-card" onclick="App.openProject('${projectData.hash}')">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-folder text-primary-600 dark:text-primary-400"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-gray-900 dark:text-gray-100">${this.escapeHtml(projectData.title)}</h3>
+                                        <div class="flex items-center mt-1 space-x-2">
+                                            <span class="px-2 py-1 ${badgeClass} text-xs font-medium rounded-full">${badgeText}</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">${Math.round(progress)}% завершено</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="project-description">${this.escapeHtml(projectData.description || 'Без описания')}</p>
+                                <button class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
                             </div>
-                            <div class="project-body">
-                                <div class="project-meta">
-                                    <div class="project-meta-item">
-                                        <i class="fas fa-users project-meta-icon"></i>
-                                        <span>${membersCount} участников</span>
-                                    </div>
-                                    <div class="project-meta-item">
-                                        <i class="fas fa-tasks project-meta-icon"></i>
-                                        <span>${tasksCount} задач</span>
-                                    </div>
+                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">${this.escapeHtml(projectData.description || 'Без описания')}</p>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                    <span><i class="fas fa-users mr-1"></i> ${membersCount} участников</span>
+                                    <span><i class="fas fa-tasks mr-1"></i> ${tasksCount} задач</span>
                                 </div>
-                                <div class="project-progress">
-                                    <div class="project-progress-label">
-                                        <span>Прогресс</span>
-                                        <span>${Math.round(progress)}%</span>
-                                    </div>
-                                    <div class="project-progress-bar">
-                                        <div class="project-progress-fill" style="width: ${progress}%"></div>
-                                    </div>
+                                <div class="flex -space-x-2">
+                                    <!-- Аватары участников будут добавлены здесь -->
                                 </div>
                             </div>
                         </div>
@@ -2030,25 +2109,30 @@
                 const container = document.getElementById('recentTasksList');
                 if (!recentTasks || recentTasks.length === 0) {
                     container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="empty-state-icon fas fa-tasks"></i>
-                            <h3 class="empty-state-title">Нет недавних задач</h3>
-                            <p class="empty-state-description">Задачи, над которыми вы работали, появятся здесь</p>
+                        <div class="text-center py-8">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                <i class="fas fa-tasks text-xl text-gray-400"></i>
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Нет недавних задач</h3>
+                            <p class="text-gray-600 dark:text-gray-400">Задачи, над которыми вы работали, появятся здесь</p>
                         </div>
                     `;
                     return;
                 }
 
                 container.innerHTML = recentTasks.map(task => `
-                    <div class="task-item" onclick="App.openTask(${task.id})">
-                        <div class="task-checkbox ${task.status === 'done' ? 'checked' : ''}"></div>
-                        <div class="task-content">
-                            <div class="task-title">${this.escapeHtml(task.title)}</div>
-                            <div class="task-meta">
-                                <span class="task-priority priority-${task.priority}">${this.getPriorityText(task.priority)}</span>
-                                <span><i class="fas fa-calendar-alt mr-1"></i> ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Без срока'}</span>
-                                <span><i class="fas fa-user mr-1"></i> ${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</span>
+                    <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer" onclick="App.openTask(${task.id})">
+                        <div class="custom-checkbox ${task.status === 'done' ? 'checked' : ''} mr-4"></div>
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(task.title)}</div>
+                            <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                <span><i class="fas fa-project-diagram mr-1"></i> ${task.project_title || 'Проект'}</span>
+                                <span class="flex items-center"><span class="priority-indicator priority-${task.priority}"></span> ${this.getPriorityText(task.priority)}</span>
                             </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Без срока'}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</div>
                         </div>
                     </div>
                 `).join('');
@@ -2076,43 +2160,26 @@
             static setupEventListeners() {
                 // Переключение темы
                 document.getElementById('themeToggle').addEventListener('click', () => {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-moon"></i>';
-                        userSettings.theme = 'light';
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
-                        userSettings.theme = 'dark';
-                    }
-                    ApiService.updateUserPreferences({ theme: userSettings.theme });
+                    UIUtils.toggleTheme();
                 });
 
-                // Меню пользователя
-                document.getElementById('userMenuBtn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const dropdown = document.getElementById('userDropdown');
-                    dropdown.classList.toggle('hidden');
-                });
-
-                // Закрытие меню пользователя при клике вне его
-                document.addEventListener('click', () => {
-                    document.getElementById('userDropdown').classList.add('hidden');
+                // Переключение сайдбара на мобильных
+                document.getElementById('sidebarToggle').addEventListener('click', () => {
+                    UIUtils.toggleSidebar();
                 });
 
                 // Создание проекта
-                document.getElementById('createProjectBtn').addEventListener('click', () => {
-                    this.showModal('createProjectModal');
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('#createProjectBtn')) {
+                        this.showCreateProjectModal();
+                    }
                 });
 
                 // Уведомления
-                document.getElementById('notificationsBtn').addEventListener('click', () => {
-                    this.showNotifications();
-                });
-
-                // Поиск
-                document.getElementById('searchBtn').addEventListener('click', () => {
-                    this.showSearch();
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('#notificationsBtn')) {
+                        this.showNotifications();
+                    }
                 });
             }
 
@@ -2159,10 +2226,10 @@
 
                 // Формируем HTML для представления проекта
                 projectView.innerHTML = `
-                    <div class="mb-6">
+                    <div class="mb-8">
                         <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
                             <div>
-                                <h1 class="text-2xl font-bold">${this.escapeHtml(project.title)}</h1>
+                                <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">${this.escapeHtml(project.title)}</h1>
                                 <div class="flex items-center mt-2 space-x-4 text-sm text-gray-600 dark:text-gray-400">
                                     <span><i class="fas fa-users mr-1"></i> ${summary.members_count || 0} участников</span>
                                     <span><i class="fas fa-tasks mr-1"></i> ${summary.tasks_count || 0} задач</span>
@@ -2171,40 +2238,44 @@
                                 </div>
                             </div>
                             <div class="flex space-x-2 mt-4 md:mt-0">
-                                <button class="btn btn-primary" onclick="App.showCreateTaskModal()">
-                                    <i class="fas fa-plus mr-2"></i> Новая задача
+                                <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showCreateTaskModal()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Новая задача</span>
                                 </button>
-                                <button class="btn btn-secondary" onclick="App.showDashboard()">
-                                    <i class="fas fa-arrow-left mr-2"></i> Назад
+                                <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showDashboard()">
+                                    <i class="fas fa-arrow-left"></i>
+                                    <span>Назад</span>
                                 </button>
                             </div>
                         </div>
                         <p class="text-gray-600 dark:text-gray-400">${this.escapeHtml(project.description || 'Без описания')}</p>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div class="lg:col-span-2">
-                            <div class="card mb-6">
-                                <div class="card-header flex justify-between items-center">
-                                    <h2 class="text-xl font-semibold">Задачи проекта</h2>
-                                    <div class="flex space-x-2">
-                                        <select class="form-control form-select text-sm">
-                                            <option>Все статусы</option>
-                                            <option>К выполнению</option>
-                                            <option>В работе</option>
-                                            <option>Выполнено</option>
-                                        </select>
-                                        <select class="form-control form-select text-sm">
-                                            <option>Все приоритеты</option>
-                                            <option>Низкий</option>
-                                            <option>Средний</option>
-                                            <option>Высокий</option>
-                                            <option>Срочный</option>
-                                        </select>
+                            <div class="premium-card rounded-2xl overflow-hidden mb-6">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center justify-between">
+                                        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Задачи проекта</h2>
+                                        <div class="flex space-x-2">
+                                            <select class="premium-input text-sm rounded-xl focus-premium">
+                                                <option>Все статусы</option>
+                                                <option>К выполнению</option>
+                                                <option>В работе</option>
+                                                <option>Выполнено</option>
+                                            </select>
+                                            <select class="premium-input text-sm rounded-xl focus-premium">
+                                                <option>Все приоритеты</option>
+                                                <option>Низкий</option>
+                                                <option>Средний</option>
+                                                <option>Высокий</option>
+                                                <option>Срочный</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="card-body">
-                                    <div class="task-list" id="projectTasksList">
+                                <div class="p-6">
+                                    <div class="task-list space-y-4" id="projectTasksList">
                                         <!-- Задачи проекта будут загружены здесь -->
                                     </div>
                                 </div>
@@ -2212,39 +2283,39 @@
                         </div>
 
                         <div>
-                            <div class="card mb-6">
-                                <div class="card-header">
-                                    <h2 class="text-xl font-semibold">Участники</h2>
+                            <div class="premium-card rounded-2xl overflow-hidden mb-6">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Участники</h2>
                                 </div>
-                                <div class="card-body">
+                                <div class="p-6">
                                     <div id="projectMembersList">
                                         <!-- Участники проекта будут загружены здесь -->
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="card">
-                                <div class="card-header">
-                                    <h2 class="text-xl font-semibold">Статистика</h2>
+                            <div class="premium-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Статистика</h2>
                                 </div>
-                                <div class="card-body">
+                                <div class="p-6">
                                     <div class="space-y-4">
                                         <div>
                                             <div class="flex justify-between mb-1">
                                                 <span class="text-sm font-medium">Общий прогресс</span>
                                                 <span class="text-sm font-medium">${summary.tasks_count > 0 ? Math.round((summary.tasks_done / summary.tasks_count) * 100) : 0}%</span>
                                             </div>
-                                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                                <div class="bg-primary-500 h-2 rounded-full" style="width: ${summary.tasks_count > 0 ? (summary.tasks_done / summary.tasks_count) * 100 : 0}%"></div>
+                                            <div class="progress-bar">
+                                                <div class="progress-fill bg-primary-500" style="width: ${summary.tasks_count > 0 ? (summary.tasks_done / summary.tasks_count) * 100 : 0}%"></div>
                                             </div>
                                         </div>
                                         <div class="grid grid-cols-2 gap-4">
-                                            <div class="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                                <div class="text-2xl font-bold text-primary-500">${summary.tasks_todo || 0}</div>
+                                            <div class="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                                                <div class="text-2xl font-black text-primary-500">${summary.tasks_todo || 0}</div>
                                                 <div class="text-sm text-gray-600 dark:text-gray-400">К выполнению</div>
                                             </div>
-                                            <div class="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                                <div class="text-2xl font-bold text-warning-500">${summary.tasks_in_progress || 0}</div>
+                                            <div class="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                                                <div class="text-2xl font-black text-warning-500">${summary.tasks_in_progress || 0}</div>
                                                 <div class="text-sm text-gray-600 dark:text-gray-400">В работе</div>
                                             </div>
                                         </div>
@@ -2268,11 +2339,13 @@
 
                     if (!tasks || tasks.length === 0) {
                         container.innerHTML = `
-                            <div class="empty-state">
-                                <i class="empty-state-icon fas fa-tasks"></i>
-                                <h3 class="empty-state-title">Задач пока нет</h3>
-                                <p class="empty-state-description">Создайте первую задачу для этого проекта</p>
-                                <button class="btn btn-primary" onclick="App.showCreateTaskModal()">
+                            <div class="text-center py-8">
+                                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                    <i class="fas fa-tasks text-xl text-gray-400"></i>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Задач пока нет</h3>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">Создайте первую задачу для этого проекта</p>
+                                <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl font-medium" onclick="App.showCreateTaskModal()">
                                     <i class="fas fa-plus mr-2"></i> Создать задачу
                                 </button>
                             </div>
@@ -2281,15 +2354,17 @@
                     }
 
                     container.innerHTML = tasks.map(task => `
-                        <div class="task-item" onclick="App.openTask(${task.id})">
-                            <div class="task-checkbox ${task.status === 'done' ? 'checked' : ''}"></div>
-                            <div class="task-content">
-                                <div class="task-title">${this.escapeHtml(task.title)}</div>
-                                <div class="task-meta">
-                                    <span class="task-priority priority-${task.priority}">${this.getPriorityText(task.priority)}</span>
+                        <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors cursor-pointer" onclick="App.openTask(${task.id})">
+                            <div class="custom-checkbox ${task.status === 'done' ? 'checked' : ''} mr-4"></div>
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(task.title)}</div>
+                                <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                    <span class="flex items-center"><span class="priority-indicator priority-${task.priority}"></span> ${this.getPriorityText(task.priority)}</span>
                                     <span><i class="fas fa-calendar-alt mr-1"></i> ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Без срока'}</span>
-                                    <span><i class="fas fa-user mr-1"></i> ${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</span>
                                 </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</div>
                             </div>
                         </div>
                     `).join('');
@@ -2321,11 +2396,11 @@
 
                         return `
                             <div class="flex items-center space-x-3 py-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
-                                <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 font-medium">
+                                <div class="avatar bg-gradient-to-br from-primary-500 to-primary-600">
                                     ${displayName.charAt(0).toUpperCase()}
                                 </div>
                                 <div class="flex-1">
-                                    <div class="font-medium">${this.escapeHtml(displayName)}</div>
+                                    <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(displayName)}</div>
                                     <div class="text-sm text-gray-500 dark:text-gray-400">${this.getRoleText(member.role)}</div>
                                 </div>
                             </div>
@@ -2363,66 +2438,71 @@
                 const taskView = document.getElementById('taskView');
 
                 taskView.innerHTML = `
-                    <div class="mb-6">
+                    <div class="mb-8">
                         <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
                             <div>
-                                <h1 class="text-2xl font-bold">${this.escapeHtml(task.title)}</h1>
+                                <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">${this.escapeHtml(task.title)}</h1>
                                 <div class="flex items-center mt-2 space-x-4 text-sm text-gray-600 dark:text-gray-400">
                                     <span><i class="fas fa-calendar-alt mr-1"></i> Создана: ${new Date(task.created_at).toLocaleDateString()}</span>
                                     <span><i class="fas fa-user mr-1"></i> ${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</span>
                                 </div>
                             </div>
                             <div class="flex space-x-2 mt-4 md:mt-0">
-                                <button class="btn btn-success" onclick="App.showCreateSubtaskModal()">
-                                    <i class="fas fa-plus mr-2"></i> Подзадача
+                                <button class="btn-premium bg-success-500 hover:bg-success-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showCreateSubtaskModal()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Подзадача</span>
                                 </button>
-                                <button class="btn btn-warning" onclick="App.showEditTaskModal()">
-                                    <i class="fas fa-edit mr-2"></i> Редактировать
+                                <button class="btn-premium bg-warning-500 hover:bg-warning-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showEditTaskModal()">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Редактировать</span>
                                 </button>
-                                <button class="btn btn-danger" onclick="App.showDeleteTaskModal()">
-                                    <i class="fas fa-trash mr-2"></i> Удалить
+                                <button class="btn-premium bg-danger-500 hover:bg-danger-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showDeleteTaskModal()">
+                                    <i class="fas fa-trash"></i>
+                                    <span>Удалить</span>
                                 </button>
-                                <button class="btn btn-secondary" onclick="App.backToProject()">
-                                    <i class="fas fa-arrow-left mr-2"></i> Назад
+                                <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.backToProject()">
+                                    <i class="fas fa-arrow-left"></i>
+                                    <span>Назад</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div class="lg:col-span-2">
-                            <div class="card mb-6">
-                                <div class="card-header">
-                                    <h2 class="text-xl font-semibold">Описание</h2>
+                            <div class="premium-card rounded-2xl overflow-hidden mb-6">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Описание</h2>
                                 </div>
-                                <div class="card-body">
+                                <div class="p-6">
                                     <p class="text-gray-700 dark:text-gray-300">${this.escapeHtml(task.description || 'Без описания')}</p>
                                 </div>
                             </div>
 
-                            <div class="card mb-6">
-                                <div class="card-header">
-                                    <h2 class="text-xl font-semibold">Подзадачи</h2>
+                            <div class="premium-card rounded-2xl overflow-hidden mb-6">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Подзадачи</h2>
                                 </div>
-                                <div class="card-body">
+                                <div class="p-6">
                                     <div id="subtasksList">
                                         <!-- Подзадачи будут загружены здесь -->
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="card">
-                                <div class="card-header">
-                                    <h2 class="text-xl font-semibold">Комментарии</h2>
+                            <div class="premium-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Комментарии</h2>
                                 </div>
-                                <div class="card-body">
+                                <div class="p-6">
                                     <div id="taskCommentsList" class="mb-4">
                                         <!-- Комментарии будут загружены здесь -->
                                     </div>
                                     <div class="flex space-x-2">
-                                        <input type="text" id="newCommentText" placeholder="Введите комментарий..." class="form-control flex-1">
-                                        <button onclick="App.addComment()" class="btn btn-primary">
-                                            <i class="fas fa-paper-plane mr-2"></i> Отправить
+                                        <input type="text" id="newCommentText" placeholder="Введите комментарий..." class="premium-input flex-1 rounded-xl focus-premium">
+                                        <button onclick="App.addComment()" class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2">
+                                            <i class="fas fa-paper-plane"></i>
+                                            <span>Отправить</span>
                                         </button>
                                     </div>
                                 </div>
@@ -2430,36 +2510,37 @@
                         </div>
 
                         <div>
-                            <div class="card mb-6">
-                                <div class="card-header">
-                                    <h2 class="text-xl font-semibold">Информация</h2>
+                            <div class="premium-card rounded-2xl overflow-hidden mb-6">
+                                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Информация</h2>
                                 </div>
-                                <div class="card-body">
+                                <div class="p-6">
                                     <div class="space-y-4">
                                         <div>
-                                            <label class="form-label">Статус</label>
-                                            <select id="taskStatusSelect" onchange="App.updateTaskStatus()" class="form-control form-select">
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Статус</label>
+                                            <select id="taskStatusSelect" onchange="App.updateTaskStatus()" class="premium-input w-full rounded-xl focus-premium">
                                                 <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>К выполнению</option>
                                                 <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>В работе</option>
                                                 <option value="done" ${task.status === 'done' ? 'selected' : ''}>Выполнено</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label class="form-label">Приоритет</label>
-                                            <div class="task-priority priority-${task.priority} inline-block px-3 py-1 rounded-full text-sm font-medium">
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Приоритет</label>
+                                            <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${this.getPriorityClass(task.priority)}">
+                                                <span class="priority-indicator priority-${task.priority} mr-2"></span>
                                                 ${this.getPriorityText(task.priority)}
                                             </div>
                                         </div>
                                         <div>
-                                            <label class="form-label">Создана</label>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Создана</label>
                                             <p class="text-gray-700 dark:text-gray-300">${new Date(task.created_at).toLocaleString()}</p>
                                         </div>
                                         <div>
-                                            <label class="form-label">Срок</label>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Срок</label>
                                             <p class="text-gray-700 dark:text-gray-300">${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не установлен'}</p>
                                         </div>
                                         <div>
-                                            <label class="form-label">Исполнитель</label>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Исполнитель</label>
                                             <p class="text-gray-700 dark:text-gray-300">${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначен'}</p>
                                         </div>
                                     </div>
@@ -2490,11 +2571,13 @@
 
                     if (subtasks.length === 0) {
                         container.innerHTML = `
-                            <div class="empty-state">
-                                <i class="empty-state-icon fas fa-tasks"></i>
-                                <h3 class="empty-state-title">Подзадач нет</h3>
-                                <p class="empty-state-description">Создайте первую подзадачу для этой задачи</p>
-                                <button class="btn btn-primary" onclick="App.showCreateSubtaskModal()">
+                            <div class="text-center py-8">
+                                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                    <i class="fas fa-tasks text-xl text-gray-400"></i>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Подзадач нет</h3>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">Создайте первую подзадачу для этой задачи</p>
+                                <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl font-medium" onclick="App.showCreateSubtaskModal()">
                                     <i class="fas fa-plus mr-2"></i> Создать подзадачу
                                 </button>
                             </div>
@@ -2503,12 +2586,12 @@
                     }
 
                     container.innerHTML = subtasks.map(subtask => `
-                        <div class="task-item">
-                            <div class="task-checkbox ${subtask.status === 'done' ? 'checked' : ''}" onclick="App.toggleSubtaskStatus(${subtask.id}, this)"></div>
-                            <div class="task-content">
-                                <div class="task-title">${this.escapeHtml(subtask.title)}</div>
-                                <div class="task-meta">
-                                    <span class="task-priority priority-${subtask.priority}">${this.getPriorityText(subtask.priority)}</span>
+                        <div class="flex items-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                            <div class="custom-checkbox ${subtask.status === 'done' ? 'checked' : ''} mr-4" onclick="App.toggleSubtaskStatus(${subtask.id}, this)"></div>
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(subtask.title)}</div>
+                                <div class="flex items-center mt-1 space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                    <span class="flex items-center"><span class="priority-indicator priority-${subtask.priority}"></span> ${this.getPriorityText(subtask.priority)}</span>
                                     <span><i class="fas fa-calendar-alt mr-1"></i> ${subtask.due_date ? new Date(subtask.due_date).toLocaleDateString() : 'Без срока'}</span>
                                 </div>
                             </div>
@@ -2533,13 +2616,13 @@
 
                     container.innerHTML = comments.map(comment => `
                         <div class="flex space-x-3 mb-4 last:mb-0">
-                            <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 font-medium">
+                            <div class="avatar bg-gradient-to-br from-primary-500 to-primary-600">
                                 ${comment.author_name ? comment.author_name.charAt(0).toUpperCase() : 'A'}
                             </div>
                             <div class="flex-1">
-                                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+                                <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-4">
                                     <div class="flex justify-between items-start mb-1">
-                                        <div class="font-medium">${this.escapeHtml(comment.author_name || 'Аноним')}</div>
+                                        <div class="font-medium text-gray-900 dark:text-gray-100">${this.escapeHtml(comment.author_name || 'Аноним')}</div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400">${new Date(comment.created_at).toLocaleString()}</div>
                                     </div>
                                     <p class="text-gray-700 dark:text-gray-300">${this.escapeHtml(comment.content)}</p>
@@ -2554,11 +2637,15 @@
             }
 
             static showModal(modalId) {
-                document.getElementById(modalId).classList.add('active');
+                UIUtils.showModal(modalId);
             }
 
             static hideModal(modalId) {
-                document.getElementById(modalId).classList.remove('active');
+                UIUtils.hideModal(modalId);
+            }
+
+            static toggleSidebar() {
+                UIUtils.toggleSidebar();
             }
 
             static showCreateProjectModal() {
@@ -2659,7 +2746,7 @@
 
             static showCreateSubtaskModal() {
                 // Реализация создания подзадачи
-                this.showSuccess('Функция создания подзадачи будет реализована в ближайшее время!');
+                this.showInfo('Функция создания подзадачи будет реализована в ближайшее время!');
             }
 
             static showEditTaskModal() {
@@ -2670,7 +2757,7 @@
                 }
 
                 // Реализация редактирования задачи
-                this.showSuccess('Функция редактирования задачи будет реализована в ближайшее время!');
+                this.showInfo('Функция редактирования задачи будет реализована в ближайшее время!');
             }
 
             static showDeleteTaskModal() {
@@ -2682,7 +2769,7 @@
 
                 // Реализация удаления задачи
                 if (confirm(`Вы уверены, что хотите удалить задачу "${currentTask.title}"?`)) {
-                    this.showSuccess('Задача будет удалена в ближайшее время!');
+                    this.showInfo('Задача будет удалена в ближайшее время!');
                 }
             }
 
@@ -2778,9 +2865,14 @@
                 }
             }
 
-            static showSearch() {
-                // Реализация поиска
-                this.showSuccess('Функция поиска будет реализована в ближайшее время!');
+            static showSettings() {
+                // Реализация настроек
+                this.showInfo('Настройки будут доступны в ближайшее время!');
+            }
+
+            static showMyTasks() {
+                // Реализация показа задач пользователя
+                this.showInfo('Раздел "Мои задачи" будет доступен в ближайшее время!');
             }
 
             static backToProject() {
@@ -2813,6 +2905,16 @@
                 return priorityMap[priority] || priority;
             }
 
+            static getPriorityClass(priority) {
+                const classMap = {
+                    'low': 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200',
+                    'medium': 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200',
+                    'high': 'bg-danger-100 text-danger-800 dark:bg-danger-900 dark:text-danger-200',
+                    'urgent': 'bg-danger-200 text-danger-900 dark:bg-danger-800 dark:text-danger-100'
+                };
+                return classMap[priority] || classMap.medium;
+            }
+
             static getRoleText(role) {
                 const roleMap = {
                     'owner': 'Владелец',
@@ -2824,13 +2926,15 @@
             }
 
             static showError(message) {
-                // В реальном приложении здесь будет красивый toast или уведомление
-                alert('Ошибка: ' + message);
+                UIUtils.showToast(message, 'error');
             }
 
             static showSuccess(message) {
-                // В реальном приложении здесь будет красивый toast или уведомление
-                alert('Успех: ' + message);
+                UIUtils.showToast(message, 'success');
+            }
+
+            static showInfo(message) {
+                UIUtils.showToast(message, 'info');
             }
 
             static escapeHtml(text) {
