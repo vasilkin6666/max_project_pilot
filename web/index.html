@@ -3,564 +3,2847 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Pilot Pro - Премиум PWA для управления проектами</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Project Pilot Pro | Управление проектами</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f0f4ff',
+                            100: '#e0e8ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                        },
+                        gray: {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'pulse-soft': 'pulseSoft 2s infinite',
+                        'bounce-soft': 'bounceSoft 2s infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'shimmer': 'shimmer 2s infinite',
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'medium': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'large': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        'glow': '0 0 20px rgba(99, 102, 241, 0.15)',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        pulseSoft: {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.8' },
+                        },
+                        bounceSoft: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-5px)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-1000px 0' },
+                            '100%': { backgroundPosition: '1000px 0' },
+                        }
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-900);
+            transition: all 0.3s ease;
+        }
+
+        .dark body {
+            background-color: var(--gray-900);
+            color: var(--gray-100);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+        }
+
+        .dark ::-webkit-scrollbar-track {
+            background: var(--gray-800);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: var(--gray-600);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-500);
+        }
+
+        /* Splash Screen */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+
+        .splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .splash-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 2rem;
+            position: relative;
+            animation: bounceSoft 2s infinite;
+        }
+
+        .splash-logo-inner {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .splash-logo-icon {
+            font-size: 3rem;
+            color: var(--primary);
+        }
+
+        .splash-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .splash-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 3rem;
+        }
+
+        .splash-progress {
+            width: 200px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .splash-progress-bar {
+            height: 100%;
+            background: white;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* App Styles */
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            animation: fadeIn 0.5s ease 0.3s forwards;
+        }
+
+        .app-header {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .dark .app-header {
+            background: var(--gray-800);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .app-main {
+            flex: 1;
+            padding: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .app-sidebar {
+            width: 280px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            z-index: 90;
+        }
+
+        .dark .app-sidebar {
+            background: var(--gray-800);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .app-content {
+            flex: 1;
+            transition: all 0.3s ease;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .dark .card {
+            background: var(--gray-800);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .dark .card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .dark .card-header {
+            border-bottom: 1px solid var(--gray-700);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .card-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .dark .card-footer {
+            border-top: 1px solid var(--gray-700);
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .dark .stat-card {
+            background: var(--gray-800);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .dark .stat-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+
+        .stat-icon-projects {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .stat-icon-tasks {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .stat-icon-recent {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .stat-icon-completed {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+
+        .dark .stat-label {
+            color: var(--gray-400);
+        }
+
+        /* Project Cards */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .dark .project-card {
+            background: var(--gray-800);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .project-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .dark .project-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .project-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .dark .project-header {
+            border-bottom: 1px solid var(--gray-700);
+        }
+
+        .project-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .project-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        .badge-private {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .badge-public {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .badge-approval {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .project-description {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .dark .project-description {
+            color: var(--gray-400);
+        }
+
+        .project-body {
+            padding: 1.5rem;
+        }
+
+        .project-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .project-meta-item {
+            display: flex;
+            align-items: center;
+            color: var(--gray-500);
+        }
+
+        .dark .project-meta-item {
+            color: var(--gray-400);
+        }
+
+        .project-meta-icon {
+            margin-right: 0.5rem;
+        }
+
+        .project-progress {
+            margin-top: 1rem;
+        }
+
+        .project-progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+
+        .dark .project-progress-label {
+            color: var(--gray-400);
+        }
+
+        .project-progress-bar {
+            height: 6px;
+            background: var(--gray-200);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .dark .project-progress-bar {
+            background: var(--gray-700);
+        }
+
+        .project-progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Task Items */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .task-item {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dark .task-item {
+            background: var(--gray-800);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .dark .task-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-300);
+            border-radius: 50%;
+            margin-right: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dark .task-checkbox {
+            border-color: var(--gray-600);
+        }
+
+        .task-checkbox.checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-title {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .dark .task-meta {
+            color: var(--gray-400);
+        }
+
+        .task-priority {
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .priority-low {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .priority-medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .priority-high {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .priority-urgent {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            outline: none;
+        }
+
+        .btn:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .dark .btn-secondary {
+            background: var(--gray-700);
+            color: var(--gray-200);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+
+        .dark .btn-secondary:hover {
+            background: var(--gray-600);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .dark .btn-outline {
+            border: 1px solid var(--gray-600);
+            color: var(--gray-300);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-50);
+        }
+
+        .dark .btn-outline:hover {
+            background: var(--gray-700);
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-lg {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+        }
+
+        .btn-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            padding: 0;
+            border-radius: 50%;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .dark .form-label {
+            color: var(--gray-300);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: white;
+            color: var(--gray-900);
+        }
+
+        .dark .form-control {
+            background: var(--gray-800);
+            border-color: var(--gray-600);
+            color: var(--gray-100);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1rem;
+            padding-right: 2.5rem;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 3rem;
+            height: 1.5rem;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--gray-300);
+            transition: .4s;
+            border-radius: 1.5rem;
+        }
+
+        .dark .toggle-slider {
+            background-color: var(--gray-600);
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 1rem;
+            width: 1rem;
+            left: 0.25rem;
+            bottom: 0.25rem;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(1.5rem);
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--gray-500);
+        }
+
+        .dark .empty-state {
+            color: var(--gray-400);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-description {
+            margin-bottom: 1.5rem;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .dark .modal {
+            background: var(--gray-800);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dark .modal-header {
+            border-bottom: 1px solid var(--gray-700);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-500);
+            transition: color 0.2s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--gray-700);
+        }
+
+        .dark .modal-close:hover {
+            color: var(--gray-300);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .dark .modal-footer {
+            border-top: 1px solid var(--gray-700);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-main {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .project-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
-<body class="safe-area cosmic-theme">
-    <!-- Cosmic Loading Overlay -->
-    <div id="loading" class="cosmic-loading">
-        <div class="cosmic-background">
-            <div class="stars"></div>
-            <div class="twinkling"></div>
-            <div class="clouds"></div>
-        </div>
-
-        <div class="loading-content">
-            <div class="cosmic-orbit">
-                <div class="orbit-ring ring-1"></div>
-                <div class="orbit-ring ring-2"></div>
-                <div class="orbit-ring ring-3"></div>
-                <div class="central-icon">🚀</div>
-            </div>
-
-            <h1 class="cosmic-title">Project Pilot Pro</h1>
-            <p class="cosmic-subtitle">Премиум система управления проектами</p>
-
-            <div class="progress-cosmic">
-                <div class="progress-track"></div>
-                <div class="progress-fill" id="cosmicProgress"></div>
-                <div class="progress-glow"></div>
-            </div>
-
-            <div class="cosmic-cta">
-                <p class="cta-text">Нажмите для запуска</p>
-                <div class="pulse-dot"></div>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <!-- Splash Screen -->
+    <div id="splashScreen" class="splash-screen">
+        <div class="splash-logo">
+            <div class="splash-logo-inner">
+                <i class="splash-logo-icon fas fa-rocket"></i>
             </div>
         </div>
-
-        <div class="cosmic-particles" id="cosmicParticles"></div>
+        <h1 class="splash-text">Project Pilot Pro</h1>
+        <p class="splash-subtitle">Система управления проектами</p>
+        <div class="splash-progress">
+            <div id="splashProgressBar" class="splash-progress-bar"></div>
+        </div>
     </div>
 
-    <!-- Main App -->
-    <div id="app" class="cosmic-app">
-        <!-- Cosmic Header -->
-        <header class="cosmic-header">
-            <div class="header-orbits">
-                <div class="header-orbit"></div>
-            </div>
-            <div class="container">
-                <div class="header-content">
-                    <div class="logo-section">
-                        <div class="logo-orb">
-                            <div class="logo-inner">🚀</div>
+    <!-- App Container -->
+    <div id="appContainer" class="app-container hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center text-white">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h1 class="text-xl font-bold">Project Pilot</h1>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <!-- Search Button -->
+                    <button id="searchBtn" class="btn btn-icon btn-secondary">
+                        <i class="fas fa-search"></i>
+                    </button>
+
+                    <!-- Notifications Button -->
+                    <button id="notificationsBtn" class="btn btn-icon btn-secondary relative">
+                        <i class="fas fa-bell"></i>
+                        <span class="absolute -top-1 -right-1 bg-danger-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                    </button>
+
+                    <!-- Theme Toggle -->
+                    <button id="themeToggle" class="btn btn-icon btn-secondary">
+                        <i class="fas fa-moon"></i>
+                    </button>
+
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2">
+                            <div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white text-sm font-medium">U</div>
+                            <span class="hidden md:block font-medium">Пользователь</span>
+                            <i class="fas fa-chevron-down text-gray-500 text-xs"></i>
+                        </button>
+
+                        <!-- User Dropdown -->
+                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-1 z-10 hidden">
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-user mr-2"></i>Профиль
+                            </a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-cog mr-2"></i>Настройки
+                            </a>
+                            <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Выйти
+                            </a>
                         </div>
-                        <h1 class="logo-text">Project Pilot Pro</h1>
                     </div>
 
-                    <nav class="desktop-nav">
-                        <div class="nav-orbits">
-                            <button class="nav-orb active" data-view="dashboardView">
-                                <span class="orb-icon">📊</span>
-                                <span class="orb-text">Главная</span>
-                            </button>
-                            <button class="nav-orb" data-view="myTasksView">
-                                <span class="orb-icon">✅</span>
-                                <span class="orb-text">Задачи</span>
-                                <span class="orb-badge">3</span>
-                            </button>
-                            <button class="nav-orb nav-orb-action" id="searchOrb" title="Поиск">
-                                <span class="orb-icon">🔍</span>
-                            </button>
-                            <button class="nav-orb nav-orb-action" id="notificationsOrb" title="Уведомления">
-                                <span class="orb-icon">🔔</span>
-                                <span class="orb-badge pulse">2</span>
-                            </button>
-                            <button class="nav-orb" data-view="settingsView">
-                                <span class="orb-icon">⚙️</span>
-                                <span class="orb-text">Настройки</span>
-                            </button>
-                        </div>
-                    </nav>
-
-                    <button class="cosmic-btn primary" id="createProjectBtn">
-                        <span class="btn-orb"></span>
-                        <span>Создать проект</span>
+                    <!-- Create Project Button -->
+                    <button id="createProjectBtn" class="btn btn-primary hidden md:flex items-center space-x-2">
+                        <i class="fas fa-plus"></i>
+                        <span>Проект</span>
                     </button>
                 </div>
             </div>
         </header>
 
         <!-- Main Content -->
-        <main class="cosmic-main">
-            <div class="cosmic-background-main">
-                <div class="stars-main"></div>
-                <div class="twinkling-main"></div>
-            </div>
+        <div class="flex flex-1">
+            <!-- Sidebar -->
+            <aside class="app-sidebar hidden lg:block">
+                <div class="p-4">
+                    <nav class="space-y-1">
+                        <a href="#" class="flex items-center px-4 py-3 text-primary-500 bg-primary-50 dark:bg-primary-900/20 rounded-lg font-medium">
+                            <i class="fas fa-home mr-3"></i>
+                            <span>Главная</span>
+                        </a>
+                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-tasks mr-3"></i>
+                            <span>Мои задачи</span>
+                        </a>
+                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-calendar-alt mr-3"></i>
+                            <span>Календарь</span>
+                        </a>
+                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-chart-bar mr-3"></i>
+                            <span>Отчеты</span>
+                        </a>
+                        <a href="#" class="flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-users mr-3"></i>
+                            <span>Команда</span>
+                        </a>
+                    </nav>
 
-            <div class="container">
-                <!-- Dashboard View -->
-                <div id="dashboardView" class="cosmic-view active">
-                    <div class="view-header">
-                        <div class="view-title">
-                            <h2>Космическая панель управления</h2>
-                            <p>Ваши проекты и активность</p>
-                        </div>
-                        <div class="view-actions">
-                            <button class="cosmic-btn ghost" id="refreshDashboard">
-                                <span class="btn-icon">🔄</span>
-                            </button>
-                        </div>
+                    <div class="mt-8">
+                        <h3 class="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Мои проекты</h3>
+                        <nav class="mt-2 space-y-1">
+                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
+                                <div class="w-2 h-2 bg-primary-500 rounded-full mr-3"></div>
+                                <span>Веб-сайт компании</span>
+                            </a>
+                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
+                                <div class="w-2 h-2 bg-success-500 rounded-full mr-3"></div>
+                                <span>Мобильное приложение</span>
+                            </a>
+                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
+                                <div class="w-2 h-2 bg-warning-500 rounded-full mr-3"></div>
+                                <span>Маркетинг кампания</span>
+                            </a>
+                            <a href="#" class="flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group">
+                                <div class="w-2 h-2 bg-danger-500 rounded-full mr-3"></div>
+                                <span>Анализ данных</span>
+                            </a>
+                        </nav>
                     </div>
+                </div>
+            </aside>
 
-                    <div class="cosmic-stats">
-                        <div class="stat-orb">
-                            <div class="stat-icon">📁</div>
-                            <div class="stat-data">
-                                <div class="stat-value" id="projectsCount">0</div>
+            <!-- Main Content Area -->
+            <main class="app-content flex-1">
+                <div class="app-main">
+                    <!-- Dashboard View -->
+                    <div id="dashboardView">
+                        <!-- Stats -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon stat-icon-projects">
+                                    <i class="fas fa-folder"></i>
+                                </div>
+                                <div class="stat-value" id="projectsCount">12</div>
                                 <div class="stat-label">Проектов</div>
                             </div>
-                            <div class="stat-glow"></div>
-                        </div>
-                        <div class="stat-orb">
-                            <div class="stat-icon">✅</div>
-                            <div class="stat-data">
-                                <div class="stat-value" id="tasksCount">0</div>
+                            <div class="stat-card">
+                                <div class="stat-icon stat-icon-tasks">
+                                    <i class="fas fa-tasks"></i>
+                                </div>
+                                <div class="stat-value" id="tasksCount">47</div>
                                 <div class="stat-label">Задач</div>
                             </div>
-                            <div class="stat-glow"></div>
-                        </div>
-                        <div class="stat-orb">
-                            <div class="stat-icon">🔥</div>
-                            <div class="stat-data">
-                                <div class="stat-value" id="recentTasksCount">0</div>
-                                <div class="stat-label">Активных</div>
+                            <div class="stat-card">
+                                <div class="stat-icon stat-icon-recent">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-value" id="recentTasksCount">8</div>
+                                <div class="stat-label">Недавние</div>
                             </div>
-                            <div class="stat-glow"></div>
-                        </div>
-                    </div>
-
-                    <section class="cosmic-section">
-                        <div class="section-header">
-                            <h3>Ваши проекты</h3>
-                            <button class="cosmic-btn outline small" onclick="App.showCreateProjectModal()">
-                                <span class="btn-icon">+</span>
-                                Новый проект
-                            </button>
-                        </div>
-                        <div id="projectsList" class="projects-grid-cosmic">
-                            <!-- Projects will be loaded here -->
-                        </div>
-                    </section>
-
-                    <section class="cosmic-section">
-                        <div class="section-header">
-                            <h3>Недавние задачи</h3>
-                        </div>
-                        <div id="recentTasksList" class="tasks-list-cosmic">
-                            <!-- Recent tasks will be loaded here -->
-                        </div>
-                    </section>
-                </div>
-
-                <!-- My Tasks View -->
-                <div id="myTasksView" class="cosmic-view">
-                    <div class="view-header">
-                        <div class="view-title">
-                            <h2>Космические задачи</h2>
-                            <p>Управление вашими миссиями</p>
-                        </div>
-                    </div>
-
-                    <div class="cosmic-filters">
-                        <div class="filter-group">
-                            <label class="filter-label">Статус</label>
-                            <select class="cosmic-select" id="tasksFilterStatus">
-                                <option value="">Все статусы</option>
-                                <option value="todo">К выполнению</option>
-                                <option value="in_progress">В работе</option>
-                                <option value="done">Выполнено</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Приоритет</label>
-                            <select class="cosmic-select" id="tasksFilterPriority">
-                                <option value="">Все приоритеты</option>
-                                <option value="low">Низкий</option>
-                                <option value="medium">Средний</option>
-                                <option value="high">Высокий</option>
-                                <option value="urgent">Срочный</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="myTasksList" class="tasks-grid-cosmic">
-                        <!-- Tasks will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Settings View -->
-                <div id="settingsView" class="cosmic-view">
-                    <div class="view-header">
-                        <div class="view-title">
-                            <h2>Настройки системы</h2>
-                            <p>Управление вашим профилем</p>
-                        </div>
-                    </div>
-
-                    <div class="settings-grid">
-                        <div class="setting-card cosmic">
-                            <div class="setting-header">
-                                <div class="setting-icon">👤</div>
-                                <h3>Профиль MAX</h3>
+                            <div class="stat-card">
+                                <div class="stat-icon stat-icon-completed">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="stat-value" id="completedTasksCount">23</div>
+                                <div class="stat-label">Выполнено</div>
                             </div>
-                            <div class="setting-content">
-                                <div class="profile-display">
-                                    <div class="avatar-cosmic">
-                                        <div class="avatar-image" id="maxAvatar">🚀</div>
-                                        <div class="avatar-glow"></div>
+                        </div>
+
+                        <!-- Recent Tasks -->
+                        <div class="card mb-6">
+                            <div class="card-header">
+                                <h2 class="text-xl font-semibold">Недавние задачи</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="task-list" id="recentTasksList">
+                                    <!-- Recent tasks will be loaded here -->
+                                    <div class="task-item">
+                                        <div class="task-checkbox checked"></div>
+                                        <div class="task-content">
+                                            <div class="task-title">Разработать главную страницу</div>
+                                            <div class="task-meta">
+                                                <span class="task-priority priority-high">Высокий</span>
+                                                <span><i class="fas fa-calendar-alt mr-1"></i> 15 мая</span>
+                                                <span><i class="fas fa-user mr-1"></i> Алексей</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="profile-info">
-                                        <div class="profile-name" id="maxUserName">Космонавт</div>
-                                        <div class="profile-id" id="maxUserId">ID: ---</div>
-                                        <div class="profile-ip" id="maxUserIp">IP: ---</div>
+                                    <div class="task-item">
+                                        <div class="task-checkbox"></div>
+                                        <div class="task-content">
+                                            <div class="task-title">Протестировать API</div>
+                                            <div class="task-meta">
+                                                <span class="task-priority priority-medium">Средний</span>
+                                                <span><i class="fas fa-calendar-alt mr-1"></i> 18 мая</span>
+                                                <span><i class="fas fa-user mr-1"></i> Мария</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="task-item">
+                                        <div class="task-checkbox"></div>
+                                        <div class="task-content">
+                                            <div class="task-title">Подготовить документацию</div>
+                                            <div class="task-meta">
+                                                <span class="task-priority priority-low">Низкий</span>
+                                                <span><i class="fas fa-calendar-alt mr-1"></i> 20 мая</span>
+                                                <span><i class="fas fa-user mr-1"></i> Иван</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="setting-card cosmic">
-                            <div class="setting-header">
-                                <div class="setting-icon">🎨</div>
-                                <h3>Внешний вид</h3>
+                        <!-- My Projects -->
+                        <div class="card">
+                            <div class="card-header flex justify-between items-center">
+                                <h2 class="text-xl font-semibold">Мои проекты</h2>
+                                <button class="btn btn-primary btn-sm" onclick="App.showCreateProjectModal()">
+                                    <i class="fas fa-plus mr-1"></i> Новый проект
+                                </button>
                             </div>
-                            <div class="setting-content">
-                                <div class="theme-selector-cosmic">
-                                    <div class="theme-option active" data-theme="cosmic">
-                                        <div class="theme-preview cosmic"></div>
-                                        <span>Космическая</span>
+                            <div class="card-body">
+                                <div class="project-grid" id="projectsList">
+                                    <!-- Projects will be loaded here -->
+                                    <div class="project-card" onclick="App.openProject('project1')">
+                                        <div class="project-header">
+                                            <div class="project-title">
+                                                <span>Веб-сайт компании</span>
+                                                <span class="project-badge badge-public">Публичный</span>
+                                            </div>
+                                            <p class="project-description">Разработка корпоративного сайта с современным дизайном</p>
+                                        </div>
+                                        <div class="project-body">
+                                            <div class="project-meta">
+                                                <div class="project-meta-item">
+                                                    <i class="fas fa-users project-meta-icon"></i>
+                                                    <span>5 участников</span>
+                                                </div>
+                                                <div class="project-meta-item">
+                                                    <i class="fas fa-tasks project-meta-icon"></i>
+                                                    <span>12 задач</span>
+                                                </div>
+                                            </div>
+                                            <div class="project-progress">
+                                                <div class="project-progress-label">
+                                                    <span>Прогресс</span>
+                                                    <span>65%</span>
+                                                </div>
+                                                <div class="project-progress-bar">
+                                                    <div class="project-progress-fill" style="width: 65%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="theme-option" data-theme="dark">
-                                        <div class="theme-preview dark"></div>
-                                        <span>Темная</span>
+                                    <div class="project-card" onclick="App.openProject('project2')">
+                                        <div class="project-header">
+                                            <div class="project-title">
+                                                <span>Мобильное приложение</span>
+                                                <span class="project-badge badge-private">Приватный</span>
+                                            </div>
+                                            <p class="project-description">Разработка кроссплатформенного мобильного приложения</p>
+                                        </div>
+                                        <div class="project-body">
+                                            <div class="project-meta">
+                                                <div class="project-meta-item">
+                                                    <i class="fas fa-users project-meta-icon"></i>
+                                                    <span>3 участника</span>
+                                                </div>
+                                                <div class="project-meta-item">
+                                                    <i class="fas fa-tasks project-meta-icon"></i>
+                                                    <span>8 задач</span>
+                                                </div>
+                                            </div>
+                                            <div class="project-progress">
+                                                <div class="project-progress-label">
+                                                    <span>Прогресс</span>
+                                                    <span>40%</span>
+                                                </div>
+                                                <div class="project-progress-bar">
+                                                    <div class="project-progress-fill" style="width: 40%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="theme-option" data-theme="light">
-                                        <div class="theme-preview light"></div>
-                                        <span>Светлая</span>
+                                    <div class="project-card" onclick="App.openProject('project3')">
+                                        <div class="project-header">
+                                            <div class="project-title">
+                                                <span>Маркетинг кампания</span>
+                                                <span class="project-badge badge-approval">Одобрение</span>
+                                            </div>
+                                            <p class="project-description">Планирование и реализация маркетинговой кампании</p>
+                                        </div>
+                                        <div class="project-body">
+                                            <div class="project-meta">
+                                                <div class="project-meta-item">
+                                                    <i class="fas fa-users project-meta-icon"></i>
+                                                    <span>7 участников</span>
+                                                </div>
+                                                <div class="project-meta-item">
+                                                    <i class="fas fa-tasks project-meta-icon"></i>
+                                                    <span>15 задач</span>
+                                                </div>
+                                            </div>
+                                            <div class="project-progress">
+                                                <div class="project-progress-label">
+                                                    <span>Прогресс</span>
+                                                    <span>25%</span>
+                                                </div>
+                                                <div class="project-progress-bar">
+                                                    <div class="project-progress-fill" style="width: 25%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="setting-card cosmic">
-                            <div class="setting-header">
-                                <div class="setting-icon">🔔</div>
-                                <h3>Уведомления</h3>
-                            </div>
-                            <div class="setting-content">
-                                <div class="toggle-item-cosmic">
-                                    <span>Push-уведомления</span>
-                                    <label class="cosmic-toggle">
-                                        <input type="checkbox" checked>
-                                        <span class="toggle-slider"></span>
-                                        <span class="toggle-glow"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item-cosmic">
-                                    <span>Email-уведомления</span>
-                                    <label class="cosmic-toggle">
-                                        <input type="checkbox">
-                                        <span class="toggle-slider"></span>
-                                        <span class="toggle-glow"></span>
-                                    </label>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Project View -->
-                <div id="projectView" class="cosmic-view">
-                    <!-- Project content will be loaded dynamically -->
-                </div>
+                    <!-- Project View (hidden by default) -->
+                    <div id="projectView" class="hidden">
+                        <!-- Project details will be loaded here -->
+                    </div>
 
-                <!-- Task View -->
-                <div id="taskView" class="cosmic-view">
-                    <!-- Task content will be loaded dynamically -->
+                    <!-- Task View (hidden by default) -->
+                    <div id="taskView" class="hidden">
+                        <!-- Task details will be loaded here -->
+                    </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
 
-        <!-- Cosmic Mobile Navigation -->
-        <nav class="cosmic-tab-bar">
-            <div class="tab-bar-orbits">
-                <button class="tab-orb active" data-view="dashboardView">
-                    <div class="tab-icon">📊</div>
-                    <div class="tab-label">Главная</div>
-                    <div class="tab-glow"></div>
-                </button>
-                <button class="tab-orb" data-view="myTasksView">
-                    <div class="tab-icon">✅</div>
-                    <div class="tab-label">Задачи</div>
-                    <div class="tab-badge">3</div>
-                    <div class="tab-glow"></div>
-                </button>
-                <button class="tab-orb fab-tab" id="mobileFab">
-                    <div class="fab-icon">+</div>
-                    <div class="fab-glow"></div>
-                </button>
-                <button class="tab-orb" data-view="notificationsView">
-                    <div class="tab-icon">🔔</div>
-                    <div class="tab-label">Уведомления</div>
-                    <div class="tab-badge pulse">2</div>
-                    <div class="tab-glow"></div>
-                </button>
-                <button class="tab-orb" data-view="settingsView">
-                    <div class="tab-icon">⚙️</div>
-                    <div class="tab-label">Настройки</div>
-                    <div class="tab-glow"></div>
-                </button>
-            </div>
+        <!-- Bottom Navigation (Mobile) -->
+        <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-around py-3 z-50">
+            <a href="#" class="flex flex-col items-center text-primary-500">
+                <i class="fas fa-home text-xl"></i>
+                <span class="text-xs mt-1">Главная</span>
+            </a>
+            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-tasks text-xl"></i>
+                <span class="text-xs mt-1">Задачи</span>
+            </a>
+            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-plus-circle text-xl"></i>
+                <span class="text-xs mt-1">Создать</span>
+            </a>
+            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-calendar-alt text-xl"></i>
+                <span class="text-xs mt-1">Календарь</span>
+            </a>
+            <a href="#" class="flex flex-col items-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-user text-xl"></i>
+                <span class="text-xs mt-1">Профиль</span>
+            </a>
         </nav>
-
-        <!-- Floating Action Menu -->
-        <div class="cosmic-fab-menu">
-            <button class="fab-item" data-action="search">
-                <div class="fab-item-icon">🔍</div>
-                <div class="fab-item-label">Поиск</div>
-            </button>
-            <button class="fab-item" data-action="create-project">
-                <div class="fab-item-icon">📁</div>
-                <div class="fab-item-label">Проект</div>
-            </button>
-            <button class="fab-item" data-action="create-task">
-                <div class="fab-item-icon">✅</div>
-                <div class="fab-item-label">Задачу</div>
-            </button>
-        </div>
     </div>
 
-    <!-- Cosmic Modals -->
+    <!-- Modals -->
     <!-- Create Project Modal -->
-    <div id="createProjectModal" class="cosmic-modal">
-        <div class="modal-backdrop"></div>
-        <div class="modal-container">
-            <div class="modal-cosmic">
-                <div class="modal-header">
-                    <div class="modal-orb">
-                        <div class="modal-orb-icon">📁</div>
+    <div id="createProjectModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Создать проект</h3>
+                <button class="modal-close" onclick="App.hideModal('createProjectModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createProjectForm">
+                    <div class="form-group">
+                        <label class="form-label" for="projectTitle">Название проекта</label>
+                        <input type="text" id="projectTitle" class="form-control" placeholder="Введите название проекта" required>
                     </div>
-                    <h3>Создать космический проект</h3>
-                    <button class="modal-close" onclick="App.hideModal('createProjectModal')">
-                        <span>×</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form class="cosmic-form">
-                        <div class="form-group-cosmic">
-                            <label class="form-label">Название проекта</label>
-                            <input type="text" class="cosmic-input" id="projectTitle" placeholder="Введите название миссии...">
-                            <div class="input-glow"></div>
-                        </div>
-                        <div class="form-group-cosmic">
-                            <label class="form-label">Описание</label>
-                            <textarea class="cosmic-textarea" id="projectDescription" placeholder="Опишите вашу космическую миссию..." rows="3"></textarea>
-                            <div class="input-glow"></div>
-                        </div>
-                        <div class="toggle-group-cosmic">
-                            <label class="toggle-label-cosmic">
-                                <span class="toggle-text">Приватный проект</span>
-                                <label class="cosmic-toggle">
-                                    <input type="checkbox" id="projectIsPrivate" checked>
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-glow"></span>
-                                </label>
-                            </label>
-                            <label class="toggle-label-cosmic">
-                                <span class="toggle-text">Требуется одобрение для вступления</span>
-                                <label class="cosmic-toggle">
-                                    <input type="checkbox" id="projectRequiresApproval">
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-glow"></span>
-                                </label>
+                    <div class="form-group">
+                        <label class="form-label" for="projectDescription">Описание</label>
+                        <textarea id="projectDescription" class="form-control" rows="3" placeholder="Опишите ваш проект"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Настройки проекта</label>
+                        <div class="flex items-center justify-between py-2">
+                            <span>Приватный проект</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="projectIsPrivate" checked>
+                                <span class="toggle-slider"></span>
                             </label>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button class="cosmic-btn outline" onclick="App.hideModal('createProjectModal')">Отмена</button>
-                    <button class="cosmic-btn primary" id="submitCreateProjectBtn">
-                        <span class="btn-glow"></span>
-                        Создать проект
-                    </button>
-                </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span>Требуется одобрение для вступления</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="projectRequiresApproval">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="App.hideModal('createProjectModal')">Отмена</button>
+                <button class="btn btn-primary" onclick="App.handleCreateProject()">Создать проект</button>
             </div>
         </div>
     </div>
 
-    <!-- Search Modal -->
-    <div id="searchModal" class="cosmic-modal">
-        <div class="modal-backdrop"></div>
-        <div class="modal-container">
-            <div class="modal-cosmic">
-                <div class="modal-header">
-                    <div class="modal-orb">
-                        <div class="modal-orb-icon">🔍</div>
+    <!-- Create Task Modal -->
+    <div id="createTaskModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Создать задачу</h3>
+                <button class="modal-close" onclick="App.hideModal('createTaskModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createTaskForm">
+                    <div class="form-group">
+                        <label class="form-label" for="taskTitle">Название задачи</label>
+                        <input type="text" id="taskTitle" class="form-control" placeholder="Введите название задачи" required>
                     </div>
-                    <h3>Космический поиск</h3>
-                    <button class="modal-close" onclick="App.hideModal('searchModal')">
-                        <span>×</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="search-input-cosmic">
-                        <input type="text" class="cosmic-input" placeholder="Ищите проекты и задачи...">
-                        <div class="search-icon">🔍</div>
-                        <div class="input-glow"></div>
+                    <div class="form-group">
+                        <label class="form-label" for="taskDescription">Описание</label>
+                        <textarea id="taskDescription" class="form-control" rows="3" placeholder="Опишите задачу"></textarea>
                     </div>
-                    <div class="search-results">
-                        <!-- Search results will appear here -->
+                    <div class="form-group">
+                        <label class="form-label" for="taskPriority">Приоритет</label>
+                        <select id="taskPriority" class="form-control form-select">
+                            <option value="low">Низкий</option>
+                            <option value="medium" selected>Средний</option>
+                            <option value="high">Высокий</option>
+                            <option value="urgent">Срочный</option>
+                        </select>
                     </div>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="taskDueDate">Срок выполнения</label>
+                        <input type="date" id="taskDueDate" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="taskAssignedTo">Исполнитель</label>
+                        <select id="taskAssignedTo" class="form-control form-select">
+                            <option value="">Не назначена</option>
+                            <option value="user1">Алексей</option>
+                            <option value="user2">Мария</option>
+                            <option value="user3">Иван</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="App.hideModal('createTaskModal')">Отмена</button>
+                <button class="btn btn-primary" onclick="App.handleCreateTask()">Создать задачу</button>
             </div>
         </div>
     </div>
 
     <!-- Notifications Modal -->
-    <div id="notificationsModal" class="cosmic-modal">
-        <div class="modal-backdrop"></div>
-        <div class="modal-container">
-            <div class="modal-cosmic">
-                <div class="modal-header">
-                    <div class="modal-orb">
-                        <div class="modal-orb-icon">🔔</div>
+    <div id="notificationsModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Уведомления</h3>
+                <button class="modal-close" onclick="App.hideModal('notificationsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4" id="notificationsList">
+                    <!-- Notifications will be loaded here -->
+                    <div class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium">Новый участник</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Алексей присоединился к проекту "Веб-сайт компании"</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">2 часа назад</p>
+                        </div>
                     </div>
-                    <h3>Космические уведомления</h3>
-                    <button class="modal-close" onclick="App.hideModal('notificationsModal')">
-                        <span>×</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="notifications-list">
-                        <!-- Notifications will appear here -->
+                    <div class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="w-10 h-10 bg-success-100 dark:bg-success-900 rounded-full flex items-center justify-center text-success-600 dark:text-success-400">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium">Задача выполнена</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Мария завершила задачу "Протестировать API"</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">5 часов назад</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="w-10 h-10 bg-warning-100 dark:bg-warning-900 rounded-full flex items-center justify-center text-warning-600 dark:text-warning-400">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium">Срок истекает</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Задача "Разработать главную страницу" должна быть завершена завтра</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Вчера</p>
+                        </div>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="App.markAllNotificationsRead()">Отметить все как прочитанные</button>
             </div>
         </div>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/app.js"></script>
     <script>
-        // Cosmic initialization
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize cosmic particles
-            initCosmicParticles();
+        // Конфигурация
+        const CONFIG = {
+            API_BASE_URL: 'https://powerfully-exotic-chamois.cloudpub.ru/api'
+        };
 
-            // Initialize loading animation
-            initCosmicLoading();
+        // Глобальные переменные
+        let currentProject = null;
+        let currentTask = null;
+        let currentUser = null;
+        let currentMemberToUpdate = null;
+        let currentMemberToRemove = null;
+        let userSettings = {};
 
-            // Handle cosmic loading screen
-            const cosmicLoading = document.getElementById('loading');
-            const cosmicProgress = document.getElementById('cosmicProgress');
+        // Константы ролей проекта
+        const ProjectRole = {
+            OWNER: 'owner',
+            ADMIN: 'admin',
+            MEMBER: 'member',
+            GUEST: 'guest'
+        };
 
-            if (cosmicLoading) {
-                // Simulate loading progress
-                let progress = 0;
-                const progressInterval = setInterval(() => {
-                    progress += Math.random() * 10;
-                    if (progress >= 100) {
-                        progress = 100;
-                        clearInterval(progressInterval);
-
-                        // Show CTA when ready
-                        setTimeout(() => {
-                            document.querySelector('.cosmic-cta').classList.add('ready');
-                        }, 500);
+        // Менеджер аутентификации
+        class AuthManager {
+            static async initialize() {
+                try {
+                    console.log('Initializing authentication...');
+                    // Проверяем MAX окружение
+                    if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user) {
+                        return await this.authenticateWithMax();
+                    } else {
+                        // Для разработки - тестовый пользователь
+                        return await this.authenticateWithTestUser();
                     }
-                    cosmicProgress.style.width = progress + '%';
-                }, 200);
+                } catch (error) {
+                    console.error('Authentication failed:', error);
+                    throw error;
+                }
+            }
 
-                cosmicLoading.addEventListener('click', function() {
-                    clearInterval(progressInterval);
-                    cosmicProgress.style.width = '100%';
+            static async authenticateWithMax() {
+                const userData = WebApp.initDataUnsafe.user;
+                const maxId = userData.id.toString();
+                const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь MAX';
+                console.log('MAX authentication with:', { maxId, fullName });
+                const tokenData = await ApiService.getAuthToken(maxId, fullName, userData.username || '');
+                if (tokenData?.access_token) {
+                    localStorage.setItem('access_token', tokenData.access_token);
+                    console.log('MAX authentication successful');
+                    return tokenData.user;
+                }
+                throw new Error('MAX authentication failed');
+            }
 
-                    // Cosmic exit animation
-                    this.style.opacity = '0';
-                    this.style.transform = 'scale(1.1)';
+            static async authenticateWithTestUser() {
+                const testId = 'dev_user_' + Math.random().toString(36).substr(2, 9);
+                const fullName = 'Тестовый пользователь';
+                console.log('Test authentication with:', { testId, fullName });
+                const tokenData = await ApiService.getAuthToken(testId, fullName, '');
+                if (tokenData?.access_token) {
+                    localStorage.setItem('access_token', tokenData.access_token);
+                    console.log('Test authentication successful');
+                    return tokenData.user;
+                }
+                throw new Error('Test authentication failed');
+            }
 
-                    setTimeout(() => {
-                        this.style.display = 'none';
-                        document.getElementById('app').style.display = 'block';
+            static getToken() {
+                return localStorage.getItem('access_token');
+            }
 
-                        // Initialize main app
-                        if (typeof App !== 'undefined') {
-                            App.init();
-                        }
-                    }, 1000);
+            static isAuthenticated() {
+                return !!this.getToken();
+            }
+        }
+
+        // API сервис
+        class ApiService {
+            static async request(endpoint, options = {}) {
+                const token = AuthManager.getToken();
+                const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                console.log(`API Request: ${options.method || 'GET'} ${url}`);
+                try {
+                    const response = await fetch(url, {
+                        ...options,
+                        headers
+                    });
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    }
+                    const data = await response.json();
+                    console.log(`API Response:`, data);
+                    return data;
+                } catch (error) {
+                    console.error('API request failed:', error);
+                    throw error;
+                }
+            }
+
+            static async get(endpoint) {
+                return this.request(endpoint, { method: 'GET' });
+            }
+
+            static async post(endpoint, data) {
+                return this.request(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
                 });
             }
 
-            // Add cosmic background to main app
-            const mainApp = document.getElementById('app');
-            if (mainApp) {
-                const cosmicBg = document.createElement('div');
-                cosmicBg.className = 'cosmic-background-app';
-                cosmicBg.innerHTML = '<div class="stars-app"></div><div class="twinkling-app"></div>';
-                mainApp.appendChild(cosmicBg);
+            static async put(endpoint, data) {
+                return this.request(endpoint, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
             }
-        });
 
-        function initCosmicParticles() {
-            const container = document.getElementById('cosmicParticles');
-            if (!container) return;
+            static async patch(endpoint, data) {
+                return this.request(endpoint, {
+                    method: 'PATCH',
+                    body: JSON.stringify(data)
+                });
+            }
 
-            function createParticle() {
-                const particle = document.createElement('div');
-                particle.className = 'cosmic-particle';
+            static async delete(endpoint) {
+                return this.request(endpoint, { method: 'DELETE' });
+            }
 
-                // Random properties
-                const size = Math.random() * 3 + 1;
-                const posX = Math.random() * 100;
-                const posY = Math.random() * 100;
-                const duration = Math.random() * 10 + 10;
-                const delay = Math.random() * 5;
+            // Auth endpoints
+            static async getAuthToken(maxId, fullName, username) {
+                return this.post('/auth/token', {
+                    max_id: maxId,
+                    full_name: fullName,
+                    username: username
+                });
+            }
 
-                particle.style.cssText = `
-                    width: ${size}px;
-                    height: ${size}px;
-                    left: ${posX}%;
-                    top: ${posY}%;
-                    animation-duration: ${duration}s;
-                    animation-delay: ${delay}s;
+            // Project endpoints
+            static async getProjects() {
+                return this.get('/projects/');
+            }
+
+            static async createProject(projectData) {
+                return this.post('/projects/', projectData);
+            }
+
+            static async getProject(projectHash) {
+                return this.get(`/projects/${projectHash}`);
+            }
+
+            static async updateProject(projectHash, projectData) {
+                return this.put(`/projects/${projectHash}`, projectData);
+            }
+
+            static async deleteProject(projectHash) {
+                return this.delete(`/projects/${projectHash}`);
+            }
+
+            static async getProjectMembers(projectHash) {
+                return this.get(`/projects/${projectHash}/members`);
+            }
+
+            static async updateMemberRole(projectHash, userId, role) {
+                return this.put(`/projects/${projectHash}/members/${userId}`, { role });
+            }
+
+            static async removeProjectMember(projectHash, userId) {
+                return this.delete(`/projects/${projectHash}/members/${userId}`);
+            }
+
+            static async approveJoinRequest(projectHash, requestId) {
+                return this.post(`/projects/${projectHash}/join-requests/${requestId}/approve`);
+            }
+
+            static async rejectJoinRequest(projectHash, requestId) {
+                return this.post(`/projects/${projectHash}/join-requests/${requestId}/reject`);
+            }
+
+            static async getProjectJoinRequests(projectHash) {
+                return this.get(`/projects/${projectHash}/join-requests`);
+            }
+
+            static async joinProject(projectHash) {
+                return this.post(`/projects/${projectHash}/join`);
+            }
+
+            static async regenerateInvite(projectHash) {
+                return this.post(`/projects/${projectHash}/regenerate-invite`);
+            }
+
+            static async getProjectSummary(projectHash) {
+                return this.get(`/projects/${projectHash}/summary`);
+            }
+
+            // Поиск публичных проектов
+            static async searchPublicProjects(query = '') {
+                const params = query ? `?query=${encodeURIComponent(query)}` : '';
+                return this.get(`/projects/search/public${params}`);
+            }
+
+            // Получить проект по точному хэшу
+            static async getProjectByHashExact(projectHash) {
+                return this.get(`/projects/by-hash/${projectHash}`);
+            }
+
+            // Task endpoints
+            static async getTasks(projectHash) {
+                return this.get(`/tasks/projects/${projectHash}/tasks`);
+            }
+
+            static async getUserTasks(filters = {}) {
+                const params = new URLSearchParams();
+                if (filters.status) params.append('status', filters.status);
+                if (filters.project_hash) params.append('project_hash', filters.project_hash);
+                const query = params.toString();
+                return this.get(`/tasks/${query ? `?${query}` : ''}`);
+            }
+
+            static async createTask(taskData) {
+                // Преобразуем assigned_to_ids в assigned_to_id если нужно
+                if (taskData.assigned_to_ids && taskData.assigned_to_ids.length > 0) {
+                    taskData.assigned_to_id = taskData.assigned_to_ids[0];
+                    delete taskData.assigned_to_ids;
+                }
+                return this.post('/tasks/', taskData);
+            }
+
+            static async getTask(taskId) {
+                return this.get(`/tasks/${taskId}`);
+            }
+
+            static async updateTask(taskId, taskData) {
+                // Преобразуем assigned_to_ids в assigned_to_id если нужно
+                if (taskData.assigned_to_ids && taskData.assigned_to_ids.length > 0) {
+                    taskData.assigned_to_id = taskData.assigned_to_ids[0];
+                    delete taskData.assigned_to_ids;
+                } else if (taskData.assigned_to_ids && taskData.assigned_to_ids.length === 0) {
+                    taskData.assigned_to_id = null;
+                    delete taskData.assigned_to_ids;
+                }
+                return this.put(`/tasks/${taskId}`, taskData);
+            }
+
+            static async deleteTask(taskId) {
+                return this.delete(`/tasks/${taskId}`);
+            }
+
+            static async updateTaskStatus(taskId, status) {
+                return this.put(`/tasks/${taskId}/status?status=${status}`);
+            }
+
+            // Управление зависимостями задач
+            static async getTaskDependencies(taskId) {
+                return this.get(`/tasks/${taskId}/dependencies`);
+            }
+
+            static async addTaskDependency(taskId, dependsOnId) {
+                return this.post(`/tasks/${taskId}/dependencies?depends_on_id=${dependsOnId}`);
+            }
+
+            static async removeTaskDependency(taskId, dependsOnId) {
+                return this.delete(`/tasks/${taskId}/dependencies?depends_on_id=${dependsOnId}`);
+            }
+
+            static async getTaskComments(taskId) {
+                return this.get(`/tasks/${taskId}/comments`);
+            }
+
+            static async createTaskComment(taskId, content) {
+                return this.post(`/tasks/${taskId}/comments?content=${encodeURIComponent(content)}`);
+            }
+
+            // User endpoints
+            static async getCurrentUser() {
+                return this.get('/users/me');
+            }
+
+            // ИСПРАВЛЕНО: Правильное обновление пользователя
+            static async updateCurrentUser(userData) {
+                const params = new URLSearchParams();
+                if (userData.full_name) params.append('full_name', userData.full_name);
+                if (userData.username) params.append('username', userData.username);
+                return this.request(`/users/me?${params}`, { method: 'PUT' });
+            }
+
+            static async getUserPreferences() {
+                return this.get('/users/me/preferences');
+            }
+
+            static async updateUserPreferences(preferences) {
+                return this.put('/users/me/preferences', preferences);
+            }
+
+            static async patchUserPreferences(preferences) {
+                return this.patch('/users/me/preferences', preferences);
+            }
+
+            static async resetUserPreferences() {
+                return this.put('/users/me/preferences/reset');
+            }
+
+            static async getUser(userId) {
+                return this.get(`/users/${userId}`);
+            }
+
+            // Получение проектов пользователя
+            static async getUserProjects(userId) {
+                return this.get(`/users/${userId}/projects`);
+            }
+
+            static async deleteJoinRequest(projectHash, requestId) {
+                return this.delete(`/projects/${projectHash}/join-requests/${requestId}`);
+            }
+
+            // Notifications endpoints
+            static async getNotifications() {
+                return this.get('/notifications/');
+            }
+
+            static async markAllNotificationsRead() {
+                return this.put('/notifications/mark_all_read');
+            }
+
+            // Dashboard endpoints
+            static async getDashboard() {
+                return this.get('/dashboard/');
+            }
+
+            // Health endpoints
+            static async healthCheck() {
+                return this.get('/health');
+            }
+
+            static async apiHealthCheck() {
+                return this.get('/api/health');
+            }
+        }
+
+        // Основное приложение
+        class App {
+            static async init() {
+                try {
+                    console.log('Initializing app...');
+
+                    // Показываем заставку
+                    this.showSplashScreen();
+
+                    // Инициализируем аутентификацию
+                    currentUser = await AuthManager.initialize();
+
+                    // Загружаем данные
+                    await this.loadData();
+
+                    // Настраиваем обработчики событий
+                    this.setupEventListeners();
+
+                    console.log('App initialized successfully');
+                } catch (error) {
+                    console.error('App initialization failed:', error);
+                    this.showError('Ошибка инициализации приложения: ' + error.message);
+                }
+            }
+
+            static showSplashScreen() {
+                const splashScreen = document.getElementById('splashScreen');
+                const progressBar = document.getElementById('splashProgressBar');
+
+                // Анимируем прогресс-бар
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+
+                        // Скрываем заставку и показываем приложение
+                        setTimeout(() => {
+                            splashScreen.classList.add('hidden');
+                            document.getElementById('appContainer').classList.remove('hidden');
+                        }, 500);
+                    }
+                    progressBar.style.width = `${progress}%`;
+                }, 200);
+            }
+
+            static async loadData() {
+                try {
+                    console.log('Loading data...');
+                    // Загружаем дашборд с проектами
+                    const dashboardData = await ApiService.getDashboard();
+                    const projects = dashboardData.projects || [];
+                    const settings = dashboardData.settings || {};
+                    const recentTasks = dashboardData.recent_tasks || [];
+
+                    // Сохраняем настройки
+                    userSettings = settings;
+                    this.applyUserSettings(settings);
+
+                    this.renderProjects(projects);
+                    this.updateStats(projects, recentTasks);
+                    this.renderRecentTasks(recentTasks);
+
+                    console.log('Data loaded successfully');
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    this.showError('Ошибка загрузки данных: ' + error.message);
+                }
+            }
+
+            // Применение настроек пользователя
+            static applyUserSettings(settings) {
+                if (settings.theme) {
+                    if (settings.theme === 'dark' || (settings.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                        document.documentElement.classList.add('dark');
+                        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-moon"></i>';
+                    }
+                }
+            }
+
+            static renderProjects(projects) {
+                const container = document.getElementById('projectsList');
+                if (!projects || projects.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state col-span-full">
+                            <i class="empty-state-icon fas fa-folder-open"></i>
+                            <h3 class="empty-state-title">Проектов пока нет</h3>
+                            <p class="empty-state-description">Создайте свой первый проект, чтобы начать работу</p>
+                            <button class="btn btn-primary" onclick="App.showCreateProjectModal()">
+                                <i class="fas fa-plus mr-2"></i> Создать проект
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = projects.map(project => {
+                    // ИСПРАВЛЕНО: Правильное получение данных проекта и статистики
+                    const projectData = project.project || project;
+                    // Получаем статистику из разных возможных источников
+                    const stats = project.stats || projectData.stats || {};
+                    // ИСПРАВЛЕНО: Правильные названия полей статистики
+                    const membersCount = stats.members_count || stats.membersCount || 0;
+                    const tasksCount = stats.tasks_count || stats.tasksCount || 0;
+                    const doneTasks = stats.tasks_done || stats.done_tasks || stats.doneTasks || 0;
+                    const inProgressTasks = stats.tasks_in_progress || stats.in_progress_tasks || stats.inProgressTasks || 0;
+                    const todoTasks = stats.tasks_todo || stats.todo_tasks || stats.todoTasks || 0;
+
+                    const progress = tasksCount > 0 ? (doneTasks / tasksCount) * 100 : 0;
+
+                    let badgeClass = 'badge-public';
+                    let badgeText = 'Публичный';
+
+                    if (projectData.is_private) {
+                        badgeClass = projectData.requires_approval ? 'badge-approval' : 'badge-private';
+                        badgeText = projectData.requires_approval ? 'Одобрение' : 'Приватный';
+                    }
+
+                    return `
+                        <div class="project-card" onclick="App.openProject('${projectData.hash}')">
+                            <div class="project-header">
+                                <div class="project-title">
+                                    <span>${this.escapeHtml(projectData.title)}</span>
+                                    <span class="project-badge ${badgeClass}">${badgeText}</span>
+                                </div>
+                                <p class="project-description">${this.escapeHtml(projectData.description || 'Без описания')}</p>
+                            </div>
+                            <div class="project-body">
+                                <div class="project-meta">
+                                    <div class="project-meta-item">
+                                        <i class="fas fa-users project-meta-icon"></i>
+                                        <span>${membersCount} участников</span>
+                                    </div>
+                                    <div class="project-meta-item">
+                                        <i class="fas fa-tasks project-meta-icon"></i>
+                                        <span>${tasksCount} задач</span>
+                                    </div>
+                                </div>
+                                <div class="project-progress">
+                                    <div class="project-progress-label">
+                                        <span>Прогресс</span>
+                                        <span>${Math.round(progress)}%</span>
+                                    </div>
+                                    <div class="project-progress-bar">
+                                        <div class="project-progress-fill" style="width: ${progress}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Отображение недавних задач
+            static renderRecentTasks(recentTasks) {
+                const container = document.getElementById('recentTasksList');
+                if (!recentTasks || recentTasks.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="empty-state-icon fas fa-tasks"></i>
+                            <h3 class="empty-state-title">Нет недавних задач</h3>
+                            <p class="empty-state-description">Задачи, над которыми вы работали, появятся здесь</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = recentTasks.map(task => `
+                    <div class="task-item" onclick="App.openTask(${task.id})">
+                        <div class="task-checkbox ${task.status === 'done' ? 'checked' : ''}"></div>
+                        <div class="task-content">
+                            <div class="task-title">${this.escapeHtml(task.title)}</div>
+                            <div class="task-meta">
+                                <span class="task-priority priority-${task.priority}">${this.getPriorityText(task.priority)}</span>
+                                <span><i class="fas fa-calendar-alt mr-1"></i> ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Без срока'}</span>
+                                <span><i class="fas fa-user mr-1"></i> ${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            static updateStats(projects, recentTasks) {
+                // ИСПРАВЛЕНО: Правильный подсчет статистики
+                document.getElementById('projectsCount').textContent = projects.length;
+                const totalTasks = projects.reduce((sum, project) => {
+                    const projectData = project.project || project;
+                    const stats = project.stats || projectData.stats || {};
+                    return sum + (stats.tasks_count || stats.tasksCount || 0);
+                }, 0);
+                document.getElementById('tasksCount').textContent = totalTasks;
+                document.getElementById('recentTasksCount').textContent = recentTasks ? recentTasks.length : 0;
+
+                const completed = projects.reduce((sum, project) => {
+                    const projectData = project.project || project;
+                    const stats = project.stats || projectData.stats || {};
+                    return sum + (stats.tasks_done || stats.done_tasks || stats.doneTasks || 0);
+                }, 0);
+                document.getElementById('completedTasksCount').textContent = completed;
+            }
+
+            static setupEventListeners() {
+                // Переключение темы
+                document.getElementById('themeToggle').addEventListener('click', () => {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-moon"></i>';
+                        userSettings.theme = 'light';
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+                        userSettings.theme = 'dark';
+                    }
+                    ApiService.updateUserPreferences({ theme: userSettings.theme });
+                });
+
+                // Меню пользователя
+                document.getElementById('userMenuBtn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const dropdown = document.getElementById('userDropdown');
+                    dropdown.classList.toggle('hidden');
+                });
+
+                // Закрытие меню пользователя при клике вне его
+                document.addEventListener('click', () => {
+                    document.getElementById('userDropdown').classList.add('hidden');
+                });
+
+                // Создание проекта
+                document.getElementById('createProjectBtn').addEventListener('click', () => {
+                    this.showModal('createProjectModal');
+                });
+
+                // Уведомления
+                document.getElementById('notificationsBtn').addEventListener('click', () => {
+                    this.showNotifications();
+                });
+
+                // Поиск
+                document.getElementById('searchBtn').addEventListener('click', () => {
+                    this.showSearch();
+                });
+            }
+
+            static showView(viewId) {
+                // Скрываем все вью
+                document.getElementById('dashboardView').classList.add('hidden');
+                document.getElementById('projectView').classList.add('hidden');
+                document.getElementById('taskView').classList.add('hidden');
+
+                // Показываем нужную вью
+                document.getElementById(viewId).classList.remove('hidden');
+            }
+
+            static showDashboard() {
+                this.showView('dashboardView');
+                this.loadData();
+            }
+
+            static async openProject(projectHash) {
+                try {
+                    console.log('Opening project:', projectHash);
+                    const projectData = await ApiService.getProject(projectHash);
+                    // ИСПРАВЛЕНО: Правильное получение данных проекта
+                    currentProject = projectData.project || projectData;
+                    currentProject.members = projectData.members || [];
+
+                    // Получаем сводку проекта для статистики
+                    const projectSummary = await ApiService.getProjectSummary(projectHash);
+                    console.log('Project data:', currentProject);
+                    console.log('Project summary:', projectSummary);
+
+                    // Рендерим представление проекта
+                    this.renderProjectView(currentProject, projectSummary);
+
+                    this.showView('projectView');
+                } catch (error) {
+                    console.error('Error opening project:', error);
+                    this.showError('Ошибка открытия проекта: ' + error.message);
+                }
+            }
+
+            static renderProjectView(project, summary) {
+                const projectView = document.getElementById('projectView');
+
+                // Формируем HTML для представления проекта
+                projectView.innerHTML = `
+                    <div class="mb-6">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                            <div>
+                                <h1 class="text-2xl font-bold">${this.escapeHtml(project.title)}</h1>
+                                <div class="flex items-center mt-2 space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                                    <span><i class="fas fa-users mr-1"></i> ${summary.members_count || 0} участников</span>
+                                    <span><i class="fas fa-tasks mr-1"></i> ${summary.tasks_count || 0} задач</span>
+                                    <span><i class="fas fa-check-circle mr-1"></i> ${summary.tasks_done || 0} выполнено</span>
+                                    <span><i class="fas fa-sync-alt mr-1"></i> ${summary.tasks_in_progress || 0} в работе</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 mt-4 md:mt-0">
+                                <button class="btn btn-primary" onclick="App.showCreateTaskModal()">
+                                    <i class="fas fa-plus mr-2"></i> Новая задача
+                                </button>
+                                <button class="btn btn-secondary" onclick="App.showDashboard()">
+                                    <i class="fas fa-arrow-left mr-2"></i> Назад
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400">${this.escapeHtml(project.description || 'Без описания')}</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2">
+                            <div class="card mb-6">
+                                <div class="card-header flex justify-between items-center">
+                                    <h2 class="text-xl font-semibold">Задачи проекта</h2>
+                                    <div class="flex space-x-2">
+                                        <select class="form-control form-select text-sm">
+                                            <option>Все статусы</option>
+                                            <option>К выполнению</option>
+                                            <option>В работе</option>
+                                            <option>Выполнено</option>
+                                        </select>
+                                        <select class="form-control form-select text-sm">
+                                            <option>Все приоритеты</option>
+                                            <option>Низкий</option>
+                                            <option>Средний</option>
+                                            <option>Высокий</option>
+                                            <option>Срочный</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="task-list" id="projectTasksList">
+                                        <!-- Задачи проекта будут загружены здесь -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="card mb-6">
+                                <div class="card-header">
+                                    <h2 class="text-xl font-semibold">Участники</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div id="projectMembersList">
+                                        <!-- Участники проекта будут загружены здесь -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2 class="text-xl font-semibold">Статистика</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <div class="flex justify-between mb-1">
+                                                <span class="text-sm font-medium">Общий прогресс</span>
+                                                <span class="text-sm font-medium">${summary.tasks_count > 0 ? Math.round((summary.tasks_done / summary.tasks_count) * 100) : 0}%</span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                                <div class="bg-primary-500 h-2 rounded-full" style="width: ${summary.tasks_count > 0 ? (summary.tasks_done / summary.tasks_count) * 100 : 0}%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                                <div class="text-2xl font-bold text-primary-500">${summary.tasks_todo || 0}</div>
+                                                <div class="text-sm text-gray-600 dark:text-gray-400">К выполнению</div>
+                                            </div>
+                                            <div class="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                                <div class="text-2xl font-bold text-warning-500">${summary.tasks_in_progress || 0}</div>
+                                                <div class="text-sm text-gray-600 dark:text-gray-400">В работе</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 `;
 
-                container.appendChild(particle);
-
-                // Remove particle after animation
-                setTimeout(() => {
-                    particle.remove();
-                }, duration * 1000);
+                // Загружаем задачи и участников проекта
+                this.loadProjectTasks(project.hash);
+                this.loadProjectMembers(project.hash);
             }
 
-            // Create initial particles
-            for (let i = 0; i < 50; i++) {
-                createParticle();
+            static async loadProjectTasks(projectHash) {
+                try {
+                    const response = await ApiService.getTasks(projectHash);
+                    const tasks = response.tasks || [];
+                    const container = document.getElementById('projectTasksList');
+
+                    if (!tasks || tasks.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <i class="empty-state-icon fas fa-tasks"></i>
+                                <h3 class="empty-state-title">Задач пока нет</h3>
+                                <p class="empty-state-description">Создайте первую задачу для этого проекта</p>
+                                <button class="btn btn-primary" onclick="App.showCreateTaskModal()">
+                                    <i class="fas fa-plus mr-2"></i> Создать задачу
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = tasks.map(task => `
+                        <div class="task-item" onclick="App.openTask(${task.id})">
+                            <div class="task-checkbox ${task.status === 'done' ? 'checked' : ''}"></div>
+                            <div class="task-content">
+                                <div class="task-title">${this.escapeHtml(task.title)}</div>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-${task.priority}">${this.getPriorityText(task.priority)}</span>
+                                    <span><i class="fas fa-calendar-alt mr-1"></i> ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Без срока'}</span>
+                                    <span><i class="fas fa-user mr-1"></i> ${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error loading project tasks:', error);
+                    document.getElementById('projectTasksList').innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Ошибка загрузки задач</p>';
+                }
             }
 
-            // Continue creating particles
-            setInterval(createParticle, 300);
+            static async loadProjectMembers(projectHash) {
+                try {
+                    const response = await ApiService.getProjectMembers(projectHash);
+                    const members = response.members || [];
+                    const container = document.getElementById('projectMembersList');
+
+                    if (!members || members.length === 0) {
+                        container.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Участников нет</p>';
+                        return;
+                    }
+
+                    container.innerHTML = members.map(member => {
+                        // ИСПРАВЛЕНО: Правильное получение данных участника
+                        const memberData = member.user || member;
+                        const displayName = (memberData.full_name && memberData.full_name.trim() !== '')
+                            ? memberData.full_name
+                            : (member.full_name && member.full_name.trim() !== '')
+                            ? member.full_name
+                            : `Участник #${member.user_id || memberData.id}`;
+
+                        return `
+                            <div class="flex items-center space-x-3 py-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                                <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 font-medium">
+                                    ${displayName.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-medium">${this.escapeHtml(displayName)}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">${this.getRoleText(member.role)}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } catch (error) {
+                    console.error('Error loading project members:', error);
+                    document.getElementById('projectMembersList').innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Ошибка загрузки участников</p>';
+                }
+            }
+
+            static async openTask(taskId) {
+                try {
+                    console.log('Opening task:', taskId);
+                    const response = await ApiService.getTask(taskId);
+                    currentTask = response.task || response;
+                    console.log('Current task set to:', currentTask);
+
+                    if (!currentTask) {
+                        this.showError('Задача не найдена');
+                        return;
+                    }
+
+                    // Рендерим представление задачи
+                    this.renderTaskView(currentTask);
+
+                    this.showView('taskView');
+                } catch (error) {
+                    console.error('Error opening task:', error);
+                    this.showError('Ошибка открытия задачи: ' + error.message);
+                }
+            }
+
+            static renderTaskView(task) {
+                const taskView = document.getElementById('taskView');
+
+                taskView.innerHTML = `
+                    <div class="mb-6">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                            <div>
+                                <h1 class="text-2xl font-bold">${this.escapeHtml(task.title)}</h1>
+                                <div class="flex items-center mt-2 space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                                    <span><i class="fas fa-calendar-alt mr-1"></i> Создана: ${new Date(task.created_at).toLocaleDateString()}</span>
+                                    <span><i class="fas fa-user mr-1"></i> ${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначена'}</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 mt-4 md:mt-0">
+                                <button class="btn btn-success" onclick="App.showCreateSubtaskModal()">
+                                    <i class="fas fa-plus mr-2"></i> Подзадача
+                                </button>
+                                <button class="btn btn-warning" onclick="App.showEditTaskModal()">
+                                    <i class="fas fa-edit mr-2"></i> Редактировать
+                                </button>
+                                <button class="btn btn-danger" onclick="App.showDeleteTaskModal()">
+                                    <i class="fas fa-trash mr-2"></i> Удалить
+                                </button>
+                                <button class="btn btn-secondary" onclick="App.backToProject()">
+                                    <i class="fas fa-arrow-left mr-2"></i> Назад
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2">
+                            <div class="card mb-6">
+                                <div class="card-header">
+                                    <h2 class="text-xl font-semibold">Описание</h2>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-gray-700 dark:text-gray-300">${this.escapeHtml(task.description || 'Без описания')}</p>
+                                </div>
+                            </div>
+
+                            <div class="card mb-6">
+                                <div class="card-header">
+                                    <h2 class="text-xl font-semibold">Подзадачи</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div id="subtasksList">
+                                        <!-- Подзадачи будут загружены здесь -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2 class="text-xl font-semibold">Комментарии</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div id="taskCommentsList" class="mb-4">
+                                        <!-- Комментарии будут загружены здесь -->
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <input type="text" id="newCommentText" placeholder="Введите комментарий..." class="form-control flex-1">
+                                        <button onclick="App.addComment()" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane mr-2"></i> Отправить
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="card mb-6">
+                                <div class="card-header">
+                                    <h2 class="text-xl font-semibold">Информация</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="form-label">Статус</label>
+                                            <select id="taskStatusSelect" onchange="App.updateTaskStatus()" class="form-control form-select">
+                                                <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>К выполнению</option>
+                                                <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>В работе</option>
+                                                <option value="done" ${task.status === 'done' ? 'selected' : ''}>Выполнено</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Приоритет</label>
+                                            <div class="task-priority priority-${task.priority} inline-block px-3 py-1 rounded-full text-sm font-medium">
+                                                ${this.getPriorityText(task.priority)}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Создана</label>
+                                            <p class="text-gray-700 dark:text-gray-300">${new Date(task.created_at).toLocaleString()}</p>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Срок</label>
+                                            <p class="text-gray-700 dark:text-gray-300">${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Не установлен'}</p>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Исполнитель</label>
+                                            <p class="text-gray-700 dark:text-gray-300">${task.assigned_user ? this.escapeHtml(task.assigned_user.full_name) : 'Не назначен'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Загружаем подзадачи и комментарии
+                this.loadSubtasks(task.id);
+                this.loadTaskComments(task.id);
+            }
+
+            static async loadSubtasks(parentTaskId) {
+                try {
+                    if (!currentProject || !currentProject.hash) {
+                        console.error('No current project for loading subtasks');
+                        document.getElementById('subtasksList').innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Ошибка загрузки подзадач: проект не выбран</p>';
+                        return;
+                    }
+
+                    // Получаем все задачи проекта
+                    const response = await ApiService.getTasks(currentProject.hash);
+                    const tasks = response.tasks || [];
+                    const subtasks = tasks.filter(task => task.parent_task_id === parentTaskId);
+                    const container = document.getElementById('subtasksList');
+
+                    if (subtasks.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <i class="empty-state-icon fas fa-tasks"></i>
+                                <h3 class="empty-state-title">Подзадач нет</h3>
+                                <p class="empty-state-description">Создайте первую подзадачу для этой задачи</p>
+                                <button class="btn btn-primary" onclick="App.showCreateSubtaskModal()">
+                                    <i class="fas fa-plus mr-2"></i> Создать подзадачу
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = subtasks.map(subtask => `
+                        <div class="task-item">
+                            <div class="task-checkbox ${subtask.status === 'done' ? 'checked' : ''}" onclick="App.toggleSubtaskStatus(${subtask.id}, this)"></div>
+                            <div class="task-content">
+                                <div class="task-title">${this.escapeHtml(subtask.title)}</div>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-${subtask.priority}">${this.getPriorityText(subtask.priority)}</span>
+                                    <span><i class="fas fa-calendar-alt mr-1"></i> ${subtask.due_date ? new Date(subtask.due_date).toLocaleDateString() : 'Без срока'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error loading subtasks:', error);
+                    document.getElementById('subtasksList').innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Ошибка загрузки подзадач</p>';
+                }
+            }
+
+            static async loadTaskComments(taskId) {
+                try {
+                    const response = await ApiService.getTaskComments(taskId);
+                    const comments = response.comments || [];
+                    const container = document.getElementById('taskCommentsList');
+
+                    if (!comments || comments.length === 0) {
+                        container.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Комментариев нет</p>';
+                        return;
+                    }
+
+                    container.innerHTML = comments.map(comment => `
+                        <div class="flex space-x-3 mb-4 last:mb-0">
+                            <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 font-medium">
+                                ${comment.author_name ? comment.author_name.charAt(0).toUpperCase() : 'A'}
+                            </div>
+                            <div class="flex-1">
+                                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <div class="font-medium">${this.escapeHtml(comment.author_name || 'Аноним')}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">${new Date(comment.created_at).toLocaleString()}</div>
+                                    </div>
+                                    <p class="text-gray-700 dark:text-gray-300">${this.escapeHtml(comment.content)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error loading task comments:', error);
+                    document.getElementById('taskCommentsList').innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Ошибка загрузки комментариев</p>';
+                }
+            }
+
+            static showModal(modalId) {
+                document.getElementById(modalId).classList.add('active');
+            }
+
+            static hideModal(modalId) {
+                document.getElementById(modalId).classList.remove('active');
+            }
+
+            static showCreateProjectModal() {
+                this.showModal('createProjectModal');
+            }
+
+            static async handleCreateProject() {
+                const title = document.getElementById('projectTitle').value.trim();
+                const description = document.getElementById('projectDescription').value.trim();
+                const isPrivate = document.getElementById('projectIsPrivate').checked;
+                const requiresApproval = document.getElementById('projectRequiresApproval').checked;
+
+                if (!title) {
+                    this.showError('Введите название проекта');
+                    return;
+                }
+
+                try {
+                    console.log('Creating project:', { title, description, isPrivate, requiresApproval });
+                    await ApiService.createProject({
+                        title,
+                        description,
+                        is_private: isPrivate,
+                        requires_approval: requiresApproval
+                    });
+
+                    // Закрываем модальное окно
+                    this.hideModal('createProjectModal');
+
+                    // Очищаем форму
+                    document.getElementById('createProjectForm').reset();
+
+                    // Перезагружаем данные
+                    await this.loadData();
+
+                    this.showSuccess('Проект создан успешно!');
+                } catch (error) {
+                    console.error('Error creating project:', error);
+                    this.showError('Ошибка создания проекта: ' + error.message);
+                }
+            }
+
+            static showCreateTaskModal() {
+                this.showModal('createTaskModal');
+            }
+
+            static async handleCreateTask() {
+                if (!currentProject) return;
+
+                const title = document.getElementById('taskTitle').value.trim();
+                const description = document.getElementById('taskDescription').value.trim();
+                const priority = document.getElementById('taskPriority').value;
+                const dueDate = document.getElementById('taskDueDate').value;
+                const assignedTo = document.getElementById('taskAssignedTo').value;
+
+                if (!title) {
+                    this.showError('Введите название задачи');
+                    return;
+                }
+
+                try {
+                    const taskData = {
+                        title,
+                        description,
+                        project_hash: currentProject.hash,
+                        priority,
+                        status: 'todo'
+                    };
+
+                    if (dueDate) taskData.due_date = dueDate;
+                    // ИСПРАВЛЕНО: используем assigned_to_id вместо assigned_to_ids
+                    if (assignedTo) {
+                        taskData.assigned_to_id = parseInt(assignedTo);
+                    }
+
+                    console.log('Creating task with data:', taskData);
+                    await ApiService.createTask(taskData);
+
+                    this.hideModal('createTaskModal');
+
+                    // ИСПРАВЛЕНО: Проверяем существование формы перед reset
+                    const createTaskForm = document.getElementById('createTaskForm');
+                    if (createTaskForm) {
+                        createTaskForm.reset();
+                    }
+
+                    // Перезагружаем задачи проекта
+                    if (currentProject && currentProject.hash) {
+                        await this.loadProjectTasks(currentProject.hash);
+                    }
+
+                    this.showSuccess('Задача создана успешно!');
+                } catch (error) {
+                    console.error('Error creating task:', error);
+                    this.showError('Ошибка создания задачи: ' + error.message);
+                }
+            }
+
+            static showCreateSubtaskModal() {
+                // Реализация создания подзадачи
+                this.showSuccess('Функция создания подзадачи будет реализована в ближайшее время!');
+            }
+
+            static showEditTaskModal() {
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for editing:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
+
+                // Реализация редактирования задачи
+                this.showSuccess('Функция редактирования задачи будет реализована в ближайшее время!');
+            }
+
+            static showDeleteTaskModal() {
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for deletion:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
+
+                // Реализация удаления задачи
+                if (confirm(`Вы уверены, что хотите удалить задачу "${currentTask.title}"?`)) {
+                    this.showSuccess('Задача будет удалена в ближайшее время!');
+                }
+            }
+
+            static async updateTaskStatus() {
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task or task ID:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
+
+                try {
+                    const newStatus = document.getElementById('taskStatusSelect').value;
+                    console.log('Updating task status:', currentTask.id, newStatus);
+                    await ApiService.updateTaskStatus(currentTask.id, newStatus);
+
+                    this.showSuccess('Статус задачи обновлен!');
+                } catch (error) {
+                    console.error('Error updating task status:', error);
+                    this.showError('Ошибка обновления статуса: ' + error.message);
+
+                    // Восстанавливаем предыдущее значение
+                    if (currentTask) {
+                        document.getElementById('taskStatusSelect').value = currentTask.status;
+                    }
+                }
+            }
+
+            static async addComment() {
+                if (!currentTask || !currentTask.id) {
+                    console.error('No current task for comment:', currentTask);
+                    this.showError('Ошибка: задача не выбрана');
+                    return;
+                }
+
+                const content = document.getElementById('newCommentText').value.trim();
+                if (!content) {
+                    this.showError('Введите текст комментария');
+                    return;
+                }
+
+                try {
+                    await ApiService.createTaskComment(currentTask.id, content);
+                    document.getElementById('newCommentText').value = '';
+                    await this.loadTaskComments(currentTask.id);
+                    this.showSuccess('Комментарий добавлен!');
+                } catch (error) {
+                    console.error('Error adding comment:', error);
+                    this.showError('Ошибка добавления комментария: ' + error.message);
+                }
+            }
+
+            static async toggleSubtaskStatus(taskId, checkbox) {
+                try {
+                    const isChecked = checkbox.classList.contains('checked');
+                    const newStatus = isChecked ? 'todo' : 'done';
+
+                    await ApiService.updateTaskStatus(taskId, newStatus);
+
+                    if (isChecked) {
+                        checkbox.classList.remove('checked');
+                    } else {
+                        checkbox.classList.add('checked');
+                    }
+
+                    this.showSuccess('Статус подзадачи обновлен!');
+                } catch (error) {
+                    console.error('Error updating subtask status:', error);
+                    this.showError('Ошибка обновления статуса подзадачи: ' + error.message);
+                }
+            }
+
+            static async showNotifications() {
+                try {
+                    const response = await ApiService.getNotifications();
+                    const notifications = response.notifications || [];
+
+                    // В реальном приложении здесь будет обновление списка уведомлений
+                    this.showModal('notificationsModal');
+                } catch (error) {
+                    console.error('Error loading notifications:', error);
+                    this.showError('Ошибка загрузки уведомлений: ' + error.message);
+                }
+            }
+
+            static async markAllNotificationsRead() {
+                try {
+                    await ApiService.markAllNotificationsRead();
+                    this.hideModal('notificationsModal');
+                    this.showSuccess('Все уведомления отмечены как прочитанные!');
+                } catch (error) {
+                    console.error('Error marking notifications as read:', error);
+                    this.showError('Ошибка отметки уведомлений: ' + error.message);
+                }
+            }
+
+            static showSearch() {
+                // Реализация поиска
+                this.showSuccess('Функция поиска будет реализована в ближайшее время!');
+            }
+
+            static backToProject() {
+                console.log('Back to project, currentProject:', currentProject);
+                if (currentProject && currentProject.hash) {
+                    this.openProject(currentProject.hash);
+                } else {
+                    console.log('No current project, showing dashboard');
+                    this.showDashboard();
+                }
+            }
+
+            // Вспомогательные методы
+            static getStatusText(status) {
+                const statusMap = {
+                    'todo': 'К выполнению',
+                    'in_progress': 'В работе',
+                    'done': 'Выполнено'
+                };
+                return statusMap[status] || status;
+            }
+
+            static getPriorityText(priority) {
+                const priorityMap = {
+                    'low': 'Низкий',
+                    'medium': 'Средний',
+                    'high': 'Высокий',
+                    'urgent': 'Срочный'
+                };
+                return priorityMap[priority] || priority;
+            }
+
+            static getRoleText(role) {
+                const roleMap = {
+                    'owner': 'Владелец',
+                    'admin': 'Администратор',
+                    'member': 'Участник',
+                    'guest': 'Гость'
+                };
+                return roleMap[role] || role;
+            }
+
+            static showError(message) {
+                // В реальном приложении здесь будет красивый toast или уведомление
+                alert('Ошибка: ' + message);
+            }
+
+            static showSuccess(message) {
+                // В реальном приложении здесь будет красивый toast или уведомление
+                alert('Успех: ' + message);
+            }
+
+            static escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
         }
 
-        function initCosmicLoading() {
-            const orbits = document.querySelectorAll('.orbit-ring');
-            orbits.forEach((orbit, index) => {
-                orbit.style.animationDelay = (index * 0.5) + 's';
-            });
-        }
+        // Инициализация приложения после загрузки DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            App.init();
+        });
     </script>
 </body>
 </html>
