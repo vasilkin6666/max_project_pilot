@@ -1,4 +1,4 @@
-from .start import cmd_start, cmd_help
+from .start import cmd_start, cmd_help, handle_project_invitation
 from .projects import (
     cmd_create_project, cmd_join_project, cmd_my_projects,
     handle_callback_create_project_start,
@@ -19,6 +19,7 @@ from .notifications import (
 __all__ = [
     "cmd_start",
     "cmd_help",
+    "handle_project_invitation",
     "cmd_create_project",
     "cmd_join_project",
     "cmd_my_projects",

@@ -1,4 +1,4 @@
-from maxapi.types import MessageCallback, CallbackButton
+from maxapi.types import MessageCallback, CallbackButton, OpenAppButton
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from app.services.api_client import APIClient
 from app.config import settings
@@ -35,10 +35,10 @@ async def handle_callback_notifications(event: MessageCallback):
     if not notifications and not pending_requests:
         text = "📭 У вас пока нет уведомлений и заявок."
     else:
-        text = "🔔 **Ваши уведомления и заявки:**\n\n"
+        text = "🔔 Ваши уведомления и заявки:\n\n"
 
         if pending_requests:
-            text += "📋 **Заявки на вступление:**\n"
+            text += "📋 Заявки на вступление:\n"
             for i, req in enumerate(pending_requests[:3], 1):
                 user = req.get("user", {})
                 text += f"{i}. 👤 {user.get('full_name', 'Аноним')}\n"
@@ -46,7 +46,7 @@ async def handle_callback_notifications(event: MessageCallback):
                 text += f"   ⏰ {req.get('requested_at', '')}\n\n"
 
         if notifications:
-            text += "🔔 **Последние уведомления:**\n"
+            text += "🔔 Последние уведомления:\n"
             for i, notification in enumerate(notifications[:3], 1):
                 emoji = "🔵" if not notification.get("is_read") else "⚪"
                 text += f"{emoji} {notification.get('title', '')}\n"
@@ -60,12 +60,12 @@ async def handle_callback_notifications(event: MessageCallback):
             payload="manage_requests"
         ))
 
-    web_app_url = f"{settings.SITE_URL}/?user_id={event.from_user.user_id}#notifications"
-    builder.row(CallbackButton(
-        text="🌐 Открыть веб-приложение",
-        payload=f"open_webapp:{web_app_url}"
+    builder.row(OpenAppButton(
+        text="🌐 Открыть мини-приложение",
+        web_app=settings.MAX_MINI_APP_URL
     ))
     builder.row(CallbackButton(text="🔄 Обновить", payload="notifications"))
+    builder.row(CallbackButton(text="🏠 Домой", payload="start"))
 
     await event.bot.edit_message(
         message_id=event.message.body.mid,
@@ -86,6 +86,7 @@ async def handle_callback_manage_requests(event: MessageCallback):
         text = "❌ У вас нет проектов, где вы являетесь администратором."
         builder = InlineKeyboardBuilder()
         builder.row(CallbackButton(text="📋 Мои проекты", payload="projects"))
+        builder.row(CallbackButton(text="🏠 Домой", payload="start"))
         await event.bot.edit_message(
             message_id=event.message.body.mid,
             text=text,
@@ -112,6 +113,7 @@ async def handle_callback_manage_requests(event: MessageCallback):
         text = "📭 Нет ожидающих заявок на вступление."
         builder = InlineKeyboardBuilder()
         builder.row(CallbackButton(text="🔙 Назад", payload="notifications"))
+        builder.row(CallbackButton(text="🏠 Домой", payload="start"))
         await event.bot.edit_message(
             message_id=event.message.body.mid,
             text=text,
@@ -131,13 +133,13 @@ async def show_request_page(event, requests, page_index):
     user = req.get("user", {})
 
     text = (
-        f"📋 **Заявка на вступление**\n\n"
-        f"👤 **Пользователь:** {user.get('full_name', 'Аноним')}\n"
+        f"📋 Заявка на вступление\n\n"
+        f"👤 Пользователь: {user.get('full_name', 'Аноним')}\n"
         f"🆔 ID: `{user.get('max_id', '')}`\n"
-        f"📁 **Проект:** {req['project_title']}\n"
+        f"📁 Проект: {req['project_title']}\n"
         f"🔗 Хэш: `{req['project_hash']}`\n"
         f"⏰ Подана: {req.get('requested_at', '')}\n\n"
-        f"📊 **Статистика заявки {page_index + 1}/{len(requests)}**"
+        f"📊 Статистика заявки {page_index + 1}/{len(requests)}"
     )
 
     builder = InlineKeyboardBuilder()
@@ -171,6 +173,7 @@ async def show_request_page(event, requests, page_index):
         builder.row(*nav_buttons)
 
     builder.row(CallbackButton(text="🔙 К уведомлениям", payload="notifications"))
+    builder.row(CallbackButton(text="🏠 Домой", payload="start"))
 
     await event.bot.edit_message(
         message_id=event.message.body.mid,
@@ -246,11 +249,18 @@ async def handle_callback_approve_request(event: MessageCallback):
                         await event.bot.send_message(
                             chat_id=target_user_id,
                             text=(
-                                f"🎉 **Ваша заявка одобрена!**\n\n"
-                                f"📁 Проект: **{project_info.get('title', '')}**\n"
+                                f"🎉 Ваша заявка одобрена!\n\n"
+                                f"📁 Проект: {project_info.get('title', '')}\n"
                                 f"📝 {project_info.get('description', '')}\n\n"
-                                f"Теперь вы можете работать в проекте! 🚀"
-                            )
+                                f"Теперь вы можете работать в проекте! 🚀\n\n"
+                                f"Откройте мини-приложение, чтобы начать:"
+                            ),
+                            attachments=[InlineKeyboardBuilder()
+                                .row(OpenAppButton(
+                                    text="🚀 Открыть Project Pilot",
+                                    web_app=f"{settings.MAX_MINI_APP_URL}?start={project_hash}"
+                                ))
+                                .as_markup()]
                         )
                     except Exception as e:
                         logger.error(f"Could not notify user {target_user_id}: {e}")
@@ -304,11 +314,17 @@ async def handle_callback_reject_request(event: MessageCallback):
                         await event.bot.send_message(
                             chat_id=target_user_id,
                             text=(
-                                f"😔 **Ваша заявка отклонена**\n\n"
-                                f"📁 Проект: **{project_info.get('title', '')}**\n"
+                                f"😔 Ваша заявка отклонена\n\n"
+                                f"📁 Проект: {project_info.get('title', '')}\n"
                                 f"❌ К сожалению, администратор отклонил вашу заявку.\n\n"
                                 f"Вы можете подать заявку в другой проект! 💪"
-                            )
+                            ),
+                            attachments=[InlineKeyboardBuilder()
+                                .row(OpenAppButton(
+                                    text="🚀 Открыть Project Pilot",
+                                    web_app=settings.MAX_MINI_APP_URL
+                                ))
+                                .as_markup()]
                         )
                     except Exception as e:
                         logger.error(f"Could not notify user {target_user_id}: {e}")

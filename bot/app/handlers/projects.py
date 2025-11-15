@@ -19,7 +19,7 @@ async def cmd_create_project(event: MessageCreated):
     builder.row(CallbackButton(text="🏠 Домой", payload="start"))
 
     await event.message.answer(
-        text=f"🚀 **Создание проекта**\n\n"
+        text=f"🚀 Создание проекта\n\n"
              f"Для создания проекта откройте мини-приложение:\n\n"
              f"В мини-приложении вы сможете:\n"
              f"• 📝 Создать проект с названием и описанием\n"
@@ -27,6 +27,32 @@ async def cmd_create_project(event: MessageCreated):
              f"• 👥 Управлять участниками\n"
              f"• 📋 Создавать задачи\n"
              f"• 🎯 Назначать исполнителей",
+        attachments=[builder.as_markup()]
+    )
+
+async def handle_callback_create_project_start(event: MessageCallback):
+    """Обработка начала создания проекта через callback"""
+    user_id = str(event.from_user.user_id)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(OpenAppButton(
+        text="🚀 Открыть Project Pilot",
+        web_app=settings.MAX_MINI_APP_URL
+    ))
+    builder.row(CallbackButton(text="🏠 Домой", payload="start"))
+
+    await event.bot.edit_message(
+        message_id=event.message.body.mid,
+        text=(
+            "🚀 **Создание проекта**\n\n"
+            "Для создания проекта откройте мини-приложение:\n\n"
+            "В мини-приложении вы сможете:\n"
+            "• 📝 Создать проект с названием и описанием\n"
+            "• 🔐 Настроить приватность\n"
+            "• 👥 Управлять участниками\n"
+            "• 📋 Создавать задачи\n"
+            "• 🎯 Назначать исполнителей"
+        ),
         attachments=[builder.as_markup()]
     )
 
@@ -72,9 +98,9 @@ async def cmd_my_projects(event: MessageCreated):
 
     if not dashboard or not dashboard.get("projects"):
         text = (
-            "📂 **Ваши проекты**\n\n"
+            "📂 Ваши проекты\n\n"
             "У вас пока нет проектов. Создайте первый проект и начните управлять задачами!\n\n"
-            "💡 **Что можно делать:**\n"
+            "💡 Что можно делать:\n"
             "• Создавать проекты и приглашать команду\n"
             "• Ставить задачи и отслеживать прогресс\n"
             "• Обсуждать задачи и получать уведомления"
@@ -93,7 +119,7 @@ async def cmd_my_projects(event: MessageCreated):
 
     projects = dashboard.get("projects", [])
 
-    text = "📂 **Ваши проекты**\n\n"
+    text = "📂 Ваши проекты\n\n"
 
     for i, project in enumerate(projects[:10], 1):  # Ограничиваем 10 проектами
         stats = project.get("stats", {})
@@ -108,7 +134,7 @@ async def cmd_my_projects(event: MessageCreated):
         privacy_emoji = "🔒" if project.get("is_private") else "🌐"
 
         text += (
-            f"{i}. {role_emoji} **{project.get('title', 'Без названия')}** {privacy_emoji}\n"
+            f"{i}. {role_emoji} {project.get('title', 'Без названия')} {privacy_emoji}\n"
             f"   📊 Задачи: {stats.get('total_tasks', 0)} "
             f"(✅ {stats.get('done_tasks', 0)} | "
             f"🔄 {stats.get('in_progress_tasks', 0)} | "
@@ -120,7 +146,7 @@ async def cmd_my_projects(event: MessageCreated):
     if len(projects) > 10:
         text += f"*... и еще {len(projects) - 10} проектов*\n\n"
 
-    text += "💡 **Управление:**\n• Нажмите на проект для деталей\n• Используйте мини-приложение для полного контроля"
+    text += "💡 Управление:\n• Нажмите на проект для деталей\n• Используйте мини-приложение для полного контроля"
 
     builder = InlineKeyboardBuilder()
 
@@ -157,12 +183,12 @@ async def handle_callback_projects(event: MessageCallback):
     if not projects_data:
         text = "📂 У вас пока нет проектов. Используйте мини-приложение для создания проектов!"
     else:
-        text = "📂 **Ваши проекты:**\n"
+        text = "📂 Ваши проекты:\n"
         for i, member in enumerate(projects_data[:5], 1):
             project = member.get("project", {})
             role_emoji = {"owner": "👑", "admin": "⚡", "member": "👤"}.get(member.get("role"), "👤")
             tasks_count = len(project.get("tasks", []))
-            text += f"{i}. {role_emoji} **{project.get('title', 'Без названия')}**\n"
+            text += f"{i}. {role_emoji} {project.get('title', 'Без названия')}\n"
             text += f"📋 {tasks_count} задач | 👥 {len(project.get('members', []))} участников\n"
             text += f"🔗 Хэш: `{project.get('hash', '')}`\n\n"
 
@@ -201,9 +227,9 @@ async def handle_callback_project_summary(event: MessageCallback):
         await event.answer(notification="❌ Не удалось получить информацию о проекте")
         return
     text = (
-        f"🚀 **{summary['title']}**\n"
+        f"🚀 {summary['title']}\n"
         f"{summary['description'] or '📝 Без описания'}\n"
-        f"📊 **Статистика:**\n"
+        f"📊 Статистика:\n"
         f"• 👥 Участников: {summary['members_count']}\n"
         f"• 📋 Всего задач: {summary['tasks_count']}\n"
         f"• ⏳ К выполнению: {summary['tasks_todo']}\n"
@@ -241,12 +267,12 @@ async def handle_callback_project_invite(event: MessageCallback):
     invite_link = f"{settings.MAX_MINI_APP_URL}?start={project_hash}"
 
     text = (
-        f"🔗 **Приглашение в проект**\n\n"
+        f"🔗 Приглашение в проект\n\n"
         f"Отправьте эту ссылку пользователям:\n"
         f"`{invite_link}`\n\n"
         f"Или поделитесь хэшем проекта:\n"
         f"`{project_hash}`\n\n"
-        f"💡 **Как это работает:**\n"
+        f"💡 Как это работает:\n"
         f"• Пользователь нажимает на ссылку\n"
         f"• Открывается мини-приложение\n"
         f"• Автоматическая регистрация/вход\n"
@@ -274,9 +300,9 @@ async def handle_callback_project_requests(event: MessageCallback):
     data = await api_client.get_project_join_requests(project_hash, user_id, full_name)
     requests = data.get("requests", [])
     if not requests:
-        text = "📋 **Заявки на присоединение**\n\nНет ожидающих заявок."
+        text = "📋 Заявки на присоединение\n\nНет ожидающих заявок."
     else:
-        text = "📋 **Заявки на присоединение**\n\n"
+        text = "📋 Заявки на присоединение\n\n"
         for i, req in enumerate(requests, 1):
             user = req.get("user", {})
             text += f"{i}. {user.get('full_name', 'Аноним')} (ID: {user.get('max_id')})\n"
@@ -326,16 +352,16 @@ async def handle_callback_stats(event: MessageCallback):
     completion_rate = (done_tasks / total_tasks * 100) if total_tasks > 0 else 0
 
     text = (
-        "📊 **Ваша статистика**\n\n"
-        f"📁 **Проекты:** {total_projects}\n"
-        f"📋 **Всего задач:** {total_tasks}\n"
-        f"✅ **Выполнено:** {done_tasks}\n"
-        f"🔄 **В работе:** {in_progress_tasks}\n"
-        f"⏳ **Осталось:** {todo_tasks}\n"
-        f"👥 **Участников в проектах:** {total_members}\n"
-        f"📈 **Процент выполнения:** {completion_rate:.1f}%\n\n"
+        "📊 Ваша статистика\n\n"
+        f"📁 Проекты: {total_projects}\n"
+        f"📋 Всего задач: {total_tasks}\n"
+        f"✅ Выполнено: {done_tasks}\n"
+        f"🔄 В работе: {in_progress_tasks}\n"
+        f"⏳ Осталось: {todo_tasks}\n"
+        f"👥 Участников в проектах: {total_members}\n"
+        f"📈 Процент выполнения: {completion_rate:.1f}%\n\n"
 
-        "💡 **Советы:**\n"
+        "💡 Советы:\n"
         "• Ставьте реалистичные сроки\n"
         "• Регулярно обновляйте статусы задач\n"
         "• Привлекайте команду к обсуждению"
