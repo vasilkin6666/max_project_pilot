@@ -3751,10 +3751,13 @@ static async resetSettings() {
         }
     }
 
+    // Обновляем showMyTasks для отображения активных фильтров
     static async showMyTasks() {
         try {
             const response = await ApiService.getUserTasks();
             const tasks = response.tasks || [];
+            const filteredTasks = this.filterTasks(tasks);
+            const sortedTasks = this.sortTasks(filteredTasks);
 
             const myTasksView = document.getElementById('myTasksView');
             if (!myTasksView) {
@@ -3770,23 +3773,31 @@ static async resetSettings() {
                             <p class="text-gray-600 dark:text-gray-400">Все задачи, назначенные на вас</p>
                         </div>
                         <div class="mt-4 md:mt-0 flex space-x-3">
-                            <select class="premium-input rounded-xl focus-premium" onchange="App.filterMyTasks(this.value)">
-                                <option value="">Все статусы</option>
-                                <option value="todo">К выполнению</option>
-                                <option value="in_progress">В работе</option>
-                                <option value="done">Выполнено</option>
-                            </select>
-                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2" onclick="App.showCreateTaskModal()">
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2 ${this.hasActiveFilters() ? 'filter-indicator' : ''}"
+                                    onclick="App.showFilterModal()">
+                                <i class="fas fa-filter"></i>
+                                <span>Фильтр</span>
+                            </button>
+                            <button class="btn-premium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2"
+                                    onclick="App.showSortModal()">
+                                <i class="fas fa-sort"></i>
+                                <span>Сортировка</span>
+                            </button>
+                            <button class="btn-premium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium flex items-center space-x-2"
+                                    onclick="App.showCreateTaskModal()">
                                 <i class="fas fa-plus"></i>
                                 <span>Новая задача</span>
                             </button>
                         </div>
                     </div>
+
+                    <!-- Активные фильтры -->
+                    ${this.renderActiveFilters()}
                 </div>
                 <div class="premium-card rounded-2xl overflow-hidden">
                     <div class="p-6">
                         <div class="task-list space-y-4" id="myTasksList">
-                            ${this.renderMyTasksList(tasks)}
+                            ${this.renderMyTasksList(sortedTasks)}
                         </div>
                     </div>
                 </div>
@@ -3799,6 +3810,113 @@ static async resetSettings() {
         }
     }
 
+    // Вспомогательные методы для фильтров
+    static hasActiveFilters() {
+        return Object.values(currentFilters).some(value => value !== '');
+    }
+
+    static renderActiveFilters() {
+        if (!this.hasActiveFilters()) return '';
+
+        const activeFilters = [];
+
+        if (currentFilters.status) {
+            activeFilters.push({
+                label: `Статус: ${this.getStatusText(currentFilters.status)}`,
+                key: 'status'
+            });
+        }
+
+        if (currentFilters.priority) {
+            activeFilters.push({
+                label: `Приоритет: ${this.getPriorityText(currentFilters.priority)}`,
+                key: 'priority'
+            });
+        }
+
+        if (currentFilters.project) {
+            const project = allProjects.find(p => {
+                const projectData = p.project || p;
+                return projectData.hash === currentFilters.project;
+            });
+            if (project) {
+                const projectData = project.project || project;
+                activeFilters.push({
+                    label: `Проект: ${projectData.title}`,
+                    key: 'project'
+                });
+            }
+        }
+
+        if (currentFilters.assignee) {
+            let label = '';
+            switch (currentFilters.assignee) {
+                case 'me':
+                    label = 'Мои задачи';
+                    break;
+                case 'unassigned':
+                    label = 'Не назначенные';
+                    break;
+            }
+            if (label) {
+                activeFilters.push({
+                    label: label,
+                    key: 'assignee'
+                });
+            }
+        }
+
+        if (currentFilters.dateRange) {
+            let label = '';
+            switch (currentFilters.dateRange) {
+                case 'today':
+                    label = 'Сегодня';
+                    break;
+                case 'tomorrow':
+                    label = 'Завтра';
+                    break;
+                case 'week':
+                    label = 'На этой неделе';
+                    break;
+                case 'overdue':
+                    label = 'Просроченные';
+                    break;
+                case 'no_date':
+                    label = 'Без срока';
+                    break;
+            }
+            if (label) {
+                activeFilters.push({
+                    label: label,
+                    key: 'dateRange'
+                });
+            }
+        }
+
+        if (activeFilters.length === 0) return '';
+
+        return `
+            <div class="active-filters mt-4">
+                ${activeFilters.map(filter => `
+                    <div class="filter-tag">
+                        <span>${filter.label}</span>
+                        <button onclick="App.removeFilter('${filter.key}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `).join('')}
+                <button class="text-sm text-primary-600 dark:text-primary-400 hover:underline" onclick="App.resetFilters()">
+                    Очистить все
+                </button>
+            </div>
+        `;
+    }
+
+    static removeFilter(key) {
+        currentFilters[key] = '';
+        this.applyCurrentFilters();
+    }
+    
     static renderMyTasksList(tasks) {
         if (!tasks || tasks.length === 0) {
             return `
